@@ -10,7 +10,7 @@ use stable_mir::ty::*;
 
 use crate::expr::context::*;
 use crate::expr::ty::*;
-use crate::nstring::NString;
+use crate::symbol::nstring::NString;
 
 pub type FunctionIdx = usize;
 pub type StmtIdx = usize;

@@ -1,9 +1,7 @@
 
 use std::{fmt::Debug, hash::Hash, rc::Rc};
 
-use crate::nstring::NString;
-
-use super::{ast::*, ty::Type};
+use super::nstring::NString;
 
 /// Symbol are used for variables, objects, and so on.
 /// 

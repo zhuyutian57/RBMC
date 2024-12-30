@@ -7,9 +7,10 @@ use std::{alloc::Layout, any::type_name, hash::Hash};
 use std::rc::Rc;
 use std::cell::{RefCell, RefMut};
 
+use crate::symbol::symbol::*;
+
 use super::ast::*;
 use super::context::*;
-use super::symbol::*;
 use super::ty::Type;
 
 /// `Expr` is a wrapper for AST node. It only carry node index that

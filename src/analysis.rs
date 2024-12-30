@@ -1,11 +1,7 @@
 
-use std::hash::Hash;
-use std::io::stdout;
-use std::collections::{HashMap, HashSet, VecDeque};
-
-use crate::{program::*, ExprCtx};
-use crate::state::*;
-use crate::symex::*;
+use crate::program::program::*;
+use crate::symex::symex::*;
+use crate::ExprCtx;
 
 pub struct Analyzer {
   ctx: ExprCtx,

@@ -1,20 +1,11 @@
-use core::alloc;
-use std::alloc::Layout;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::fmt::Error;
-use std::rc::Rc;
-
 use stable_mir::CrateDef;
 use stable_mir::mir::*;
 use stable_mir::ty::*;
 
-use crate::expr::context::*;
-use crate::expr::expr::*;
-use crate::expr::ty::*;
-use crate::nstring::NString;
-use crate::program::*;
-use crate::state::*;
+use crate::expr::{context::*, expr::*, ty::*};
+use crate::symbol::nstring::NString;
+use crate::program::program::*;
+use super::state::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum AllocKind {

@@ -24,21 +24,19 @@ use stable_mir::target::*;
 
 mod analysis;
 mod expr;
-mod nstring;
 mod program;
-mod renaming;
-mod state;
+mod symbol;
 mod symex;
 
-use analysis::Analyzer;
-use expr::context::*;
-use nstring::NString;
-use program::Program;
+use crate::analysis::Analyzer;
+use crate::expr::context::*;
+use crate::program::program::Program;
+use crate::symbol::nstring::NString;
 
 /// This is a wrapper that can be used to replace rustc.
 fn main() -> ExitCode {
   let mut rustc_args: Vec<_> = std::env::args().into_iter().collect();
-  rustc_args.push("-Copt-level=0".to_string());
+  rustc_args.push("-Copt-level=1".to_string());
   rustc_args.push("-Zmir-enable-passes=+ReorderBasicBlocks".to_string());
   let result = run!(rustc_args, start_demo);
   match result {

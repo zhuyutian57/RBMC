@@ -1,18 +1,9 @@
-use std::fmt::{Debug, Error};
-use std::ops::Deref;
+use std::fmt::Debug;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use stable_mir::mir::*;
-use stable_mir::ty::*;
+use crate::symbol::{nstring::*, symbol::*};
 
-use crate::nstring::NString;
-use crate::program::{self, *};
-
-use super::ast::*;
-use super::constant::*;
-use super::expr::*;
-use super::symbol::*;
-use super::ty::*;
+use super::{ast::*, constant::*,  expr::*, ty::*};
 
 type BinOp = super::ast::BinOp;
 type UnOp = super::ast::UnOp;

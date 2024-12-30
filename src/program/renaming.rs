@@ -1,7 +1,8 @@
 
 use std::collections::HashMap;
 
-use crate::{expr::{expr::{Expr, ExprBuilder}, symbol::Symbol}, nstring::NString};
+use crate::expr::expr::*;
+use crate::symbol::{symbol::*, nstring::*};
 
 /// Renaming for symbol
 /// 

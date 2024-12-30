@@ -1,15 +1,9 @@
 
-use std::any::Any;
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fmt::Error;
-use std::rc::Rc;
 
 use stable_mir::CrateDef;
-use stable_mir::mir::*;
 use stable_mir::ty::*;
-
-use crate::nstring::NString;
 
 /// A wrapper for `Ty` in MIR
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]

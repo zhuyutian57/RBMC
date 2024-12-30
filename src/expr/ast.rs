@@ -1,14 +1,10 @@
 
-use std::fmt::format;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::rc::Rc;
 
-use crate::nstring::NString;
+use crate::symbol::{symbol::*, nstring::*};
 
 use super::constant::*;
-use super::expr::Expr;
-use super::symbol::*;
 use super::ty::*;
 
 pub type TerminalId = usize;

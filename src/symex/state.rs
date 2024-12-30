@@ -1,19 +1,15 @@
 
 use std::fmt::Debug;
-use std::{clone, vec};
-use std::{collections::*, hash::Hash, rc::Rc};
-use std::cell::{RefCell, RefMut};
+use std::collections::*;
 
 use stable_mir::mir::*;
 use stable_mir::ty::*;
 
-use crate::expr::symbol::Symbol;
-use crate::nstring::NString;
-use crate::program::*;
+use crate::symbol::{symbol::*, nstring::*};
+use crate::program::{program::*, renaming::*};
 use crate::expr::context::*;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
-use crate::renaming::Renaming;
 
 pub type PointsToSet = HashMap<Expr, HashSet<Expr>>;
 
@@ -241,7 +237,7 @@ impl<'exec> ExecutionState<'exec> {
   }
 
   pub fn merge_states(&mut self, pc: Pc) -> bool {
-    let mut state_vec = self.cur_frame().states_from(pc);
+    let state_vec = self.cur_frame().states_from(pc);
     
     let mut new_state = State::new(self.ctx.clone());
     // TODO: do phi function
