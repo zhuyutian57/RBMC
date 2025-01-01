@@ -12,7 +12,7 @@ fn g(x: i32) -> i32 {
 }
 
 fn main() {
-  let mut n1 = Node { x : 12, y : 100 };
+  let mut n1 = Node { x : -12, y : 100 };
   let mut n2 = Node { x : 13, y : 100 };
   let mut boxn = Box::new(Node { x : 14, y : 99 });
   f(&mut n1); f(&mut n2);

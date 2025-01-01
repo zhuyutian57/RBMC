@@ -17,6 +17,7 @@ pub type StmtIdx = usize;
 
 pub type Decl = (Type, Mutability);
 
+/// A wrapper for functiom item in MIR
 #[derive(Debug)]
 pub struct Function {
   name: NString,
@@ -130,6 +131,12 @@ impl Program {
     self.idx.contains_key(&name)
   }
 
+  pub fn is_little_endian(&self) -> bool {
+    matches!(self.target.endian, Endian::Little)
+  }
+
+  pub fn is_big_endian(&self) -> bool { !self.is_little_endian() }
+
   pub fn show(&self) {
     println!(
       " Crate:{:?}, Endian:{}, MachineSize:{}",
@@ -151,4 +158,64 @@ impl Program {
         .unwrap();
     }
   }
+}
+
+macro_rules! READ_INT {
+  ($ty:ident, $cond:expr, $bytes:ident) => {
+    {
+      let buf = $bytes.try_into().unwrap();
+      let i = 
+        if $cond {
+          $ty::from_le_bytes(buf)
+        } else {
+          $ty::from_be_bytes(buf)
+        } as i128;
+      Ok((i < 0, i.abs() as u128))
+    }
+  };
+}
+
+macro_rules! READ_UINT {
+  ($ty:ident, $cond:expr, $bytes:ident) => {
+    {
+      let buf = $bytes.try_into().unwrap();
+      Ok(
+        (false,
+          if $cond {
+            $ty::from_le_bytes(buf)
+          } else {
+            $ty::from_be_bytes(buf)
+          } as u128)
+      )
+    }
+  };
+}
+
+pub(crate) fn read_target_integer(
+  bytes: &[u8],
+  is_signed: bool,
+  is_little_endian: bool,
+) -> (bool, u128) {
+  match is_signed {
+    true => {
+      match bytes.len() {
+        1 => READ_INT!(i8, is_little_endian, bytes),
+        2 => READ_INT!(i16, is_little_endian, bytes),
+        4 => READ_INT!(i32, is_little_endian, bytes),
+        8 => READ_INT!(i64, is_little_endian, bytes),
+        16 => READ_INT!(i128, is_little_endian, bytes),
+        _ => Err("Wrong bytes"),
+      }
+    },
+    false => {
+      match bytes.len() {
+        1 => READ_UINT!(u8, is_little_endian, bytes),
+        2 => READ_UINT!(u16, is_little_endian, bytes),
+        4 => READ_UINT!(u32, is_little_endian, bytes),
+        8 => READ_UINT!(u64, is_little_endian, bytes),
+        16 => READ_UINT!(u128, is_little_endian, bytes),
+        _ => Err("Wrong bytes"),
+      }
+    },
+  }.expect("Wrong bytes")
 }

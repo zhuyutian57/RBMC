@@ -14,6 +14,18 @@ impl Type {
 
   pub fn is_bool(&self) -> bool { self.0.kind().is_bool() }
 
+  pub fn is_int(&self) -> bool {
+    assert!(self.0.kind().is_integral());
+    self.0.kind().is_signed()
+  }
+
+  pub fn is_uint(&self) -> bool {
+    assert!(self.0.kind().is_integral());
+    !self.0.kind().is_signed()
+  }
+
+  pub fn is_struct(&self) -> bool { self.0.kind().is_struct() }
+
   pub fn is_ref(&self) -> bool { self.0.kind().is_ref() }
 
   pub fn is_raw_ptr(&self) -> bool { self.0.kind().is_raw_ptr() }
@@ -23,6 +35,20 @@ impl Type {
   /// `Box` is also a ptr by our semantic
   pub fn is_ptr(&self) -> bool {
     self.is_ref() || self.is_raw_ptr() || self.is_box()
+  }
+
+  pub fn variant(&self) -> Vec<Type> {
+    assert!(self.is_struct());
+    let mut fields=  Vec::new();
+    if let TyKind::RigidTy(rigidTy) = self.0.kind() {
+      if let RigidTy::Adt(def, _) = rigidTy {
+        for field in def.variants()[0].fields() {
+          fields.push(Type::from(field.ty()));
+        }
+      }
+    }
+    assert!(!fields.is_empty());
+    fields
   }
 }
 
@@ -36,7 +62,26 @@ impl Debug for Type {
         write!(f, "{}", format!("{i:?}").to_lowercase()),
       RigidTy::Uint(u) =>
         write!(f, "{}", format!("{u:?}").to_lowercase()),
-      RigidTy::Adt(def, _) => write!(f, "{}", def.trimmed_name()),
+      RigidTy::Adt(def, _) => {
+        let name = def.trimmed_name();
+        let mut fields = Vec::new();
+        if name != "Box" && name != "Layout" {
+          for field in def.variants()[0].fields() {
+            fields.push(Type::from(field.ty()));
+          }
+        }
+        let ftypes = 
+          fields
+            .iter()
+            .map(|t| format!("{t:?}") + ", ")
+            .collect::<String>();
+        let s = ftypes.trim_end_matches(", ");
+        if name != "Box" && name != "Layout" {
+          write!(f, "{name} {{ {s} }}")
+        } else {
+          write!(f, "{name}")
+        }
+      },
       RigidTy::RawPtr(ty, m) => {
         let t = Type::from(*ty);
         write!(f, "RawPtr({t:?}, {m:?})")

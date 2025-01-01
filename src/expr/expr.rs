@@ -10,8 +10,10 @@ use std::cell::{RefCell, RefMut};
 use crate::symbol::symbol::*;
 
 use super::ast::*;
+use super::constant::*;
 use super::context::*;
-use super::ty::Type;
+use super::op::*;
+use super::ty::*;
 
 /// `Expr` is a wrapper for AST node. It only carry node index that
 /// is used to construct AST. The corresponding information can be
@@ -23,19 +25,28 @@ pub struct Expr {
 }
 
 impl Expr {
-  pub fn ty(&self) -> Type {
-    self.ctx.borrow().node_ty(self.id)
-  }
+  pub fn ty(&self) -> Type { self.ctx.borrow().ty(self.id) }
 
   pub fn is_true(&self) -> bool { self.ctx.borrow().is_true(self.id) }
   pub fn is_false(&self) -> bool { self.ctx.borrow().is_false(self.id) }
   pub fn is_binary(&self) -> bool { self.ctx.borrow().is_binary(self.id) }
   pub fn is_unary(&self) -> bool { self.ctx.borrow().is_unary(self.id) }
   pub fn is_object(&self) -> bool { self.ctx.borrow().is_object(self.id) }
-  pub fn is_terminal(&self) -> bool { self.ctx.borrow().is_terminal(self.id) }
 
+  pub fn is_terminal(&self) -> bool { self.ctx.borrow().is_terminal(self.id) }
+  pub fn is_constant(&self) -> bool { self.ctx.borrow().is_constant(self.id) }
   pub fn is_symbol(&self) -> bool { self.ctx.borrow().is_symbol(self.id) }
   pub fn is_layout(&self) -> bool { self.ctx.borrow().is_layout(self.id) }
+
+  pub fn binOp(&self) -> BinOp {
+    assert!(self.is_binary());
+    self.ctx.borrow().binOp(self.id).unwrap()
+  }
+
+  pub fn unOp(&self) -> UnOp {
+    assert!(self.is_unary());
+    self.ctx.borrow().unOp(self.id).unwrap()
+  }
 
   pub fn symbol(&self) -> Symbol {
     self
@@ -54,14 +65,12 @@ impl Expr {
   }
 
   pub fn simplify(&mut self) {
-    let node = self.ctx.borrow_mut().node(self.id);
-    match node.kind() {
-      NodeKind::Binary(op, l, r) => {
-        let mut lhs = Expr { ctx: self.ctx.clone(), id: l};
-        let mut rhs = Expr { ctx: self.ctx.clone(), id: r};
-        lhs.simplify();
-        rhs.simplify();
-        match op {
+    if let Some(mut sub_exprs) = self.sub_exprs() {
+      for sub_expr in sub_exprs.iter_mut() { sub_expr.simplify(); }
+      if self.is_binary() {
+        let lhs = &sub_exprs[0];
+        let rhs = &sub_exprs[1];
+        match self.binOp() {
           BinOp::And => {
             if lhs.is_true() && rhs.is_true() || lhs.is_false(){
               self.id = lhs.id
@@ -78,8 +87,22 @@ impl Expr {
           },
           _ => {},
         }
+      }
+      // TODO: do more simplify
+    }
+  }
+
+  /// Construct sub-exprs from AST
+  pub fn sub_exprs(&self) -> Option<Vec<Expr>>{
+    match self.ctx.borrow().sub_nodes(self.id) {
+      Some(ids) => {
+        let mut sub_exprs = Vec::new();
+        for id in ids {
+          sub_exprs.push(Expr { ctx: self.ctx.clone(), id });
+        }
+        Some(sub_exprs)
       },
-      _ => {},
+      None => None,
     }
   }
 }
@@ -100,31 +123,34 @@ impl Hash for Expr {
 
 impl Debug for Expr {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    let node = self.ctx.borrow_mut().node(self.id);
-    match node.kind() {
-      NodeKind::Binary(op, l, r) => {
-        let lhs = Expr { ctx: self.ctx.clone(), id: l};
-        let rhs = Expr { ctx: self.ctx.clone(), id: r};
-        f.write_fmt(format_args!("{:?} {:?} {:?}", lhs, op, rhs))
-      },
-      NodeKind::Unary(op, operand) => {
-        let o = Expr { ctx: self.ctx.clone(), id: operand };
-        f.write_fmt(format_args!("{:?} {:?}", op, o))
-      },
-      NodeKind::Terminal(t) => {
-        f.write_fmt(format_args!("{:?}", self.ctx.borrow().terminal(t)))
-      },
-      NodeKind::Object(o) => {
-        let node = self.ctx.borrow().node(o);
-        let t = node.terminal_id().expect("Not terminal");
-        f.write_fmt(format_args!("{:?}", self.ctx.borrow().terminal(t)))
-      },
+    if self.is_terminal() {
+      write!(f, "{:?}", self.ctx.borrow().terminal(self.id).unwrap())
+    } else {
+      let sub_exprs = self.sub_exprs().unwrap();
+      
+      if self.is_binary() {
+        let lhs = &sub_exprs[0];
+        let rhs = &sub_exprs[1];
+        return write!(f, "{:?} {:?} {:?}", lhs, self.binOp(),rhs);
+      }
+
+      if self.is_unary() {
+        return write!(f, "{:?} {:?}", self.unOp(), sub_exprs[0]);
+      }
+
+      if self.is_object() {
+        return write!(f, "{:?}", sub_exprs[0]);
+      }
+
+      Err(std::fmt::Error)
     }
   }
 }
 
 pub trait ExprBuilder {
   fn constant_bool(&self, b: bool) -> Expr;
+  fn constant_integer(&self, sign: bool, value: u128, ty: Type) -> Expr;
+  fn constant_struct(&self, constants: Vec<Constant>, ty: Type) -> Expr;
   fn symbol(&self, symbol: Symbol, ty: Type) -> Expr;
   fn layout(&self, ty: Type) -> Expr;
 
@@ -141,7 +167,7 @@ pub trait ExprBuilder {
   fn and(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn or(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn not(&self, operand: Expr) -> Expr;
-  fn neq(&self, operand: Expr) -> Expr;
+  fn neg(&self, operand: Expr) -> Expr;
 
-  fn object(&self, obj: Expr) -> Expr;
+  fn object(&self, o: Expr) -> Expr;
 }

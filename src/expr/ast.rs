@@ -1,19 +1,21 @@
 
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::vec;
 
 use crate::symbol::{symbol::*, nstring::*};
 
 use super::constant::*;
+use super::op::*;
 use super::ty::*;
 
 pub type TerminalId = usize;
 
 #[derive(Clone)]
-pub enum Terminal {
+pub(super) enum Terminal {
   Constant(Constant),
-  Symbol(Symbol),
   Layout(Type),
+  Symbol(Symbol),
 }
 
 impl Terminal {
@@ -21,9 +23,9 @@ impl Terminal {
     match self {
       Terminal::Constant(c) =>
         NString::from(format!("{c:?}")),
-      Terminal::Symbol(s) => s.name(),
       Terminal::Layout(t) =>
         NString::from(format!("Layout({t:?})")),
+      Terminal::Symbol(s) => s.name(),
     }
   }
 }
@@ -32,66 +34,16 @@ impl Debug for Terminal {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
       Terminal::Constant(c) => write!(f, "{c:?}"),
-      Terminal::Symbol(s) => write!(f, "{s:?}"),
       Terminal::Layout(t) => write!(f, "Layout({t:?})"),
+      Terminal::Symbol(s) => write!(f, "{s:?}"),
     }
   }
 }
 
 pub type NodeId = usize;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub enum BinOp {
-  Add,
-  Sub,
-  Mul,
-  Div,
-  Eq,
-  Ne,
-  Ge,
-  Gt,
-  Le,
-  Lt,
-  And,
-  Or,
-}
-
-impl Debug for BinOp {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      Self::Add => write!(f, "+"),
-      Self::Sub => write!(f, "-"),
-      Self::Mul => write!(f, "*"),
-      Self::Div => write!(f, "/"),
-      Self::Eq => write!(f, "="),
-      Self::Ne => write!(f, "!="),
-      Self::Ge => write!(f, ">="),
-      Self::Gt => write!(f, ">"),
-      Self::Le => write!(f, "<="),
-      Self::Lt => write!(f, "<"),
-      Self::And => write!(f, "&&"),
-      Self::Or => write!(f, "||"),
-    }
-  }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub enum UnOp {
-  Not,
-  Neg,
-}
-
-impl Debug for UnOp {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      Self::Not => write!(f, "!"),
-      Self::Neg => write!(f, "neg"),
-    }
-  }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum NodeKind {
+pub(super) enum NodeKind {
   Binary(BinOp, NodeId, NodeId),
   Unary(UnOp, NodeId),
 
@@ -120,7 +72,7 @@ impl NodeKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Node {
+pub(super) struct Node {
   kind: NodeKind,
   ty: Type,
 }
@@ -170,6 +122,18 @@ impl Node {
   pub fn terminal_id(&self) -> Option<TerminalId> {
     match self.kind {
       NodeKind::Terminal(t) => Some(t),
+      _ => None,
+    }
+  }
+
+  /// Retrieve sub-nodes from AST
+  pub fn sub_nodes(&self) -> Option<Vec<NodeId>> {
+    match self.kind {
+      NodeKind::Binary(_, l, r)
+        => Some(vec![l, r]),
+      NodeKind::Unary(_, o) |
+      NodeKind::Object(o)
+        => Some(vec![o]),
       _ => None,
     }
   }

@@ -6,10 +6,11 @@ use stable_mir::mir::*;
 use stable_mir::ty::*;
 
 use crate::symbol::{symbol::*, nstring::*};
-use crate::program::{program::*, renaming::*};
+use crate::program::program::*;
 use crate::expr::context::*;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
+use super::renaming::*;
 
 pub type PointsToSet = HashMap<Expr, HashSet<Expr>>;
 
@@ -66,17 +67,15 @@ pub type Pc = BasicBlockIdx;
 /// identifier for each frame.
 pub struct Frame<'func> {
   ctx: ExprCtx,
-
   id: usize,
   function: &'func Function,
-
+  /// Previous info. Used for recovering
   destination: Option<Place>,
   target: Option<BasicBlockIdx>,
-  
+  /// Current Computing
   pc: Pc,
   cur_state: State,
   state_map: HashMap<Pc, Vec<State>>,
-
   renaming: Renaming,
 }
 
@@ -146,9 +145,10 @@ impl<'func> Frame<'func> {
       + "::" + local.to_string()
   }
 
-  pub fn current_local(&mut self, local: Local, level2: bool) -> Expr {
+  pub fn current_local(&mut self, local: Local, level: Level) -> Expr {
+    assert!(level == Level::level1 || level == Level::level2);
     let symbol =
-      if !level2 {
+      if level == Level::level1 {
         self.renaming.l1_symbol(self.local_identifier(local))
       } else {
         self.renaming.l2_symbol(self.local_identifier(local))
@@ -157,9 +157,10 @@ impl<'func> Frame<'func> {
     self.ctx.symbol(symbol, ty)
   }
 
-  pub fn new_local(&mut self, local: Local, level2: bool) -> Expr {
+  pub fn new_local(&mut self, local: Local, level: Level) -> Expr {
+    assert!(level == Level::level1 || level == Level::level2);
     let symbol =
-      if !level2 {
+      if level == Level::level1 {
         self.renaming.new_l1_symbol(self.local_identifier(local))
       } else {
         self.renaming.new_l2_symbol(self.local_identifier(local))
@@ -168,15 +169,29 @@ impl<'func> Frame<'func> {
     self.ctx.symbol(symbol, ty)
   }
 
-  pub fn rename(&mut self, expr: &mut Expr, level2: bool) {
+  pub fn new_symbol(&mut self, symbol: &Expr, level: Level) -> Expr {
+    assert!(symbol.is_symbol());
+    let sym = symbol.symbol();
+    let new_sym =
+      match level {
+        Level::level1 => Some(self.renaming.new_l1_symbol(sym.identifier())),
+        Level::level2 => Some(self.renaming.new_l2_symbol(sym.identifier())),
+        _ => None,
+      }.expect("Wrong symbol exper");
+    self.ctx.symbol(new_sym, symbol.ty())
+  }
+
+  pub fn rename(&mut self, expr: &mut Expr, level: Level) {
+    if level == Level::level0 { return; }
     self.renaming.l1_rename(expr);
-    if level2 {
+    if level == Level::level2 {
       self.renaming.l2_rename(expr);
     }
   }
 
-  pub fn constant_propagate(&mut self, symbol: Symbol, constant: Expr) {
-    self.renaming.constant_propagate(symbol, constant);
+  pub fn constant_propagate(&mut self, lhs: Expr, rhs: Expr) {
+    assert!(lhs.is_symbol() && (rhs.is_constant() || rhs.is_layout()));
+    self.renaming.constant_propagate(lhs, rhs);
   }
 }
 
@@ -224,7 +239,7 @@ impl<'exec> ExecutionState<'exec> {
       NString::from("heap_object_") + self.objects.len().to_string();
     let symbol = 
       self.ctx.symbol(
-        Symbol::new(name, 0, 0, 0),
+        Symbol::new(name, 0, 0, Level::level0),
         ty
       );
     let object = self.ctx.object(symbol);

@@ -27,6 +27,7 @@ mod expr;
 mod program;
 mod symbol;
 mod symex;
+mod vc;
 
 use crate::analysis::Analyzer;
 use crate::expr::context::*;
