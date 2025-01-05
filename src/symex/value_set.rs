@@ -1,0 +1,77 @@
+
+use std::collections::{HashMap, HashSet};
+use std::fmt::Debug;
+
+use crate::expr::expr::Expr;
+use crate::symbol::nstring::NString;
+
+pub type ObjectSet = HashSet<Expr>;
+
+#[derive(Default, Clone)]
+pub(super) struct ValueSet {
+  _points_to_map: HashMap<NString, ObjectSet>,
+}
+
+impl ValueSet {
+  pub fn add(&mut self, pt: NString) {
+    self
+      ._points_to_map
+      .entry(pt)
+      .or_default();
+  }
+
+  pub fn remove(&mut self, pt: NString) {
+    self
+      ._points_to_map
+      .remove(&pt);
+  }
+  
+  pub fn contains(&self, pt: NString) -> bool {
+    self._points_to_map.contains_key(&pt)
+  }
+
+  pub fn insert(&mut self, pt: NString, objects: ObjectSet) {
+    self._points_to_map.insert(pt, objects);
+  }
+
+  pub fn union(&mut self, pt: NString, objects: ObjectSet) {
+    let s =
+      self
+        ._points_to_map
+        .entry(pt)
+        .or_default();
+    for object in objects { s.insert(object); }    
+  }
+
+  pub fn merge(&mut self, value_set: &ValueSet, is_union: bool) {
+    for (pt, objects) in value_set._points_to_map.iter() {
+      if is_union {
+        self.union(*pt, objects.clone());
+      } else {
+        self.insert(*pt, objects.clone());
+      }
+    }
+  }
+}
+
+impl Debug for ValueSet {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    let debug_info = 
+      self
+        ._points_to_map
+        .iter()
+        .map(
+          |(pt, objects)| { 
+            let debug_objects =
+            objects
+              .iter()
+              .map(|x| format!("{x:?}"))
+              .collect::<Vec<String>>()
+              .join(", ");
+            format!("  {pt:?}: {debug_objects}")
+          }
+        )
+        .collect::<String>();
+    write!(f, "{debug_info}\n")
+  }
+}

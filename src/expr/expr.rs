@@ -27,16 +27,25 @@ pub struct Expr {
 impl Expr {
   pub fn ty(&self) -> Type { self.ctx.borrow().ty(self.id) }
 
+  pub fn is_terminal(&self) -> bool { self.ctx.borrow().is_terminal(self.id) }
   pub fn is_true(&self) -> bool { self.ctx.borrow().is_true(self.id) }
   pub fn is_false(&self) -> bool { self.ctx.borrow().is_false(self.id) }
+  pub fn is_constant(&self) -> bool { self.ctx.borrow().is_constant(self.id) }
+  pub fn is_symbol(&self) -> bool { self.ctx.borrow().is_symbol(self.id) }
+  pub fn is_layout(&self) -> bool { self.ctx.borrow().is_layout(self.id) }
+
+  pub fn is_address_of(&self) -> bool { self.ctx.borrow().is_address_of(self.id) }
   pub fn is_binary(&self) -> bool { self.ctx.borrow().is_binary(self.id) }
   pub fn is_unary(&self) -> bool { self.ctx.borrow().is_unary(self.id) }
   pub fn is_object(&self) -> bool { self.ctx.borrow().is_object(self.id) }
 
-  pub fn is_terminal(&self) -> bool { self.ctx.borrow().is_terminal(self.id) }
-  pub fn is_constant(&self) -> bool { self.ctx.borrow().is_constant(self.id) }
-  pub fn is_symbol(&self) -> bool { self.ctx.borrow().is_symbol(self.id) }
-  pub fn is_layout(&self) -> bool { self.ctx.borrow().is_layout(self.id) }
+  pub fn extract_object(&self) -> Expr {
+    assert!(self.is_address_of());
+    self
+      .sub_exprs()
+      .expect("Wrong address_of")[0]
+      .clone()
+  }
 
   pub fn binOp(&self) -> BinOp {
     assert!(self.is_binary());
@@ -127,6 +136,11 @@ impl Debug for Expr {
       write!(f, "{:?}", self.ctx.borrow().terminal(self.id).unwrap())
     } else {
       let sub_exprs = self.sub_exprs().unwrap();
+
+      if self.is_address_of() {
+        let place = &sub_exprs[0];
+        return write!(f, "&{place:?}");
+      }
       
       if self.is_binary() {
         let lhs = &sub_exprs[0];
@@ -142,7 +156,8 @@ impl Debug for Expr {
         return write!(f, "{:?}", sub_exprs[0]);
       }
 
-      Err(std::fmt::Error)
+      debug_assert!(false, "Incomplete Debug for Expr");
+      Err(Error)
     }
   }
 }
@@ -153,6 +168,8 @@ pub trait ExprBuilder {
   fn constant_struct(&self, constants: Vec<Constant>, ty: Type) -> Expr;
   fn symbol(&self, symbol: Symbol, ty: Type) -> Expr;
   fn layout(&self, ty: Type) -> Expr;
+
+  fn address_of(&self, place: Expr, ty: Type) -> Expr;
 
   fn add(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn sub(&self, lhs: Expr, rhs: Expr) -> Expr;

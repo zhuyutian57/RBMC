@@ -51,8 +51,7 @@ fn start_demo() -> ControlFlow<()> {
 
   let _crate = NString::from(stable_mir::local_crate().name);
   let items = stable_mir::all_local_items();
-  let target = MachineInfo::target();
-  let program = Program::new(_crate, target, items, ctx.clone());
+  let program = Program::new(_crate, items, ctx.clone());
 
   let mut analyzer = Analyzer::new(program, ctx);
   

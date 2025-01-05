@@ -4,7 +4,6 @@ use std::hash::Hash;
 use std::vec;
 
 use crate::symbol::{symbol::*, nstring::*};
-
 use super::constant::*;
 use super::op::*;
 use super::ty::*;
@@ -44,27 +43,33 @@ pub type NodeId = usize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) enum NodeKind {
+  /// Terminal is the bridge connecting ast and terminals
+  Terminal(TerminalId),
+  /// Get address from a place. Create `Ref` if necessary.
+  AddressOf(NodeId),
+
   Binary(BinOp, NodeId, NodeId),
   Unary(UnOp, NodeId),
 
-  /// Terminal is the bridge connecting ast and terminals
-  Terminal(TerminalId),
-  
   Object(NodeId),
 }
 
 impl NodeKind {
+  pub fn is_terminal(&self) -> bool {
+    matches!(self, NodeKind::Terminal(_))
+  }
+
+  pub fn is_address_of(&self) -> bool {
+    matches!(self, NodeKind::AddressOf(_))
+  }
+
   pub fn is_binary(&self) -> bool {
     matches!(self, NodeKind::Binary(_, _, _))
   }
 
   pub fn is_unary(&self) -> bool {
     matches!(self, NodeKind::Unary(_, _))
-  } 
-
-  pub fn is_terminal(&self) -> bool {
-    matches!(self, NodeKind::Terminal(_))
-  } 
+  }
 
   pub fn is_object(&self) -> bool {
     matches!(self, NodeKind::Object(_))
@@ -78,40 +83,23 @@ pub(super) struct Node {
 }
 
 impl Node {
-  pub fn binary(
-    op: BinOp,
-    lhs: NodeId,
-    rhs: NodeId,
-    ty: Type,
-  ) -> Self {
-    Node {
-      kind: NodeKind::Binary(op, lhs, rhs),
-      ty
-    }
-  }
-
-  pub fn unary(
-    op: UnOp,
-    operand: NodeId,
-    ty: Type
-  ) -> Self {
-    Node {
-      kind: NodeKind::Unary(op, operand),
-      ty
-    }
-  }
-
-  pub fn terminal(
-    i: TerminalId,
-    ty: Type
-  ) -> Self {
+  pub fn terminal(i: TerminalId, ty: Type) -> Self {
     Node { kind: NodeKind::Terminal(i), ty }
   }
 
-  pub fn object(
-    i: NodeId,
-    ty: Type
-  ) -> Self {
+  pub fn address_of(i: NodeId, ty: Type) -> Self {
+    Node { kind: NodeKind::AddressOf(i), ty }
+  }
+
+  pub fn binary(op: BinOp, lhs: NodeId, rhs: NodeId, ty: Type) -> Self {
+    Node { kind: NodeKind::Binary(op, lhs, rhs), ty }
+  }
+
+  pub fn unary(op: UnOp, operand: NodeId, ty: Type) -> Self {
+    Node { kind: NodeKind::Unary(op, operand), ty }
+  }
+
+  pub fn object(i: NodeId, ty: Type) -> Self {
     Node { kind: NodeKind::Object(i), ty }
   }
 
@@ -129,6 +117,8 @@ impl Node {
   /// Retrieve sub-nodes from AST
   pub fn sub_nodes(&self) -> Option<Vec<NodeId>> {
     match self.kind {
+      NodeKind::AddressOf(p)
+        => Some(vec![p]),
       NodeKind::Binary(_, l, r)
         => Some(vec![l, r]),
       NodeKind::Unary(_, o) |

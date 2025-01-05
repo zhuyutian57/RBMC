@@ -29,6 +29,7 @@ pub struct VCSystem {
 
 impl VCSystem {
   pub fn assign(&mut self, lhs: Expr, rhs: Expr) {
+    println!("ASSIGN: {lhs:?} = {rhs:?}");
     self.equantions.push(VcKind::Assign(lhs, rhs));
   }
 

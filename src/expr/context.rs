@@ -2,9 +2,7 @@ use std::fmt::Debug;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::symbol::{nstring::*, symbol::*};
-
-use super::{ast::*, constant::*, expr::*, ty::*};
-use super::op::*;
+use super::{ast::*, constant::*, expr::*, op::*, ty::*};
 
 /// Context is used to manage type and expression.
 /// TODO: do memory management
@@ -66,29 +64,14 @@ impl Context {
     }
   }
 
-  pub fn is_true(&self, i: NodeId) -> bool { i == 0 }
-
-  pub fn is_false(&self, i: NodeId) -> bool { i == 1 }
-
-  pub fn is_binary(&self, i: NodeId) -> bool {
-    assert!(i < self.nodes.len());
-    matches!(self.nodes[i].kind(), NodeKind::Binary(_, _, _))
-  }
-
-  pub fn is_unary(&self, i: NodeId) -> bool {
-    assert!(i < self.nodes.len());
-    matches!(self.nodes[i].kind(), NodeKind::Unary(_, _))
-  }
-
-  pub fn is_object(&self, i: NodeId) -> bool {
-    assert!(i < self.nodes.len());
-    matches!(self.nodes[i].kind(), NodeKind::Object(_))
-  }
-
   pub fn is_terminal(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     matches!(self.nodes[i].kind(), NodeKind::Terminal(_))
   }
+
+  pub fn is_true(&self, i: NodeId) -> bool { i == 0 }
+
+  pub fn is_false(&self, i: NodeId) -> bool { i == 1 }
 
   pub fn is_constant(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
@@ -112,6 +95,26 @@ impl Context {
       self.terminal(i),
       Ok(t) if matches!(*t, Terminal::Symbol(_))
     )
+  }
+
+  pub fn is_address_of(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    matches!(self.nodes[i].kind(), NodeKind::AddressOf(_))
+  }
+
+  pub fn is_binary(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    matches!(self.nodes[i].kind(), NodeKind::Binary(_, _, _))
+  }
+
+  pub fn is_unary(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    matches!(self.nodes[i].kind(), NodeKind::Unary(_, _))
+  }
+
+  pub fn is_object(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    matches!(self.nodes[i].kind(), NodeKind::Object(_))
   }
 
   pub fn terminal(&self, i: NodeId) -> Result<Rc<Terminal>, &str> {
@@ -227,6 +230,12 @@ impl ExprBuilder for ExprCtx {
     let terminal = Terminal::Layout(ty);
     let terminal_id = self.borrow_mut().add_terminal(terminal);
     let new_node = Node::terminal(terminal_id, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+
+  fn address_of(&self, place: Expr, ty: Type) -> Expr {
+    let new_node = Node::address_of(place.id, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }

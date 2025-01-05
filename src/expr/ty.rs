@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use std::fmt::Error;
 
 use stable_mir::CrateDef;
+use stable_mir::mir::*;
 use stable_mir::ty::*;
 
 /// A wrapper for `Ty` in MIR
@@ -10,9 +11,19 @@ use stable_mir::ty::*;
 pub struct Type(Ty);
 
 impl Type {
-  pub fn bool_type() -> Self { Type(Ty::bool_ty()) }
+  pub fn bool_type() -> Self { Type::from(Ty::bool_ty()) }
+
+  pub fn new_ptr_type(pointee_ty: Ty, mutability: Mutability) -> Self {
+    Type::from(Ty::new_ptr(pointee_ty, mutability))
+  }
+
+  pub fn new_ref_type(reg: Region, pointee_ty: Ty, mutability: Mutability) -> Self {
+    Type::from(Ty::new_ref(reg, pointee_ty, mutability))
+  }
 
   pub fn is_bool(&self) -> bool { self.0.kind().is_bool() }
+
+  pub fn is_fn(&self) -> bool { self.0.kind().is_fn() }
 
   pub fn is_int(&self) -> bool {
     assert!(self.0.kind().is_integral());
@@ -28,13 +39,20 @@ impl Type {
 
   pub fn is_ref(&self) -> bool { self.0.kind().is_ref() }
 
-  pub fn is_raw_ptr(&self) -> bool { self.0.kind().is_raw_ptr() }
+  pub fn is_ptr(&self) -> bool { self.0.kind().is_raw_ptr() }
 
   pub fn is_box(&self) -> bool { self.0.kind().is_box() }
 
   /// `Box` is also a ptr by our semantic
-  pub fn is_ptr(&self) -> bool {
-    self.is_ref() || self.is_raw_ptr() || self.is_box()
+  pub fn is_any_ptr(&self) -> bool {
+    self.is_ref() || self.is_ptr() || self.is_box()
+  }
+
+  pub fn fn_def(&self) -> (FnDef, GenericArgs) {
+    assert!(self.is_fn());
+    let kind = self.0.kind();
+    let _def = kind.fn_def().unwrap();
+    (_def.0, _def.1.clone())
   }
 
   pub fn variant(&self) -> Vec<Type> {
@@ -73,11 +91,11 @@ impl Debug for Type {
         let ftypes = 
           fields
             .iter()
-            .map(|t| format!("{t:?}") + ", ")
-            .collect::<String>();
-        let s = ftypes.trim_end_matches(", ");
+            .map(|t| format!("{t:?}"))
+            .collect::<Vec<String>>()
+            .join(", ");
         if name != "Box" && name != "Layout" {
-          write!(f, "{name} {{ {s} }}")
+          write!(f, "{name} {{ {ftypes} }}")
         } else {
           write!(f, "{name}")
         }

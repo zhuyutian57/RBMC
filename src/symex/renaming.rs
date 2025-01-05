@@ -68,6 +68,12 @@ impl Renaming {
 
   fn rename_replace(&self, expr: &mut Expr, sub_exprs: Vec<Expr>) {
     let ctx = expr.ctx.clone();
+
+    if expr.is_address_of() {
+      let place = sub_exprs[0].clone();
+      *expr = ctx.address_of(place, expr.ty())
+    }
+
     if expr.is_binary() {
       let lhs = sub_exprs[0].clone();
       let rhs = sub_exprs[1].clone();
@@ -111,11 +117,7 @@ impl Renaming {
           symbol = self.l1_symbol(symbol.identifier());
         }
         
-        if self.constant_map.contains_key(&symbol) {
-          *expr = self.constant_map.get(&symbol).unwrap().clone();
-        } else {
-          *expr = expr.ctx.symbol(symbol, expr.ty());
-        }
+        *expr = expr.ctx.symbol(symbol, expr.ty());
       }
       return;
     }
@@ -128,18 +130,24 @@ impl Renaming {
   }
 
   pub fn l2_rename(&mut self, expr: &mut Expr) {
+
+    if expr.is_address_of() {
+      self.l1_rename(expr);
+      return;
+    }
+
     if expr.is_terminal() {
-        if expr.is_symbol() {
-        let symbol = expr.symbol();
+      if expr.is_symbol() {
+        println!("HERE");
+        let mut symbol = expr.symbol();
+        if !symbol.is_level2() {
+          symbol = self.l2_symbol(symbol.identifier());
+        }
 
-        assert!(symbol.is_level1());
-        let l1_symbol = expr.symbol();
-        let l2_symbol = self.l2_symbol(l1_symbol.l1_name());
-
-        if self.constant_map.contains_key(&l2_symbol) {
-          *expr = self.constant_map.get(&l2_symbol).unwrap().clone();
+        if self.constant_map.contains_key(&symbol) {
+          *expr = self.constant_map.get(&symbol).unwrap().clone();
         } else {
-          *expr = expr.ctx.symbol(l2_symbol, expr.ty());
+          *expr = expr.ctx.symbol(symbol, expr.ty());
         }
       }
       return;

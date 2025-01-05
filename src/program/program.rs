@@ -71,6 +71,14 @@ impl Function {
     &self.body.blocks[bb].terminator
   }
 
+  pub fn operand_type(&self, operand: &Operand) -> Type {
+    Type::from(operand.ty(self.body.locals()).expect("Wrong operand"))
+  }
+
+  pub fn rvalue_type(&self, rvalue: &Rvalue) -> Type {
+    Type::from(rvalue.ty(self.body.locals()).expect("Wrong rvalue"))
+  }
+
 }
 
 impl PartialEq for Function {
@@ -83,7 +91,6 @@ impl Eq for Function {}
 
 pub struct Program {
   _crate: NString,
-  target: MachineInfo,
   functions: Vec<Function>,
   idx: HashMap<NString, FunctionIdx>,
 }
@@ -91,7 +98,6 @@ pub struct Program {
 impl Program {
   pub fn new(
     _crate: NString,
-    target: MachineInfo,
     items: CrateItems,
     ctx: ExprCtx,
   ) -> Self {
@@ -111,7 +117,7 @@ impl Program {
       function.init_locals(ctx.clone());
       idx.insert(function.name.clone(), i);
     }
-    Program { _crate, target, functions, idx }
+    Program { _crate, functions, idx }
   }
 
   pub fn entry_fn(&self) -> &Function { self.function(0) }
@@ -131,21 +137,16 @@ impl Program {
     self.idx.contains_key(&name)
   }
 
-  pub fn is_little_endian(&self) -> bool {
-    matches!(self.target.endian, Endian::Little)
-  }
-
-  pub fn is_big_endian(&self) -> bool { !self.is_little_endian() }
-
   pub fn show(&self) {
+    let target = MachineInfo::target();
     println!(
       " Crate:{:?}, Endian:{}, MachineSize:{}",
       self._crate,
-      match self.target.endian {
+      match target.endian {
         Endian::Little => "Little",
         _ => "Big",
       },
-      self.target.pointer_width.bytes()
+      target.pointer_width.bytes()
     );
     for function in self.functions.iter() {
       println!("\n --->> Function: {:?}", function.name());
@@ -161,14 +162,13 @@ impl Program {
 }
 
 macro_rules! READ_INT {
-  ($ty:ident, $cond:expr, $bytes:ident) => {
+  ($ty:ident, $bytes:ident) => {
     {
       let buf = $bytes.try_into().unwrap();
       let i = 
-        if $cond {
-          $ty::from_le_bytes(buf)
-        } else {
-          $ty::from_be_bytes(buf)
+        match MachineInfo::target().endian {
+          Endian::Little => $ty::from_le_bytes(buf),
+          _ => $ty::from_be_bytes(buf),
         } as i128;
       Ok((i < 0, i.abs() as u128))
     }
@@ -176,16 +176,16 @@ macro_rules! READ_INT {
 }
 
 macro_rules! READ_UINT {
-  ($ty:ident, $cond:expr, $bytes:ident) => {
+  ($ty:ident, $bytes:ident) => {
     {
       let buf = $bytes.try_into().unwrap();
       Ok(
         (false,
-          if $cond {
-            $ty::from_le_bytes(buf)
-          } else {
-            $ty::from_be_bytes(buf)
-          } as u128)
+          match MachineInfo::target().endian {
+            Endian::Little => $ty::from_le_bytes(buf),
+            _ => $ty::from_be_bytes(buf),
+          } as u128
+        )
       )
     }
   };
@@ -194,26 +194,25 @@ macro_rules! READ_UINT {
 pub(crate) fn read_target_integer(
   bytes: &[u8],
   is_signed: bool,
-  is_little_endian: bool,
 ) -> (bool, u128) {
   match is_signed {
     true => {
       match bytes.len() {
-        1 => READ_INT!(i8, is_little_endian, bytes),
-        2 => READ_INT!(i16, is_little_endian, bytes),
-        4 => READ_INT!(i32, is_little_endian, bytes),
-        8 => READ_INT!(i64, is_little_endian, bytes),
-        16 => READ_INT!(i128, is_little_endian, bytes),
+        1 => READ_INT!(i8, bytes),
+        2 => READ_INT!(i16, bytes),
+        4 => READ_INT!(i32, bytes),
+        8 => READ_INT!(i64, bytes),
+        16 => READ_INT!(i128, bytes),
         _ => Err("Wrong bytes"),
       }
     },
     false => {
       match bytes.len() {
-        1 => READ_UINT!(u8, is_little_endian, bytes),
-        2 => READ_UINT!(u16, is_little_endian, bytes),
-        4 => READ_UINT!(u32, is_little_endian, bytes),
-        8 => READ_UINT!(u64, is_little_endian, bytes),
-        16 => READ_UINT!(u128, is_little_endian, bytes),
+        1 => READ_UINT!(u8, bytes),
+        2 => READ_UINT!(u16, bytes),
+        4 => READ_UINT!(u32, bytes),
+        8 => READ_UINT!(u64, bytes),
+        16 => READ_UINT!(u128, bytes),
         _ => Err("Wrong bytes"),
       }
     },

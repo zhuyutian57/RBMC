@@ -2,7 +2,7 @@
 use stable_mir::mir::Place;
 
 use crate::expr::expr::*;
-use super::state::*;
+use super::frame::*;
 
 /// Dereferencing a place
 pub(super) struct Projector<'sym, 'frame> {
