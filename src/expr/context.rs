@@ -25,10 +25,10 @@ impl Context {
     let bool_type = Type::bool_type();
 
     self.add_terminal(Terminal::Constant(Constant::Bool(true)));
-    self.add_node(Node::terminal(0, bool_type));
+    self.add_node(Node::new(NodeKind::Terminal(0), bool_type));
     
     self.add_terminal(Terminal::Constant(Constant::Bool(false)));
-    self.add_node(Node::terminal(1, bool_type));
+    self.add_node(Node::new(NodeKind::Terminal(1), bool_type));
     
     // Maybe more
   }
@@ -205,7 +205,8 @@ impl ExprBuilder for ExprCtx {
     let terminal =
       Terminal::Constant(Constant::Integer(sign, value));
     let terminal_id = self.borrow_mut().add_terminal(terminal);
-    let new_node = Node::terminal(terminal_id, ty);
+    let new_node =
+      Node::new(NodeKind::Terminal(terminal_id), ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
@@ -213,7 +214,8 @@ impl ExprBuilder for ExprCtx {
   fn constant_struct(&self, constants: Vec<Constant>, ty: Type) -> Expr {
     let terminal = Terminal::Constant(Constant::Struct(constants));
     let terminal_id = self.borrow_mut().add_terminal(terminal);
-    let new_node = Node::terminal(terminal_id, ty);
+    let new_node = 
+      Node::new(NodeKind::Terminal(terminal_id), ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
@@ -221,7 +223,8 @@ impl ExprBuilder for ExprCtx {
   fn symbol(&self, symbol: Symbol, ty: Type) -> Expr {
     let terminal = Terminal::Symbol(symbol);
     let terminal_id = self.borrow_mut().add_terminal(terminal);
-    let new_node = Node::terminal(terminal_id, ty);
+    let new_node =
+      Node::new(NodeKind::Terminal(terminal_id), ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
@@ -229,13 +232,15 @@ impl ExprBuilder for ExprCtx {
   fn layout(&self, ty: Type) -> Expr {
     let terminal = Terminal::Layout(ty);
     let terminal_id = self.borrow_mut().add_terminal(terminal);
-    let new_node = Node::terminal(terminal_id, ty);
+    let new_node = 
+      Node::new(NodeKind::Terminal(terminal_id), ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
 
   fn address_of(&self, place: Expr, ty: Type) -> Expr {
-    let new_node = Node::address_of(place.id, ty);
+    let new_node = 
+      Node::new(NodeKind::AddressOf(place.id), ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
@@ -290,7 +295,10 @@ impl ExprBuilder for ExprCtx {
     assert!(lhs.ty().is_bool());
     assert!(lhs.ty() == rhs.ty());
     let new_node =
-      Node::binary(BinOp::Or, lhs.id, rhs.id, lhs.ty());
+      Node::new(
+        NodeKind::Binary(BinOp::Or, lhs.id, rhs.id),
+        lhs.ty()
+      );
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
@@ -303,9 +311,32 @@ impl ExprBuilder for ExprCtx {
       todo!()
   }
 
-  fn object(&self, o: Expr) -> Expr {
-    assert!(o.is_terminal()); // TODO: other expr
-    let new_node = Node::object(o.id, o.ty());
+  fn object(&self, object: Expr) -> Expr {
+    assert!(object.is_terminal()); // TODO: other expr
+    let new_node =
+      Node::new(NodeKind::Object(object.id), object.ty());
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+  
+  fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr {
+    assert!(cond.ty().is_bool());
+    assert!(true_value.ty() == false_value.ty());
+    let new_node =
+      Node::new(
+        NodeKind::Ite(cond.id, true_value.id, false_value.id),
+        true_value.ty()
+      );
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+  
+  fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr {
+    let new_node =
+      Node::new(
+        NodeKind::SameObject(lhs.id, rhs.id),
+        Type::bool_type()
+      );
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }

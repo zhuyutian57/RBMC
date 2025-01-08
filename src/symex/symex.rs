@@ -112,7 +112,7 @@ impl<'sym> Symex<'sym> {
     if place.projection.is_empty() { return local; }
     
     let mut projector = Projector::new(self.symex_frame());
-    todo!()
+    projector.project(place)
   }
 
   fn make_mirconst(&mut self, mirconst: &MirConst) -> Expr {

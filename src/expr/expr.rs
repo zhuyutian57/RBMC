@@ -186,5 +186,8 @@ pub trait ExprBuilder {
   fn not(&self, operand: Expr) -> Expr;
   fn neg(&self, operand: Expr) -> Expr;
 
-  fn object(&self, o: Expr) -> Expr;
+  fn object(&self, object: Expr) -> Expr;
+
+  fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr;
+  fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr;
 }

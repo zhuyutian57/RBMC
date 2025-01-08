@@ -52,6 +52,9 @@ pub(super) enum NodeKind {
   Unary(UnOp, NodeId),
 
   Object(NodeId),
+
+  Ite(NodeId, NodeId, NodeId),
+  SameObject(NodeId, NodeId),
 }
 
 impl NodeKind {
@@ -73,7 +76,16 @@ impl NodeKind {
 
   pub fn is_object(&self) -> bool {
     matches!(self, NodeKind::Object(_))
-  } 
+  }
+
+  pub fn is_ite(&self) -> bool {
+    matches!(self, NodeKind::Ite(_, _, _))
+  }
+
+  pub fn is_same_object(&self) -> bool {
+    matches!(self, NodeKind::SameObject(_, _))
+  }
+
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -83,25 +95,7 @@ pub(super) struct Node {
 }
 
 impl Node {
-  pub fn terminal(i: TerminalId, ty: Type) -> Self {
-    Node { kind: NodeKind::Terminal(i), ty }
-  }
-
-  pub fn address_of(i: NodeId, ty: Type) -> Self {
-    Node { kind: NodeKind::AddressOf(i), ty }
-  }
-
-  pub fn binary(op: BinOp, lhs: NodeId, rhs: NodeId, ty: Type) -> Self {
-    Node { kind: NodeKind::Binary(op, lhs, rhs), ty }
-  }
-
-  pub fn unary(op: UnOp, operand: NodeId, ty: Type) -> Self {
-    Node { kind: NodeKind::Unary(op, operand), ty }
-  }
-
-  pub fn object(i: NodeId, ty: Type) -> Self {
-    Node { kind: NodeKind::Object(i), ty }
-  }
+  pub fn new(kind: NodeKind, ty: Type) -> Self { Node { kind, ty } }
 
   pub fn kind(&self) -> NodeKind { self.kind }
 
