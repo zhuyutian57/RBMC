@@ -36,16 +36,17 @@ impl<'func> Frame<'func> {
     function: &'func Function,
     destination: Option<Place>,
     target: Option<BasicBlockIdx>,
+    state: State,
   ) -> Self {
     let mut state_map = HashMap::new();
     state_map.insert(0, vec![State::new(ctx.clone())]);
     Frame {
-      ctx: ctx.clone(),
+      ctx,
       id, function,
       destination,
       target,
       pc: 0,
-      cur_state: State::new(ctx),
+      cur_state: state,
       state_map,
       renaming: Renaming::default(),
     }
@@ -63,7 +64,15 @@ impl<'func> Frame<'func> {
     }
   }
 
-  pub fn inc_pc(&mut self) { self.pc += 1; }
+  pub fn inc_pc(&mut self) {
+    println!(
+      "Done {:?} - bb{}\n{:?}",
+      self.function.name(),
+      self.pc,
+      self.cur_state
+    );
+    self.pc += 1;
+  }
 
   pub fn cur_state(&mut self) -> &mut State { &mut self.cur_state }
 
@@ -83,19 +92,41 @@ impl<'func> Frame<'func> {
     self.function
   }
 
-  fn local_identifier(&self, local: Local) -> NString {
+  fn local_ident(&self, local: Local) -> NString {
     self.function.name()
       + "_" + self.id.to_string()
       + "::" + local.to_string()
+  }
+
+  pub fn l1_local_count(&self, local: Local) -> usize {
+    let ident = self.local_ident(local);
+    self.renaming.count(ident, Level::level1)
+  }
+
+  pub fn l0_local(&self, local: Local) -> Expr {
+    let symbol =
+      Symbol::new(self.local_ident(local),0,0, Level::level0);
+    let ty = self.function.local_decl(local).0;
+    self.ctx.symbol(symbol, ty)
+  }
+
+  pub fn l1_local(&self, local: Local, mut l1_num: usize) -> Expr {
+    if l1_num == 0 { l1_num = self.l1_local_count(local); }
+    assert!(0 < l1_num && l1_num <= self.l1_local_count(local));
+    let ident = self.local_ident(local);
+    let symbol =
+      Symbol::new(ident, l1_num, 0, Level::level1);
+    let ty = self.function.local_decl(local).0;
+    self.ctx.symbol(symbol, ty)
   }
 
   pub fn current_local(&mut self, local: Local, level: Level) -> Expr {
     assert!(level == Level::level1 || level == Level::level2);
     let symbol =
       if level == Level::level1 {
-        self.renaming.l1_symbol(self.local_identifier(local))
+        self.renaming.current_l1_symbol(self.local_ident(local))
       } else {
-        self.renaming.l2_symbol(self.local_identifier(local))
+        self.renaming.current_l2_symbol(self.local_ident(local), 0)
       };
     let ty = self.function.local_decl(local).0;
     self.ctx.symbol(symbol, ty)
@@ -105,9 +136,9 @@ impl<'func> Frame<'func> {
     assert!(level == Level::level1 || level == Level::level2);
     let symbol =
       if level == Level::level1 {
-        self.renaming.new_l1_symbol(self.local_identifier(local))
+        self.renaming.new_l1_symbol(self.local_ident(local))
       } else {
-        self.renaming.new_l2_symbol(self.local_identifier(local))
+        self.renaming.new_l2_symbol(self.local_ident(local), 0)
       };
     let ty = self.function.local_decl(local).0;
     self.ctx.symbol(symbol, ty)
@@ -119,7 +150,7 @@ impl<'func> Frame<'func> {
     let new_sym =
       match level {
         Level::level1 => Some(self.renaming.new_l1_symbol(sym.identifier())),
-        Level::level2 => Some(self.renaming.new_l2_symbol(sym.identifier())),
+        Level::level2 => Some(self.renaming.new_l2_symbol(sym.identifier(), 0)),
         _ => None,
       }.expect("Wrong symbol exper");
     self.ctx.symbol(new_sym, symbol.ty())
@@ -146,9 +177,13 @@ impl<'func> Frame<'func> {
     if rhs.is_layout() { return; }
     
     if lhs.ty().is_any_ptr() {
+      let mut l1_lhs = lhs.clone();
+      let mut l1_rhs = rhs.clone();
+      self.rename(&mut l1_lhs, Level::level1);
+      self.rename(&mut l1_rhs, Level::level1);
       let mut objects = HashSet::new();
-      self.cur_state.get_value_set(&rhs, &mut objects);
-      self.cur_state.update_value_set(lhs.clone(), objects, false);
+      self.cur_state.get_value_set(&l1_rhs, &mut objects);
+      self.cur_state.update_value_set( l1_lhs, objects, false);
     }
   }
 }

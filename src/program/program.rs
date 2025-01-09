@@ -1,7 +1,6 @@
 
 use std::collections::HashMap;
 use std::io::*;
-use std::rc::Rc;
 
 use stable_mir::*;
 use stable_mir::mir::*;
@@ -14,13 +13,15 @@ use crate::symbol::nstring::NString;
 
 pub type FunctionIdx = usize;
 pub type StmtIdx = usize;
-
 pub type Decl = (Type, Mutability);
+pub type Decls = Vec<Decl>;
+pub type Args = Vec<Local>;
 
 /// A wrapper for functiom item in MIR
 #[derive(Debug)]
 pub struct Function {
   name: NString,
+  arg_locals: Args,
   locals: Vec<Decl>,
   body: Body,
 }
@@ -28,9 +29,12 @@ pub struct Function {
 impl Function {
   pub fn new(item: CrateItem) -> Self {
     assert!(item.kind() == ItemKind::Fn);
+    let args =
+      (1..item.body().arg_locals().len() + 1).collect();
     Function {
       name: NString::from(item.name()),
-      locals: Vec::new(),
+      arg_locals: args,
+      locals: Decls::new(),
       body: item.body(),
     }
   }
@@ -43,6 +47,8 @@ impl Function {
   }
 
   pub fn name(&self) -> NString { self.name }
+
+  pub fn arg_locals(&self) -> &Args { &self.arg_locals }
 
   pub fn body(&self) -> &Body { &self.body }
 

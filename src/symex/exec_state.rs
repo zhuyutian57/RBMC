@@ -41,7 +41,8 @@ impl<'exec> ExecutionState<'exec> {
         self.func_cnt[0],
         self.program.function(0),
         None,
-        None
+        None,
+        State::new(self.ctx.clone())
       )
     );
   }
@@ -82,31 +83,35 @@ impl<'exec> ExecutionState<'exec> {
   pub fn push_frame(
     &mut self,
     i: FunctionIdx,
-    args: &Vec<Operand>,
     destination: Place,
     target: Option<BasicBlockIdx>
   ) {
-    // TODO - do something with arguments
+    let state = self.cur_frame().cur_state().clone();
     self.frames.push(
       Frame::new(
         self.ctx.clone(),
         self.func_cnt[i],
         self.program.function(i),
         Some(destination),
-        target
+        target,
+        state
       ));
   }
 
   pub fn pop_frame(&mut self) {
     assert!(!self.frames.is_empty());
-    let frame = self.frames.pop().unwrap();
+    let mut frame = self.frames.pop().unwrap();
     if self.frames.is_empty() { return; }
-    
-    // TODO
+
+    let new_states =
+      frame.states_from(frame.function().size());
 
     if let Some(t) = frame.target() {
-      let state = self.cur_frame().cur_state().clone();
-      self.cur_frame().add_state(*t, state);
+      if let Some(states) = new_states {
+        for state in states {
+          self.cur_frame().add_state(*t, state);
+        }
+      }
     }
     self.cur_frame().inc_pc();
   }

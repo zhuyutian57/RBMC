@@ -26,7 +26,7 @@ impl<'sym, 'frame> Projector<'sym, 'frame> {
         match elem {
           ProjectionElem::Deref => Some(self.project_deref(ret.clone())),
           _ => None,
-        }.expect("???");
+        }.expect(format!("{elem:?}").as_str());
     }
 
     ret

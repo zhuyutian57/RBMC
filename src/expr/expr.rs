@@ -1,11 +1,6 @@
 
-use std::any::Any;
-use std::collections::HashMap;
 use std::fmt::{Debug, Error};
-use std::string::ToString;
-use std::{alloc::Layout, any::type_name, hash::Hash};
-use std::rc::Rc;
-use std::cell::{RefCell, RefMut};
+use std::hash::Hash;
 
 use crate::symbol::symbol::*;
 

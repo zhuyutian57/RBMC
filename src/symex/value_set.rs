@@ -30,6 +30,12 @@ impl ValueSet {
     self._points_to_map.contains_key(&pt)
   }
 
+  pub fn get(&self, pt: NString, objects: &mut ObjectSet) {
+    if let Some(s) = self._points_to_map.get(&pt) {
+      for object in s { objects.insert(object.clone()); }
+    }
+  }
+
   pub fn insert(&mut self, pt: NString, objects: ObjectSet) {
     self._points_to_map.insert(pt, objects);
   }
@@ -68,7 +74,7 @@ impl Debug for ValueSet {
               .map(|x| format!("{x:?}"))
               .collect::<Vec<String>>()
               .join(", ");
-            format!("  {pt:?}: {debug_objects}")
+            format!("  {pt:?}: {debug_objects}\n")
           }
         )
         .collect::<String>();

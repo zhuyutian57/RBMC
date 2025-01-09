@@ -34,27 +34,53 @@ impl Renaming {
       .or_insert(1)
   }
 
-  pub fn l1_symbol(&mut self, ident: NString) -> Symbol {
+  pub fn count(&self, ident: NString, level: Level) -> usize {
+    assert!(level == Level::level1 || level == Level::level2);
+    let c = 
+      if level == Level::level1 { 
+        self.l1_renaming.get(&ident)
+      } else {
+        self.l2_renaming.get(&ident)
+      };
+    match c {
+      Some(n) => *n,
+      None => 0,
+    }
+  }
+
+  pub fn current_l1_symbol(&mut self, ident: NString) -> Symbol {
     let l1_num = self.l1_num(ident, false);
     Symbol::new(ident, l1_num, 0, Level::level1)
   }
 
-  pub fn l2_symbol(&mut self, ident: NString) -> Symbol {
-    let l1_num = self.l1_num(ident, false);
-    let l1_name = self.l1_symbol(ident.clone()).l1_name();
-    let l2_num = self.l2_num(l1_name, false);
+  /// `l1_num = 0` means use the latest l1 number
+  pub fn current_l2_symbol(
+    &mut self,
+    ident: NString,
+    mut l1_num: usize
+  ) -> Symbol {
+    assert!(l1_num <= self.l1_num(ident, false));
+    if l1_num == 0 { l1_num = self.l1_num(ident, false); }
+    let l1_ident = ident + "::" + l1_num.to_string();
+    let l2_num = self.l2_num(l1_ident, false);
     Symbol::new(ident, l1_num, l2_num, Level::level2)
   }
 
   pub fn new_l1_symbol(&mut self, ident: NString) -> Symbol {
-    let l1_num = self.l1_num(ident.clone(), true);
+    let l1_num = self.l1_num(ident, true);
     Symbol::new(ident, l1_num, 0, Level::level1)
   }
 
-  pub fn new_l2_symbol(&mut self, ident: NString) -> Symbol {
-    let l1_num = self.l1_num(ident.clone(), false);
-    let l1_name = self.l1_symbol(ident.clone()).l1_name();
-    let l2_num = self.l2_num(l1_name, true);
+  /// `l1_num = 0` means use the latest l1 number
+  pub fn new_l2_symbol(
+    &mut self,
+    ident: NString,
+    mut l1_num: usize
+  ) -> Symbol {
+    assert!(l1_num <= self.l1_num(ident, false));
+    if l1_num == 0 { l1_num = self.l1_num(ident, false); }
+    let l1_ident = ident + "::" + l1_num.to_string();
+    let l2_num = self.l2_num(l1_ident, true);
     Symbol::new(ident, l1_num, l2_num, Level::level2)
   }
 
@@ -114,7 +140,7 @@ impl Renaming {
       if expr.is_symbol() {
         let mut symbol = expr.symbol();
         if !symbol.is_level1() {
-          symbol = self.l1_symbol(symbol.identifier());
+          symbol = self.current_l1_symbol(symbol.identifier());
         }
         
         *expr = expr.ctx.symbol(symbol, expr.ty());
@@ -138,10 +164,9 @@ impl Renaming {
 
     if expr.is_terminal() {
       if expr.is_symbol() {
-        println!("HERE");
         let mut symbol = expr.symbol();
         if !symbol.is_level2() {
-          symbol = self.l2_symbol(symbol.identifier());
+          symbol = self.current_l2_symbol(symbol.identifier(), 0);
         }
 
         if self.constant_map.contains_key(&symbol) {

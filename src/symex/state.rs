@@ -1,16 +1,8 @@
 
 use std::fmt::Debug;
-use std::collections::*;
 
-use stable_mir::mir::*;
-use stable_mir::ty::*;
-
-use crate::symbol::{symbol::*, nstring::*};
-use crate::program::program::*;
 use crate::expr::context::*;
 use crate::expr::expr::*;
-use crate::expr::ty::*;
-use super::renaming::*;
 use super::value_set::*;
 
 /// Abstract program state for each program point
@@ -75,6 +67,11 @@ impl State {
     if expr.is_address_of() {
       objects.insert(expr.extract_object());
       return;
+    }
+
+    if expr.is_symbol() {
+      let pt = expr.symbol().name();
+      self.value_set.get(pt, objects);
     }
 
     //TODO: do more jobs

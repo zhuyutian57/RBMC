@@ -1,5 +1,4 @@
 use std::fmt::Error;
-use std::os::linux::raw;
 
 use stable_mir::CrateDef;
 use stable_mir::mir::*;
@@ -57,26 +56,25 @@ impl<'sym> Symex<'sym> {
 
   fn symex(&mut self) {
     while self.exec_state.can_exec() {
-      while let Some(pc) = self.symex_frame().cur_pc() {
+      while let Some(pc) = self.cur_frame().cur_pc() {
         // Merge states
         if self.exec_state.merge_states(pc) {
-          println!("{:?} - bb{pc}", self.symex_frame().function().name());
-          let bb =
-            self
-            .symex_frame()
-            .function()
-            .basicblock(pc);
+          println!(
+            "Enter {:?} - bb{pc}\n{:?}",
+            self.cur_frame().function().name(),
+            self.cur_frame().cur_state()
+          );
+          let bb = self.cur_frame().function().basicblock(pc);
           self.symex_basicblock(bb);
-          println!("{:?}", self.symex_frame().cur_state());
         } else {
-          self.symex_frame().inc_pc();
+          self.cur_frame().inc_pc();
         }
       }
       self.exec_state.pop_frame();
     }
   }
 
-  fn symex_frame(&mut self) -> &mut Frame<'sym> {
+  fn cur_frame(&mut self) -> &mut Frame<'sym> {
     self.exec_state.cur_frame()
   }
 
@@ -103,15 +101,15 @@ impl<'sym> Symex<'sym> {
   }
 
   /// Interface to do projection(dereference)
-  fn project(&mut self, place: &Place) -> Expr {
+  fn make_project(&mut self, place: &Place) -> Expr {
     let local =
       self
-        .symex_frame()
+        .cur_frame()
         .current_local(place.local, Level::level1);
 
     if place.projection.is_empty() { return local; }
     
-    let mut projector = Projector::new(self.symex_frame());
+    let mut projector = Projector::new(self.cur_frame());
     projector.project(place)
   }
 
@@ -158,10 +156,12 @@ impl<'sym> Symex<'sym> {
   fn make_operand(&mut self, operand: &Operand) -> Expr {
     match operand {
       Operand::Copy(p) => {
-        todo!();
+        // TODO: handle copy semantic?
+        self.make_project(p)
       },
       Operand::Move(p) => {
-        todo!();
+        // TODO: handle move semantic?
+        self.make_project(p)
       },
       Operand::Constant(op) 
         => self.make_mirconst(&op.const_),
@@ -170,10 +170,10 @@ impl<'sym> Symex<'sym> {
 
   /// Create l1 formula from Rvalue(MIR)
   fn make_rvalue(&mut self, rvalue: &Rvalue) -> Expr {
-    let ty = self.symex_frame().function().rvalue_type(rvalue);
+    let ty = self.cur_frame().function().rvalue_type(rvalue);
     match rvalue {
       Rvalue::AddressOf(m, p) => {
-        let place = self.project(p);
+        let place = self.make_project(p);
         let address_of = self.ctx.address_of(place, ty);
         Ok(address_of)
       },
@@ -215,7 +215,7 @@ impl<'sym> Symex<'sym> {
         todo!();
       },
       Rvalue::Ref(_, k, p) => {
-        let place = self.project(p);
+        let place = self.make_project(p);
         // TODO: handle borrow kind.
         let address_of = self.ctx.address_of(place, ty);
         Ok(address_of)
@@ -228,7 +228,7 @@ impl<'sym> Symex<'sym> {
 
   fn symex_assign(&mut self, place: &Place, rvalue: &Rvalue) {
     // construct lhs expr and rhs expr from MIR
-    let lhs = self.project(place);
+    let lhs = self.make_project(place);
     let rhs = self.make_rvalue(rvalue); 
     self.do_assignment(lhs, rhs);
   }
@@ -237,7 +237,7 @@ impl<'sym> Symex<'sym> {
     // Use l2 symbol to do assignment
     let l2_var =
       self
-        .symex_frame()
+        .cur_frame()
         .current_local(place.local, Level::level2);
     let layout = self.ctx.layout(ty);
     self.do_assignment(l2_var, layout);
@@ -247,11 +247,11 @@ impl<'sym> Symex<'sym> {
     assert!(lhs.is_symbol());
     
     // New l2 symbol
-    lhs = self.symex_frame().new_symbol(&lhs, Level::level2);
+    lhs = self.cur_frame().new_symbol(&lhs, Level::level2);
     // Rename to l2 rhs
-    self.symex_frame().rename(&mut rhs, Level::level2);
+    self.cur_frame().rename(&mut rhs, Level::level2);
 
-    self.symex_frame().assignment(lhs.clone(), rhs.clone());
+    self.cur_frame().assignment(lhs.clone(), rhs.clone());
 
     if rhs.is_layout() { return; }
 
@@ -260,7 +260,7 @@ impl<'sym> Symex<'sym> {
   }
 
   fn symex_storagelive(&mut self, local: Local) {
-    let frame = self.symex_frame();
+    let frame = self.cur_frame();
     let var = frame.new_local(local, Level::level1);
     if var.ty().is_any_ptr() {
       frame.cur_state().add_pointer(var);
@@ -268,7 +268,7 @@ impl<'sym> Symex<'sym> {
   }
 
   fn symex_storagedead(&mut self, local: Local) {
-    let frame = self.symex_frame();
+    let frame = self.cur_frame();
     let var = frame.current_local(local, Level::level1);
     if var.ty().is_any_ptr() {
       frame.cur_state().remove_pointer(var);
@@ -303,24 +303,25 @@ impl<'sym> Symex<'sym> {
   }
 
   fn symex_goto(&mut self, target: &BasicBlockIdx) {
-    let state = self.symex_frame().cur_state().clone();
-    self.symex_frame().add_state(*target, state);
-    self.symex_frame().inc_pc();
+    let state = self.cur_frame().cur_state().clone();
+    self.cur_frame().add_state(*target, state);
+    self.cur_frame().inc_pc();
   }
 
   fn symex_switchint(&mut self, discr: &Operand, targets: &SwitchTargets) {
     for pc in targets.all_targets() {
-      let state = self.symex_frame().cur_state().clone();
+      let state = self.cur_frame().cur_state().clone();
       // TODO - set path condition
-      self.symex_frame().add_state(pc, state);
+      self.cur_frame().add_state(pc, state);
     }
-    self.symex_frame().inc_pc();
+    self.cur_frame().inc_pc();
   }
 
   fn symex_drop(&mut self, place: &Place, target: &BasicBlockIdx) {
-    let state = self.symex_frame().cur_state().clone();
-    self.symex_frame().add_state(*target, state);
-    self.symex_frame().inc_pc();
+    let state = self.cur_frame().cur_state().clone();
+    // TODO: exec drop
+    self.cur_frame().add_state(*target, state);
+    self.cur_frame().inc_pc();
   }
 
   fn make_layout(&mut self, arg: &Operand) -> Type {
@@ -373,19 +374,15 @@ impl<'sym> Symex<'sym> {
     dest: &Place,
     target: &Option<BasicBlockIdx>
   ) {
-    let ty = self.symex_frame().function().operand_type(func);
+    let ty = self.cur_frame().function().operand_type(func);
     let fndef = ty.fn_def();
     let fnkind = self.make_fn_kind(fndef, args);
     match fnkind {
-        FnKind::Unwind(i) => {
-          self.exec_state.push_frame(i, args, dest.clone(), *target);
-        },
-        FnKind::Layout(l) => {
-          self.symex_assign_layout(dest, l);
-        },
+        FnKind::Unwind(i) => self.symex_function(i, args, dest, target),
+        FnKind::Layout(l) => self.symex_assign_layout(dest, l),
         FnKind::Allocation(k, l) => {
           let object = self.symex_alloc(l);
-          let pt = self.project(dest);
+          let pt = self.make_project(dest);
           let address_of =
             self.ctx.address_of(object.clone(), pt.ty());
           
@@ -397,9 +394,36 @@ impl<'sym> Symex<'sym> {
     };
     if matches!(fnkind, FnKind::Unwind(_)) { return; }
     if let Some(t) = target {
-      let state = self.symex_frame().cur_state().clone();
-      self.symex_frame().add_state(*t, state);
-      self.symex_frame().inc_pc();
+      let state = self.cur_frame().cur_state().clone();
+      self.cur_frame().add_state(*t, state);
+      self.cur_frame().inc_pc();
+    }
+  }
+
+  fn symex_function(
+    &mut self,
+    i: FunctionIdx,
+    args: &Vec<Operand>,
+    dest: &Place,
+    target: &Option<BasicBlockIdx>
+  ) {
+    let mut arg_exprs = Vec::new();
+    for arg in args {
+      arg_exprs.push(self.make_operand(arg));
+    }
+    // push frame for new name
+    self.exec_state.push_frame(i, dest.clone(), *target);
+
+    // Set arguements
+    let args = self.cur_frame().function().arg_locals();
+    if !args.is_empty() {
+      for arg_local in args.iter() {
+        let lhs = self.cur_frame().l0_local(*arg_local);
+        let rhs = arg_exprs[*arg_local - 1].clone();
+        self.do_assignment(lhs, rhs);
+      }
+      let state = self.cur_frame().cur_state().clone();
+      self.cur_frame().add_state(0, state);
     }
   }
 
@@ -414,8 +438,22 @@ impl<'sym> Symex<'sym> {
   fn symex_return(&mut self) {
     // TODO: set return value and register state
     // to be merged into stack
+    
+    let n = self.cur_frame().function().size();
+    let mut state = self.cur_frame().cur_state().clone();
+    // remove local
+    for local in 1..self.cur_frame().function().locals().len() {
+      if self.cur_frame().function().local_decl(local).0.is_any_ptr() {
+        let l1_count = self.cur_frame().l1_local_count(local);
+        for l1_num in 1..l1_count + 1 {
+          let pt = self.cur_frame().l1_local(local, l1_num);
+          state.remove_pointer(pt);
+        }
+      }
+    }
+    self.cur_frame().add_state(n, state);
 
-    self.symex_frame().inc_pc();
+    self.cur_frame().inc_pc();
   }
 
 }
