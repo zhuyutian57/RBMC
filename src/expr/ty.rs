@@ -25,12 +25,12 @@ impl Type {
 
   pub fn is_fn(&self) -> bool { self.0.kind().is_fn() }
 
-  pub fn is_int(&self) -> bool {
+  pub fn is_signed(&self) -> bool {
     assert!(self.0.kind().is_integral());
     self.0.kind().is_signed()
   }
 
-  pub fn is_uint(&self) -> bool {
+  pub fn is_unsigned(&self) -> bool {
     assert!(self.0.kind().is_integral());
     !self.0.kind().is_signed()
   }
@@ -58,8 +58,8 @@ impl Type {
   pub fn variant(&self) -> Vec<Type> {
     assert!(self.is_struct());
     let mut fields=  Vec::new();
-    if let TyKind::RigidTy(rigidTy) = self.0.kind() {
-      if let RigidTy::Adt(def, _) = rigidTy {
+    if let TyKind::RigidTy(rigid_ty) = self.0.kind() {
+      if let RigidTy::Adt(def, _) = rigid_ty {
         for field in def.variants()[0].fields() {
           fields.push(Type::from(field.ty()));
         }

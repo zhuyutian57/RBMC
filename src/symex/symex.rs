@@ -142,7 +142,7 @@ impl<'sym> Symex<'sym> {
           let (sign, value) =
             read_target_integer(
               raw_bytes.as_slice(),
-              fields[i].is_int()
+              fields[i].is_signed()
             );
           value_vec.push(Constant::Integer(sign, value));
         }
@@ -415,7 +415,7 @@ impl<'sym> Symex<'sym> {
     self.exec_state.push_frame(i, dest.clone(), *target);
 
     // Set arguements
-    let args = self.cur_frame().function().arg_locals();
+    let args = self.cur_frame().function().args();
     if !args.is_empty() {
       for arg_local in args.iter() {
         let lhs = self.cur_frame().l0_local(*arg_local);

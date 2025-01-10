@@ -14,10 +14,9 @@ extern crate stable_mir;
 
 
 use rustc_smir::{run, rustc_internal};
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 use std::ops::ControlFlow;
-use std::process::{ExitCode, Termination};
-use std::rc::Rc;
+use std::process::ExitCode;
 use stable_mir::*;
 use stable_mir::mir::*;
 use stable_mir::target::*;
@@ -51,7 +50,7 @@ fn start_demo() -> ControlFlow<()> {
 
   let _crate = NString::from(stable_mir::local_crate().name);
   let items = stable_mir::all_local_items();
-  let program = Program::new(_crate, items, ctx.clone());
+  let program = Program::new(_crate, items);
 
   let mut analyzer = Analyzer::new(program, ctx);
   

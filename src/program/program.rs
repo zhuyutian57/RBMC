@@ -5,9 +5,7 @@ use std::io::*;
 use stable_mir::*;
 use stable_mir::mir::*;
 use stable_mir::target::*;
-use stable_mir::ty::*;
 
-use crate::expr::context::*;
 use crate::expr::ty::*;
 use crate::symbol::nstring::NString;
 
@@ -21,8 +19,8 @@ pub type Args = Vec<Local>;
 #[derive(Debug)]
 pub struct Function {
   name: NString,
-  arg_locals: Args,
-  locals: Vec<Decl>,
+  args: Args,
+  locals: Decls,
   body: Body,
 }
 
@@ -31,35 +29,33 @@ impl Function {
     assert!(item.kind() == ItemKind::Fn);
     let args =
       (1..item.body().arg_locals().len() + 1).collect();
+    let mut locals = Vec::new();
+    for local in item.body().locals() {
+      let ty = Type::from(local.ty);
+      locals.push((ty, local.mutability));
+    }
     Function {
       name: NString::from(item.name()),
-      arg_locals: args,
-      locals: Decls::new(),
+      args,
+      locals,
       body: item.body(),
-    }
-  }
-
-  pub fn init_locals(&mut self, ctx: ExprCtx) {
-    for local in self.body.locals() {
-      let local_ty  = Type::from(local.ty);
-      self.locals.push((local_ty, local.mutability));
     }
   }
 
   pub fn name(&self) -> NString { self.name }
 
-  pub fn arg_locals(&self) -> &Args { &self.arg_locals }
-
-  pub fn body(&self) -> &Body { &self.body }
+  pub fn args(&self) -> &Args { &self.args }
 
   pub fn locals(&self) -> &Vec<Decl> { &self.locals }
-
-  pub fn size(&self) -> usize { self.body.blocks.len() }
-
+  
   pub fn local_decl(&self, local: Local) -> &Decl {
     assert!(local < self.locals.len());
     &self.locals[local]
   }
+
+  pub fn body(&self) -> &Body { &self.body }
+
+  pub fn size(&self) -> usize { self.body.blocks.len() }
 
   pub fn basicblock(&self, i: usize) -> &BasicBlock {
     assert!(i < self.body.blocks.len());
@@ -102,11 +98,7 @@ pub struct Program {
 }
 
 impl Program {
-  pub fn new(
-    _crate: NString,
-    items: CrateItems,
-    ctx: ExprCtx,
-  ) -> Self {
+  pub fn new(_crate: NString, items: CrateItems) -> Self {
     let mut functions = Vec::new();
     let mut idx = HashMap::new();
     for item in items.iter() {
@@ -119,8 +111,8 @@ impl Program {
       if item.name() == "main" { continue; }
       functions.push(Function::new(item));
     }
-    for (i, function) in functions.iter_mut().enumerate() {
-      function.init_locals(ctx.clone());
+    for (i, function)
+      in functions.iter_mut().enumerate() {
       idx.insert(function.name.clone(), i);
     }
     Program { _crate, functions, idx }

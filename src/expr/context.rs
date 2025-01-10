@@ -152,7 +152,7 @@ impl Context {
     }
   }
 
-  pub fn binOp(&self, i: NodeId) -> Result<BinOp, &str> {
+  pub fn bin_op(&self, i: NodeId) -> Result<BinOp, &str> {
     assert!(self.is_binary(i));
     match self.nodes[i].kind() {
       NodeKind::Binary(op, _, _) => Ok(op),
@@ -160,7 +160,7 @@ impl Context {
     }
   }
 
-  pub fn unOp(&self, i: NodeId) ->  Result<UnOp, &str> {
+  pub fn un_op(&self, i: NodeId) ->  Result<UnOp, &str> {
     assert!(self.is_unary(i));
     match self.nodes[i].kind() {
       NodeKind::Unary(op, _,) => Ok(op),
@@ -202,11 +202,10 @@ impl ExprBuilder for ExprCtx {
   }
 
   fn constant_integer(&self, sign: bool, value: u128, ty: Type) -> Expr {
-    let terminal =
-      Terminal::Constant(Constant::Integer(sign, value));
+    let terminal = Terminal::Constant(Constant::Integer(sign, value));
     let terminal_id = self.borrow_mut().add_terminal(terminal);
-    let new_node =
-      Node::new(NodeKind::Terminal(terminal_id), ty);
+    let kind = NodeKind::Terminal(terminal_id);
+    let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
@@ -214,8 +213,8 @@ impl ExprBuilder for ExprCtx {
   fn constant_struct(&self, constants: Vec<Constant>, ty: Type) -> Expr {
     let terminal = Terminal::Constant(Constant::Struct(constants));
     let terminal_id = self.borrow_mut().add_terminal(terminal);
-    let new_node = 
-      Node::new(NodeKind::Terminal(terminal_id), ty);
+    let kind = NodeKind::Terminal(terminal_id);
+    let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
@@ -223,8 +222,8 @@ impl ExprBuilder for ExprCtx {
   fn symbol(&self, symbol: Symbol, ty: Type) -> Expr {
     let terminal = Terminal::Symbol(symbol);
     let terminal_id = self.borrow_mut().add_terminal(terminal);
-    let new_node =
-      Node::new(NodeKind::Terminal(terminal_id), ty);
+    let kind = NodeKind::Terminal(terminal_id);
+    let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
@@ -232,89 +231,153 @@ impl ExprBuilder for ExprCtx {
   fn layout(&self, ty: Type) -> Expr {
     let terminal = Terminal::Layout(ty);
     let terminal_id = self.borrow_mut().add_terminal(terminal);
-    let new_node = 
-      Node::new(NodeKind::Terminal(terminal_id), ty);
+    let kind = NodeKind::Terminal(terminal_id);
+    let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
 
   fn address_of(&self, place: Expr, ty: Type) -> Expr {
-    let new_node = 
-      Node::new(NodeKind::AddressOf(place.id), ty);
+    let kind = NodeKind::AddressOf(place.id);
+    let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
 
   fn add(&self, lhs: Expr, rhs: Expr) -> Expr {
-    todo!()
+    assert!(lhs.ty() == rhs.ty());
+    let kind = NodeKind::Binary(BinOp::Add, lhs.id, rhs.id);
+    let ty = lhs.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
   }
 
   fn sub(&self, lhs: Expr, rhs: Expr) -> Expr {
-    todo!()
+    assert!(lhs.ty() == rhs.ty());
+    let kind = NodeKind::Binary(BinOp::Sub, lhs.id, rhs.id);
+    let ty = lhs.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
   }
 
   fn mul(&self, lhs: Expr, rhs: Expr) -> Expr {
-      todo!()
+    assert!(lhs.ty() == rhs.ty());
+    let kind = NodeKind::Binary(BinOp::Mul, lhs.id, rhs.id);
+    let ty = lhs.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
   }
 
   fn div(&self, lhs: Expr, rhs: Expr) -> Expr {
-      todo!()
+    assert!(lhs.ty() == rhs.ty());
+    let kind = NodeKind::Binary(BinOp::Div, lhs.id, rhs.id);
+    let ty = lhs.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
   }
 
   fn eq(&self, lhs: Expr, rhs: Expr) -> Expr {
-      todo!()
+    assert!(lhs.ty() == rhs.ty());
+    let kind = NodeKind::Binary(BinOp::Eq, lhs.id, rhs.id);
+    let ty = lhs.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
   }
 
   fn ne(&self, lhs: Expr, rhs: Expr) -> Expr {
-      todo!()
+    assert!(lhs.ty() == rhs.ty());
+    let kind = NodeKind::Binary(BinOp::Ne, lhs.id, rhs.id);
+    let ty = lhs.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
   }
 
   fn ge(&self, lhs: Expr, rhs: Expr) -> Expr {
-      todo!()
+    assert!(lhs.ty() == rhs.ty());
+    let kind = NodeKind::Binary(BinOp::Ge, lhs.id, rhs.id);
+    let ty = lhs.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
   }
 
   fn gt(&self, lhs: Expr, rhs: Expr) -> Expr {
-      todo!()
+    assert!(lhs.ty() == rhs.ty());
+    let kind = NodeKind::Binary(BinOp::Gt, lhs.id, rhs.id);
+    let ty = lhs.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
   }
 
   fn le(&self, lhs: Expr, rhs: Expr) -> Expr {
-      todo!()
+    assert!(lhs.ty() == rhs.ty());
+    let kind = NodeKind::Binary(BinOp::Le, lhs.id, rhs.id);
+    let ty = lhs.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
   }
 
   fn lt(&self, lhs: Expr, rhs: Expr) -> Expr {
-      todo!()
+    assert!(lhs.ty() == rhs.ty());
+    let kind = NodeKind::Binary(BinOp::Lt, lhs.id, rhs.id);
+    let ty = lhs.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
   }
 
   fn and(&self, lhs: Expr, rhs: Expr) -> Expr {
-      todo!()
+    assert!(lhs.ty() == rhs.ty());
+    assert!(lhs.ty().is_bool());
+    let kind = NodeKind::Binary(BinOp::And, lhs.id, rhs.id);
+    let ty = lhs.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
   }
 
   fn or(&self, lhs: Expr, rhs: Expr) -> Expr {
-    assert!(self.as_ptr() == lhs.ctx.as_ptr());
-    assert!(lhs.ctx.as_ptr() == rhs.ctx.as_ptr());
-    assert!(lhs.ty().is_bool());
     assert!(lhs.ty() == rhs.ty());
-    let new_node =
-      Node::new(
-        NodeKind::Binary(BinOp::Or, lhs.id, rhs.id),
-        lhs.ty()
-      );
+    assert!(lhs.ty().is_bool());
+    let kind = NodeKind::Binary(BinOp::Or, lhs.id, rhs.id);
+    let ty = lhs.ty();
+    let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
 
   fn not(&self, operand: Expr) -> Expr {
-      todo!()
+    assert!(operand.ty().is_bool());
+    let kind = NodeKind::Unary(UnOp::Not, operand.id);
+    let ty = Type::bool_type();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
   }
 
   fn neg(&self, operand: Expr) -> Expr {
-      todo!()
+    assert!(operand.ty().is_signed());
+    let kind = NodeKind::Unary(UnOp::Neg, operand.id);
+    let ty = operand.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+    
   }
 
   fn object(&self, object: Expr) -> Expr {
     assert!(object.is_terminal()); // TODO: other expr
-    let new_node =
-      Node::new(NodeKind::Object(object.id), object.ty());
+    let kind = NodeKind::Object(object.id);
+    let ty = object.ty();
+    let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
@@ -322,21 +385,17 @@ impl ExprBuilder for ExprCtx {
   fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr {
     assert!(cond.ty().is_bool());
     assert!(true_value.ty() == false_value.ty());
-    let new_node =
-      Node::new(
-        NodeKind::Ite(cond.id, true_value.id, false_value.id),
-        true_value.ty()
-      );
+    let kind = NodeKind::Ite(cond.id, true_value.id, false_value.id);
+    let ty = true_value.ty();
+    let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
   
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr {
-    let new_node =
-      Node::new(
-        NodeKind::SameObject(lhs.id, rhs.id),
-        Type::bool_type()
-      );
+    let kind = NodeKind::SameObject(lhs.id, rhs.id);
+    let ty = Type::bool_type();
+    let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }

@@ -84,7 +84,7 @@ impl Renaming {
     Symbol::new(ident, l1_num, l2_num, Level::level2)
   }
 
-  pub fn constant_propagate(&mut self, mut lhs: Expr, constant: Expr) {
+  pub fn constant_propagate(&mut self, lhs: Expr, constant: Expr) {
     self
       .constant_map
       .entry(lhs.symbol())
@@ -104,7 +104,7 @@ impl Renaming {
       let lhs = sub_exprs[0].clone();
       let rhs = sub_exprs[1].clone();
       *expr =
-        match expr.binOp() {
+        match expr.bin_op() {
           BinOp::Add => ctx.add(lhs, rhs),
           BinOp::Sub => ctx.sub(lhs, rhs),
           BinOp::Mul => ctx.mul(lhs, rhs),
@@ -123,7 +123,7 @@ impl Renaming {
     if expr.is_unary() {
       let operand = sub_exprs[0].clone();
       *expr =
-        match expr.unOp() {
+        match expr.un_op() {
           UnOp::Not => ctx.not(operand),
           UnOp::Neg => ctx.neg(operand),
         }

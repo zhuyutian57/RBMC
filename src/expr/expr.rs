@@ -42,14 +42,14 @@ impl Expr {
       .clone()
   }
 
-  pub fn binOp(&self) -> BinOp {
+  pub fn bin_op(&self) -> BinOp {
     assert!(self.is_binary());
-    self.ctx.borrow().binOp(self.id).unwrap()
+    self.ctx.borrow().bin_op(self.id).unwrap()
   }
 
-  pub fn unOp(&self) -> UnOp {
+  pub fn un_op(&self) -> UnOp {
     assert!(self.is_unary());
-    self.ctx.borrow().unOp(self.id).unwrap()
+    self.ctx.borrow().un_op(self.id).unwrap()
   }
 
   pub fn symbol(&self) -> Symbol {
@@ -74,7 +74,7 @@ impl Expr {
       if self.is_binary() {
         let lhs = &sub_exprs[0];
         let rhs = &sub_exprs[1];
-        match self.binOp() {
+        match self.bin_op() {
           BinOp::And => {
             if lhs.is_true() && rhs.is_true() || lhs.is_false(){
               self.id = lhs.id
@@ -140,11 +140,11 @@ impl Debug for Expr {
       if self.is_binary() {
         let lhs = &sub_exprs[0];
         let rhs = &sub_exprs[1];
-        return write!(f, "{:?} {:?} {:?}", lhs, self.binOp(),rhs);
+        return write!(f, "{:?} {:?} {:?}", lhs, self.bin_op(),rhs);
       }
 
       if self.is_unary() {
-        return write!(f, "{:?} {:?}", self.unOp(), sub_exprs[0]);
+        return write!(f, "{:?} {:?}", self.un_op(), sub_exprs[0]);
       }
 
       if self.is_object() {
