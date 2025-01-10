@@ -1,4 +1,3 @@
-use std::ops::{Deref, DerefMut};
 
 fn f(x: &mut i32) {}
 

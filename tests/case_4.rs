@@ -1,5 +1,4 @@
 
-
 fn sum_to(slice: &[u8], to: usize) -> u64 {
   // This function bypasses rust bounds checking. to must be less than or
   // equal to the length of the slice.

@@ -1,5 +1,5 @@
-use std::{alloc::{alloc, dealloc, Layout}, ptr};
 
+use std::{alloc::{alloc, dealloc, Layout}, ptr};
 
 unsafe fn create_ref_from_raw(p: *mut i32) -> &'static mut i32 { &mut *p }
 

@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 
 struct Node { x : Box<i32> }
 
