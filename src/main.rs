@@ -3,11 +3,9 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 
-// Maybe deprecated util LazyCell is stable
-#![feature(lazy_get)]
-
 extern crate rustc_driver;
 extern crate rustc_interface;
+extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_smir;
 extern crate stable_mir;
@@ -18,8 +16,6 @@ use std::cell::RefCell;
 use std::ops::ControlFlow;
 use std::process::ExitCode;
 use stable_mir::*;
-use stable_mir::mir::*;
-use stable_mir::target::*;
 
 mod analysis;
 mod expr;

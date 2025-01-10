@@ -1,5 +1,5 @@
 
-use std::{cell::LazyCell, collections::HashMap, fmt::Debug, ops::Add};
+use std::{alloc::{alloc, Layout}, collections::HashMap, fmt::Debug, ops::Add};
 
 /// Used to manage String. Reduce allocation for String
 #[derive(Default)]
@@ -24,11 +24,17 @@ impl StringManager {
 }
 
 /// The global manager for String.
-static mut STRING_M : LazyCell<StringManager>
-  = LazyCell::new(|| StringManager::default());
+static mut STRING_M : *mut StringManager = std::ptr::null_mut();
 
 fn string_m() -> &'static mut StringManager {
-  unsafe { LazyCell::force_mut(&mut STRING_M) }
+  unsafe {
+    if STRING_M.is_null() {
+      STRING_M = alloc(Layout::new::<StringManager>()) as *mut StringManager;
+      std::ptr::write(STRING_M, StringManager::default());
+    }
+    
+    &mut *STRING_M
+  }
 }
 
 /// A wrapper for String
@@ -68,9 +74,7 @@ impl Add<&str> for NString {
 
 impl Debug for NString {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}", unsafe {
-      STRING_M.get_string(self.0)
-    })
+    write!(f, "{}", string_m().get_string(self.0))
   }
 }
 

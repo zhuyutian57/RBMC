@@ -10,7 +10,6 @@ use crate::expr::ty::*;
 use crate::symbol::nstring::NString;
 
 pub type FunctionIdx = usize;
-pub type StmtIdx = usize;
 pub type Decl = (Type, Mutability);
 pub type Decls = Vec<Decl>;
 pub type Args = Vec<Local>;
