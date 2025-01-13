@@ -52,6 +52,11 @@ impl Function {
     &self.locals[local]
   }
 
+  pub fn local_type(&self, local: Local) -> Type {
+    assert!(local < self.locals.len());
+    self.locals[local].0
+  }
+
   pub fn body(&self) -> &Body { &self.body }
 
   pub fn size(&self) -> usize { self.body.blocks.len() }
@@ -59,17 +64,6 @@ impl Function {
   pub fn basicblock(&self, i: usize) -> &BasicBlock {
     assert!(i < self.body.blocks.len());
     &self.body.blocks[i]
-  }
-
-  pub fn statement(&self, bb: BasicBlockIdx, stmt: usize) -> &Statement {
-    assert!(bb < self.body.blocks.len());
-    assert!(stmt < self.body.blocks[bb].statements.len());
-    &self.body.blocks[bb].statements[stmt]
-  }
-
-  pub fn terminator(&self, bb: BasicBlockIdx) -> &Terminator {
-    assert!(bb < self.body.blocks.len());
-    &self.body.blocks[bb].terminator
   }
 
   pub fn operand_type(&self, operand: &Operand) -> Type {

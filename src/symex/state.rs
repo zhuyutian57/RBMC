@@ -36,19 +36,10 @@ impl State {
     self.value_set.remove(symbol.name());
   }
 
-  pub fn update_value_set(
-    &mut self,
-    pt: Expr,
-    objects: ObjectSet,
-    is_union: bool
-  ) {
+  pub fn assign(&mut self, pt: Expr, values: ObjectSet) {
     assert!(pt.ty().is_any_ptr() && pt.is_symbol());
     let symbol = pt.symbol();
-    if is_union {
-      self.value_set.union(symbol.l1_name(), objects);
-    } else {
-      self.value_set.insert(symbol.l1_name(), objects);
-    }
+    self.value_set.insert(symbol.l1_name(), values);
   }
 
   pub fn merge(&mut self, other: &State) {
@@ -57,21 +48,21 @@ impl State {
     self.value_set.merge(&other.value_set, true);
   }
 
-  pub fn get_value_set(&self, expr: &Expr, objects: &mut ObjectSet) {
+  pub fn get_value_set(&self, expr: Expr, values: &mut ObjectSet) {
     
     if expr.is_object() {
-      objects.insert(expr.clone());
+      values.insert(expr.clone());
       return;
     }
 
     if expr.is_address_of() {
-      objects.insert(expr.extract_object());
+      values.insert(expr.extract_object());
       return;
     }
 
     if expr.is_symbol() {
       let pt = expr.symbol().name();
-      self.value_set.get(pt, objects);
+      self.value_set.get(pt, values);
     }
 
     //TODO: do more jobs

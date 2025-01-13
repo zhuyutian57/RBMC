@@ -75,7 +75,7 @@ impl<'sym> Symex<'sym> {
   }
 
   fn cur_frame(&mut self) -> &mut Frame<'sym> {
-    self.exec_state.cur_frame()
+    self.exec_state.top_mut()
   }
 
   fn symex_basicblock(&mut self, bb: &BasicBlock) {
@@ -104,12 +104,12 @@ impl<'sym> Symex<'sym> {
   fn make_project(&mut self, place: &Place) -> Expr {
     let local =
       self
-        .cur_frame()
+        .exec_state
         .current_local(place.local, Level::level1);
 
     if place.projection.is_empty() { return local; }
     
-    let mut projector = Projector::new(self.cur_frame());
+    let mut projector = Projector::new(&mut self.exec_state);
     projector.project(place)
   }
 
@@ -237,7 +237,7 @@ impl<'sym> Symex<'sym> {
     // Use l2 symbol to do assignment
     let l2_var =
       self
-        .cur_frame()
+        .exec_state
         .current_local(place.local, Level::level2);
     let layout = self.ctx.layout(ty);
     self.do_assignment(l2_var, layout);
@@ -246,12 +246,12 @@ impl<'sym> Symex<'sym> {
   fn do_assignment(&mut self, mut lhs: Expr, mut rhs: Expr) {
     assert!(lhs.is_symbol());
     
-    // New l2 symbol
-    lhs = self.cur_frame().new_symbol(&lhs, Level::level2);
     // Rename to l2 rhs
-    self.cur_frame().rename(&mut rhs, Level::level2);
+    self.exec_state.rename(&mut rhs, Level::level2);
+    // New l2 symbol
+    lhs = self.exec_state.new_symbol(&lhs, Level::level2);
 
-    self.cur_frame().assignment(lhs.clone(), rhs.clone());
+    self.exec_state.assignment(lhs.clone(), rhs.clone());
 
     if rhs.is_layout() { return; }
 
@@ -260,18 +260,16 @@ impl<'sym> Symex<'sym> {
   }
 
   fn symex_storagelive(&mut self, local: Local) {
-    let frame = self.cur_frame();
-    let var = frame.new_local(local, Level::level1);
+    let var = self.exec_state.new_local(local, Level::level1);
     if var.ty().is_any_ptr() {
-      frame.cur_state().add_pointer(var);
+      self.exec_state.cur_state_mut().add_pointer(var);
     }
   }
 
   fn symex_storagedead(&mut self, local: Local) {
-    let frame = self.cur_frame();
-    let var = frame.current_local(local, Level::level1);
+    let var = self.exec_state.new_local(local, Level::level1);
     if var.ty().is_any_ptr() {
-      frame.cur_state().remove_pointer(var);
+      self.exec_state.cur_state_mut().remove_pointer(var);
     }
   }
 
@@ -329,9 +327,9 @@ impl<'sym> Symex<'sym> {
       Operand::Move(p) => {
         assert!(p.projection.is_empty());
         let mut s =
-          self.exec_state.cur_frame().current_local(p.local, Level::level2);
+          self.exec_state.current_local(p.local, Level::level2);
           
-        self.exec_state.cur_frame().rename(&mut s, Level::level2);
+        self.exec_state.rename(&mut s, Level::level2);
         assert!(s.is_layout());
         Ok(s.layout())
       },
@@ -418,7 +416,7 @@ impl<'sym> Symex<'sym> {
     let args = self.cur_frame().function().args();
     if !args.is_empty() {
       for arg_local in args.iter() {
-        let lhs = self.cur_frame().l0_local(*arg_local);
+        let lhs = self.exec_state.l0_local(*arg_local);
         let rhs = arg_exprs[*arg_local - 1].clone();
         self.do_assignment(lhs, rhs);
       }
@@ -444,9 +442,9 @@ impl<'sym> Symex<'sym> {
     // remove local
     for local in 1..self.cur_frame().function().locals().len() {
       if self.cur_frame().function().local_decl(local).0.is_any_ptr() {
-        let l1_count = self.cur_frame().l1_local_count(local);
+        let l1_count = self.exec_state.l1_local_count(local);
         for l1_num in 1..l1_count + 1 {
-          let pt = self.cur_frame().l1_local(local, l1_num);
+          let pt = self.exec_state.l1_local(local, l1_num);
           state.remove_pointer(pt);
         }
       }

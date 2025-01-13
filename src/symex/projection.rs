@@ -3,23 +3,28 @@ use stable_mir::mir::*;
 
 use crate::expr::expr::*;
 use crate::symbol::symbol::*;
-use super::frame::*;
-use super::value_set::ObjectSet;
+use super::exec_state::*;
+use super::value_set::*;
 
 /// Dereferencing a place
-pub(super) struct Projector<'sym, 'frame> {
-  frame: &'sym mut Frame<'frame>,
+pub(super) struct Projector<'sym, 'exec> {
+  _callback_state: &'sym mut ExecutionState<'exec>,
 }
 
-impl<'sym, 'frame> Projector<'sym, 'frame> {
-  pub fn new(frame: &'sym mut Frame<'frame>) -> Self {
-    Projector { frame }
+impl<'sym, 'exec> Projector<'sym, 'exec> {
+  pub fn new(state: &'sym mut ExecutionState<'exec>) -> Self {
+    Projector { _callback_state: state }
+  }
+
+  #[inline]
+  fn state_mut(&mut self) -> &mut ExecutionState<'exec> {
+    &mut self._callback_state
   }
 
   /// TODO: add assertion for dereference
   pub fn project(&mut self, place: &Place) -> Expr {
 
-    let mut ret = self.frame.current_local(place.local, Level::level1);
+    let mut ret = self.state_mut().current_local(place.local, Level::level1);
 
     for elem in place.projection.iter() {
       ret =
@@ -34,7 +39,7 @@ impl<'sym, 'frame> Projector<'sym, 'frame> {
 
   fn project_deref(&mut self, expr: Expr) -> Expr {
     let mut objects = ObjectSet::new();
-    self.frame.cur_state().get_value_set(&expr, &mut objects);
+    self.state_mut().cur_state().get_value_set(expr.clone(), &mut objects);
     
     let ctx = expr.ctx.clone();
 
