@@ -24,21 +24,21 @@ impl State {
 
   pub fn add_pointer(&mut self, pt: Expr) {
     assert!(pt.ty().is_any_ptr() && pt.is_symbol());
-    let symbol = pt.symbol();
+    let symbol = pt.extract_symbol();
     assert!(symbol.is_level1());
     self.value_set.add(symbol.name());
   }
 
   pub fn remove_pointer(&mut self, pt: Expr) {
     assert!(pt.ty().is_any_ptr() && pt.is_symbol());
-    let symbol = pt.symbol();
+    let symbol = pt.extract_symbol();
     assert!(symbol.is_level1());
     self.value_set.remove(symbol.name());
   }
 
   pub fn assign(&mut self, pt: Expr, values: ObjectSet) {
     assert!(pt.ty().is_any_ptr() && pt.is_symbol());
-    let symbol = pt.symbol();
+    let symbol = pt.extract_symbol();
     self.value_set.insert(symbol.l1_name(), values);
   }
 
@@ -50,9 +50,9 @@ impl State {
 
   pub fn get_value_set(&self, expr: Expr, values: &mut ObjectSet) {
     
-    if expr.is_object() {
-      values.insert(expr.clone());
-      return;
+    if expr.is_symbol() {
+      let pt = expr.extract_symbol().name();
+      self.value_set.get(pt, values);
     }
 
     if expr.is_address_of() {
@@ -60,10 +60,17 @@ impl State {
       return;
     }
 
-    if expr.is_symbol() {
-      let pt = expr.symbol().name();
-      self.value_set.get(pt, values);
+    if expr.is_cast() {
+      let src_expr = expr.extract_src();
+      self.get_value_set(src_expr, values);
+      return;
     }
+
+    if expr.is_object() {
+      values.insert(expr.clone());
+      return;
+    }
+
 
     //TODO: do more jobs
 

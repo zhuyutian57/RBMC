@@ -13,7 +13,7 @@ pub type TerminalId = usize;
 #[derive(Clone)]
 pub(super) enum Terminal {
   Constant(Constant),
-  Layout(Type),
+  Type(Type),
   Symbol(Symbol),
 }
 
@@ -22,8 +22,8 @@ impl Terminal {
     match self {
       Terminal::Constant(c) =>
         NString::from(format!("{c:?}")),
-      Terminal::Layout(t) =>
-        NString::from(format!("Layout({t:?})")),
+      Terminal::Type(t) =>
+        NString::from(format!("Type({t:?})")),
       Terminal::Symbol(s) => s.name(),
     }
   }
@@ -33,7 +33,7 @@ impl Debug for Terminal {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
       Terminal::Constant(c) => write!(f, "{c:?}"),
-      Terminal::Layout(t) => write!(f, "Layout({t:?})"),
+      Terminal::Type(t) => write!(f, "Type({t:?})"),
       Terminal::Symbol(s) => write!(f, "{s:?}"),
     }
   }
@@ -47,12 +47,13 @@ pub(super) enum NodeKind {
   Terminal(TerminalId),
   /// Get address from a place. Create `Ref` if necessary.
   AddressOf(NodeId),
-
   Binary(BinOp, NodeId, NodeId),
   Unary(UnOp, NodeId),
-
+  Cast(NodeId, NodeId),
   Object(NodeId),
-
+  /// `IndexOf` represents a visit for a struct or array
+  /// in an unified form
+  IndexOf(NodeId, NodeId),
   Ite(NodeId, NodeId, NodeId),
   SameObject(NodeId, NodeId),
 }
@@ -74,8 +75,16 @@ impl NodeKind {
     matches!(self, NodeKind::Unary(_, _))
   }
 
+  pub fn is_cast(&self) -> bool {
+    matches!(self, NodeKind::Cast(_, _))
+  }
+
   pub fn is_object(&self) -> bool {
     matches!(self, NodeKind::Object(_))
+  }
+
+  pub fn is_index_of(&self) -> bool {
+    matches!(self, NodeKind::IndexOf(_, _))
   }
 
   pub fn is_ite(&self) -> bool {
@@ -106,11 +115,17 @@ impl Node {
     match self.kind {
       NodeKind::AddressOf(p)
         => Some(vec![p]),
-      NodeKind::Binary(_, l, r)
+      NodeKind::Binary(_, l, r) |
+      NodeKind::Cast(l, r) |
+      NodeKind::SameObject(l, r)
         => Some(vec![l, r]),
       NodeKind::Unary(_, o) |
       NodeKind::Object(o)
         => Some(vec![o]),
+      NodeKind::IndexOf(o, i)
+        => Some(vec![o, i]),
+      NodeKind::Ite(c, tv, fv)
+        => Some(vec![c, tv, fv]),
       _ => None,
     }
   }

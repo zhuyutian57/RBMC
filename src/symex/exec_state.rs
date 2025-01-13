@@ -57,7 +57,7 @@ impl<'exec> ExecutionState<'exec> {
     let name =
       NString::from("heap_object_") + self.objects.len().to_string();
     let symbol = 
-      self.ctx.symbol(
+      self.ctx.mk_symbol(
         Symbol::new(name, 0, 0, Level::Level0),
         ty
       );
@@ -136,7 +136,7 @@ impl<'exec> ExecutionState<'exec> {
     let ident = self.top().local_ident(local);
     let symbol = Symbol::new(ident,0,0, Level::Level0);
     let ty = self.top().function().local_type(local);
-    self.ctx.symbol(symbol, ty)
+    self.ctx.mk_symbol(symbol, ty)
   }
 
   pub fn l1_local_count(&self, local: Local) -> usize {
@@ -151,7 +151,7 @@ impl<'exec> ExecutionState<'exec> {
     let symbol =
       Symbol::new(ident, l1_num, 0, Level::Level1);
     let ty = self.top().function().local_type(local);
-    self.ctx.symbol(symbol, ty)
+    self.ctx.mk_symbol(symbol, ty)
   }
 
   pub fn current_local(&mut self, local: Local, level: Level) -> Expr {
@@ -164,7 +164,7 @@ impl<'exec> ExecutionState<'exec> {
         self.renaming.current_l2_symbol(ident, 0)
       };
     let ty = self.top().function().local_type(local);
-    self.ctx.symbol(symbol, ty)
+    self.ctx.mk_symbol(symbol, ty)
   }
 
   pub fn new_local(&mut self, local: Local, level: Level) -> Expr {
@@ -177,12 +177,12 @@ impl<'exec> ExecutionState<'exec> {
         self.renaming.new_l2_symbol(ident, 0)
       };
     let ty = self.top().function().local_type(local);
-    self.ctx.symbol(symbol, ty)
+    self.ctx.mk_symbol(symbol, ty)
   }
 
   pub fn new_symbol(&mut self, symbol: &Expr, level: Level) -> Expr {
     assert!(symbol.is_symbol());
-    let sym = symbol.symbol();
+    let sym = symbol.extract_symbol();
     let ident = sym.identifier();
     let new_sym =
       match level {
@@ -190,7 +190,7 @@ impl<'exec> ExecutionState<'exec> {
         Level::Level2 => Some(self.renaming.new_l2_symbol(ident, 0)),
         _ => None,
       }.expect("Wrong symbol exper");
-    self.ctx.symbol(new_sym, symbol.ty())
+    self.ctx.mk_symbol(new_sym, symbol.ty())
   }
 
   pub fn rename(&mut self, expr: &mut Expr, level: Level) {
@@ -202,16 +202,16 @@ impl<'exec> ExecutionState<'exec> {
   }
 
   fn constant_propagate(&mut self, lhs: Expr, rhs: Expr) {
-    if !rhs.is_constant() && rhs.is_layout() { return; }
+    if !rhs.is_constant() && !rhs.is_type() { return; }
     assert!(lhs.is_symbol());
     self.renaming.constant_propagate(lhs, rhs);
   }
 
-  pub fn assignment(&mut self, lhs: Expr, rhs: Expr) {
+  pub fn assign(&mut self, lhs: Expr, rhs: Expr) {
     // Constant propagation
     self.constant_propagate(lhs.clone(), rhs.clone());
 
-    if rhs.is_layout() { return; }
+    if rhs.is_type() { return; }
     
     if lhs.ty().is_any_ptr() {
       let mut l1_lhs = lhs.clone();

@@ -2,6 +2,7 @@
 use stable_mir::mir::*;
 
 use crate::expr::expr::*;
+use crate::expr::ty::Type;
 use crate::symbol::symbol::*;
 use super::exec_state::*;
 use super::value_set::*;
@@ -26,10 +27,25 @@ impl<'sym, 'exec> Projector<'sym, 'exec> {
 
     let mut ret = self.state_mut().current_local(place.local, Level::Level1);
 
+    let ctx = ret.ctx.clone();
+
     for elem in place.projection.iter() {
       ret =
         match elem {
-          ProjectionElem::Deref => Some(self.project_deref(ret.clone())),
+          ProjectionElem::Deref
+            => Some(self.project_deref(ret.clone())),
+          ProjectionElem::Field(i, ty)
+            => {
+              if ret.ty().is_box() && *i == 0 {
+                // `box` performs as a special raw pointer.
+                // Use it directly, instead of projection
+                Some(ret)
+              } else {
+                let mut object = ret;
+                if !object.is_object() { object = ctx.object(object); }
+                Some(ctx.index_of(object, *i, Type::from(*ty)))
+              }
+            },
           _ => None,
         }.expect(format!("{elem:?}").as_str());
     }
@@ -55,8 +71,6 @@ impl<'sym, 'exec> Projector<'sym, 'exec> {
         }
     }
 
-    ret.expect("Fail dereference?")
+    ret.expect(format!("*{expr:?}").as_str())
   }
-
-  
 }

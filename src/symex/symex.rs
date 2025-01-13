@@ -23,12 +23,13 @@ enum AllocKind {
   Box,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum FnKind {
-  Allocation(AllocKind, Type),
-  Layout(Type),
-  AsRef,
   Unwind(FunctionIdx),
+  Layout(Type),
+  Allocation(AllocKind, Type),
+  AsMut(Operand),
+  AsRef(Operand),
 }
 
 pub struct Symex<'sym> {
@@ -208,8 +209,12 @@ impl<'sym> Symex<'sym> {
           };
         Ok(expr)
       },
-      Rvalue::Cast(k, operand, t) => {
-        todo!();
+      Rvalue::Cast(_, operand, t) => {
+        // TODO: handle cast kind
+        let op = self.make_operand(operand);
+        let target_ty = self.ctx.mk_type(Type::from(t.clone()));
+        let cast = self.ctx.cast(op, target_ty);
+        Ok(cast)
       },
       Rvalue::CopyForDeref(p) => {
         todo!();
@@ -229,34 +234,50 @@ impl<'sym> Symex<'sym> {
   fn symex_assign(&mut self, place: &Place, rvalue: &Rvalue) {
     // construct lhs expr and rhs expr from MIR
     let lhs = self.make_project(place);
-    let rhs = self.make_rvalue(rvalue); 
+    let rhs = self.make_rvalue(rvalue);
     self.do_assignment(lhs, rhs);
   }
 
   fn symex_assign_layout(&mut self, place: &Place, ty: Type) {
     // Use l2 symbol to do assignment
-    let l2_var =
-      self
-        .exec_state
-        .current_local(place.local, Level::Level2);
-    let layout = self.ctx.layout(ty);
+    let l2_var = self.make_project(place);
+    let layout = self.ctx.mk_type(ty);
     self.do_assignment(l2_var, layout);
   }
 
-  fn do_assignment(&mut self, mut lhs: Expr, mut rhs: Expr) {
+  fn do_assignment(&mut self, lhs: Expr, rhs: Expr) {
+    assert!(lhs.ty().is_layout() || lhs.ty() == rhs.ty());
+    // TODO: do more jobs
+    self.assign_rec(lhs, rhs);
+  }
+
+  fn assign_symbol(&mut self, mut lhs: Expr, mut rhs: Expr) {
     assert!(lhs.is_symbol());
-    
+
     // Rename to l2 rhs
     self.exec_state.rename(&mut rhs, Level::Level2);
     // New l2 symbol
     lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
 
-    self.exec_state.assignment(lhs.clone(), rhs.clone());
+    self.exec_state.assign(lhs.clone(), rhs.clone());
 
-    if rhs.is_layout() { return; }
+    if rhs.is_type() { return; }
 
     // Build VC system
     self.vc_system.assign(lhs, rhs);
+  }
+
+  fn assign_rec(&mut self, lhs: Expr, rhs: Expr) {
+    if lhs.is_symbol() {
+      self.assign_symbol(lhs, rhs);
+      return;
+    }
+
+    if lhs.is_ite() {
+      println!("Need implementation");
+    }
+
+    panic!("Do not support yet:\n{lhs:?}{rhs:?}");
   }
 
   fn symex_storagelive(&mut self, local: Local) {
@@ -320,12 +341,11 @@ impl<'sym> Symex<'sym> {
     match arg {
       Operand::Move(p) => {
         assert!(p.projection.is_empty());
-        let mut s =
+        let mut ty =
           self.exec_state.current_local(p.local, Level::Level2);
-          
-        self.exec_state.rename(&mut s, Level::Level2);
-        assert!(s.is_layout());
-        Ok(s.layout())
+        self.exec_state.rename(&mut ty, Level::Level2);
+        assert!(ty.is_type());
+        Ok(ty.extract_type())
       },
       Operand::Constant(c) => {
         Ok(Type::from(c.ty()))
@@ -341,22 +361,24 @@ impl<'sym> Symex<'sym> {
   ) -> FnKind {
     let name = NString::from(fndef.0.trimmed_name());
     if self.program.contains_function(name) {
-      FnKind::Unwind(self.program.function_idx(name))
+      Ok(FnKind::Unwind(self.program.function_idx(name)))
     } else if name == NString::from("Layout::new") {
       assert!(fndef.1.0.len() == 1);
       let ty = fndef.1.0[0].ty().unwrap();
-      FnKind::Layout(Type::from(*ty))
+      Ok(FnKind::Layout(Type::from(*ty)))
     } else if name == NString::from("Box::<T>::new") {
       assert!(args.len() == 1);
       let ty = self.make_layout(&args[0]);
-      FnKind::Allocation(AllocKind::Box, ty)
+      Ok(FnKind::Allocation(AllocKind::Box, ty))
     } else if name == NString::from("alloc") {
       assert!(args.len() == 1);
       let ty = self.make_layout(&args[0]);
-      FnKind::Allocation(AllocKind::Alloc, ty)
+      Ok(FnKind::Allocation(AllocKind::Alloc, ty))
+    } else if name == NString::from("AsMut::as_mut") {
+      Ok(FnKind::AsMut(args[0].clone()))
     } else {
-      FnKind::AsRef
-    }
+      Err(Error)
+    }.expect(format!("Do not support {name:?}").as_str())
   }
 
   fn symex_call(
@@ -369,11 +391,11 @@ impl<'sym> Symex<'sym> {
     let ty = self.top().function().operand_type(func);
     let fndef = ty.fn_def();
     let fnkind = self.make_fn_kind(fndef, args);
-    match fnkind {
-        FnKind::Unwind(i) => self.symex_function(i, args, dest, target),
-        FnKind::Layout(l) => self.symex_assign_layout(dest, l),
-        FnKind::Allocation(k, l) => {
-          let object = self.symex_alloc(l);
+    match &fnkind {
+        FnKind::Unwind(i) => self.symex_function(*i, args, dest, target),
+        FnKind::Layout(l) => self.symex_assign_layout(dest, *l),
+        FnKind::Allocation(k, t) => {
+          let object = self.symex_alloc(*t);
           let pt = self.make_project(dest);
           let address_of =
             self.ctx.address_of(object.clone(), pt.ty());
@@ -382,7 +404,8 @@ impl<'sym> Symex<'sym> {
           
           // TODO - do assignment for constant
         },
-        FnKind::AsRef => {},
+        FnKind::AsMut(o) => self.symex_as_mut(dest, o),
+        FnKind::AsRef(o) => {},
     };
     if matches!(fnkind, FnKind::Unwind(_)) { return; }
     if let Some(t) = target {
@@ -423,8 +446,13 @@ impl<'sym> Symex<'sym> {
     self.exec_state.new_object(layout)
   }
 
-  fn symex_as_ref(&mut self, args: &Vec<Operand>) {
+  fn symex_as_mut(&mut self, place: &Place, operand: &Operand) {
     todo!()
+    // let lhs = self.make_project(&place);
+    // let target_ty = self.ctx.mk_type(lhs.ty());
+    // let o = self.make_operand(operand);
+    // let cast = self.ctx.cast(o, target_ty);
+    // self.do_assignment(lhs, cast);
   }
 
   fn symex_return(&mut self) {

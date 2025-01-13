@@ -11,19 +11,31 @@ use stable_mir::ty::*;
 pub struct Type(Ty);
 
 impl Type {
-  pub fn bool_type() -> Self { Type::from(Ty::bool_ty()) }
+  pub fn bool_type() -> Self {
+    Type::from(Ty::bool_ty())
+  }
 
-  pub fn new_ptr_type(pointee_ty: Ty, mutability: Mutability) -> Self {
+  pub fn signed_type(ty: IntTy) -> Self {
+    Type::from(Ty::signed_ty(ty))
+  }
+
+  pub fn unsigned_type(ty: UintTy) -> Self {
+    Type::from(Ty::unsigned_ty(ty))
+  }
+
+  pub fn ptr_type(pointee_ty: Ty, mutability: Mutability) -> Self {
     Type::from(Ty::new_ptr(pointee_ty, mutability))
   }
 
-  pub fn new_ref_type(reg: Region, pointee_ty: Ty, mutability: Mutability) -> Self {
+  pub fn ref_type(reg: Region, pointee_ty: Ty, mutability: Mutability) -> Self {
     Type::from(Ty::new_ref(reg, pointee_ty, mutability))
   }
 
   pub fn is_bool(&self) -> bool { self.0.kind().is_bool() }
 
   pub fn is_fn(&self) -> bool { self.0.kind().is_fn() }
+
+  pub fn is_layout(&self) -> bool { format!("{self:?}") == "Layout" }
 
   pub fn is_signed(&self) -> bool {
     assert!(self.0.kind().is_integral());
@@ -112,10 +124,10 @@ impl Debug for Type {
         if data.is_empty() {
           write!(f, "Unit")
         } else {
-          Err(Error)
+          Err(Error).expect("data must be empty")
         }
       }
-      _ => Err(Error),
+      _ => Err(Error).expect(format!("Do not support type {rigid:?}").as_str()),
     }
   }
 }

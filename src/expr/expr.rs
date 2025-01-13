@@ -27,12 +27,16 @@ impl Expr {
   pub fn is_false(&self) -> bool { self.ctx.borrow().is_false(self.id) }
   pub fn is_constant(&self) -> bool { self.ctx.borrow().is_constant(self.id) }
   pub fn is_symbol(&self) -> bool { self.ctx.borrow().is_symbol(self.id) }
-  pub fn is_layout(&self) -> bool { self.ctx.borrow().is_layout(self.id) }
+  pub fn is_type(&self) -> bool { self.ctx.borrow().is_type(self.id) }
 
   pub fn is_address_of(&self) -> bool { self.ctx.borrow().is_address_of(self.id) }
   pub fn is_binary(&self) -> bool { self.ctx.borrow().is_binary(self.id) }
   pub fn is_unary(&self) -> bool { self.ctx.borrow().is_unary(self.id) }
+  pub fn is_cast(&self) -> bool { self.ctx.borrow().is_cast(self.id) }
   pub fn is_object(&self) -> bool { self.ctx.borrow().is_object(self.id) }
+  pub fn is_index_of(&self) -> bool { self.ctx.borrow().is_index_of(self.id) }
+  pub fn is_ite(&self) -> bool { self.ctx.borrow().is_ite(self.id) }
+  pub fn is_same_object(&self) -> bool { self.ctx.borrow().is_same_object(self.id) }
 
   pub fn extract_object(&self) -> Expr {
     assert!(self.is_address_of());
@@ -42,29 +46,40 @@ impl Expr {
       .clone()
   }
 
-  pub fn bin_op(&self) -> BinOp {
+  pub fn extract_bin_op(&self) -> BinOp {
     assert!(self.is_binary());
-    self.ctx.borrow().bin_op(self.id).unwrap()
+    self.ctx.borrow().extract_bin_op(self.id).unwrap()
   }
 
-  pub fn un_op(&self) -> UnOp {
+  pub fn extract_un_op(&self) -> UnOp {
     assert!(self.is_unary());
-    self.ctx.borrow().un_op(self.id).unwrap()
+    self.ctx.borrow().extract_un_op(self.id).unwrap()
   }
 
-  pub fn symbol(&self) -> Symbol {
+  pub fn extract_src(&self) -> Expr {
+    assert!(self.is_cast());
+    self.sub_exprs().unwrap()[0].clone()
+  }
+  
+  pub fn extract_target_type(&self) -> Type {
+    assert!(self.is_cast());
+    let ty = self.sub_exprs().unwrap()[1].clone();
+    ty.extract_type()
+  }
+
+  pub fn extract_symbol(&self) -> Symbol {
     self
       .ctx
       .borrow()
-      .symbol(self.id)
+      .extract_symbol(self.id)
       .expect("Not symbol")
   }
 
-  pub fn layout(&self) -> Type {
+  pub fn extract_type(&self) -> Type {
     self
       .ctx
       .borrow()
-      .layout(self.id)
+      .extract_type(self.id)
       .expect("Not layout")
   }
 
@@ -74,7 +89,7 @@ impl Expr {
       if self.is_binary() {
         let lhs = &sub_exprs[0];
         let rhs = &sub_exprs[1];
-        match self.bin_op() {
+        match self.extract_bin_op() {
           BinOp::And => {
             if lhs.is_true() && rhs.is_true() || lhs.is_false(){
               self.id = lhs.id
@@ -128,7 +143,7 @@ impl Hash for Expr {
 impl Debug for Expr {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     if self.is_terminal() {
-      write!(f, "{:?}", self.ctx.borrow().terminal(self.id).unwrap())
+      write!(f, "{:?}", self.ctx.borrow().extract_terminal(self.id).unwrap())
     } else {
       let sub_exprs = self.sub_exprs().unwrap();
 
@@ -140,18 +155,43 @@ impl Debug for Expr {
       if self.is_binary() {
         let lhs = &sub_exprs[0];
         let rhs = &sub_exprs[1];
-        return write!(f, "{:?} {:?} {:?}", lhs, self.bin_op(),rhs);
+        return write!(f, "{:?} {:?} {:?}", lhs, self.extract_bin_op(), rhs);
       }
 
       if self.is_unary() {
-        return write!(f, "{:?} {:?}", self.un_op(), sub_exprs[0]);
+        return write!(f, "{:?} {:?}", self.extract_un_op(), sub_exprs[0]);
+      }
+
+      if self.is_cast() {
+        let lhs = &sub_exprs[0];
+        let ty = &sub_exprs[1];
+        return write!(f, "{lhs:?} as {ty:?}");
       }
 
       if self.is_object() {
         return write!(f, "{:?}", sub_exprs[0]);
       }
 
-      debug_assert!(false, "Incomplete Debug for Expr");
+      if self.is_index_of() {
+        let object = &sub_exprs[0];
+        let index = &sub_exprs[1];
+        return write!(f, "{object:?}.{index:?}");
+      }
+
+      if self.is_ite() {
+        let cond = &sub_exprs[0];
+        let true_value = &sub_exprs[1];
+        let false_value = &sub_exprs[2];
+        return write!(f, "ite({:?}, {:?}, {:?})", cond, true_value, false_value);
+      }
+
+      if self.is_same_object() {
+        let lhs = &sub_exprs[0];
+        let rhs = &sub_exprs[1];
+        return write!(f, "same_object({:?}, {:?})", lhs, rhs);
+      }
+
+      println!("Incomplete Debug for Expr");
       Err(Error)
     }
   }
@@ -160,9 +200,9 @@ impl Debug for Expr {
 pub trait ExprBuilder {
   fn constant_bool(&self, b: bool) -> Expr;
   fn constant_integer(&self, sign: bool, value: u128, ty: Type) -> Expr;
-  fn constant_struct(&self, constants: Vec<Constant>, ty: Type) -> Expr;
-  fn symbol(&self, symbol: Symbol, ty: Type) -> Expr;
-  fn layout(&self, ty: Type) -> Expr;
+  fn constant_struct(&self, fields: Vec<Constant>, ty: Type) -> Expr;
+  fn mk_symbol(&self, symbol: Symbol, ty: Type) -> Expr;
+  fn mk_type(&self, ty: Type) -> Expr;
 
   fn address_of(&self, place: Expr, ty: Type) -> Expr;
 
@@ -180,9 +220,9 @@ pub trait ExprBuilder {
   fn or(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn not(&self, operand: Expr) -> Expr;
   fn neg(&self, operand: Expr) -> Expr;
-
+  fn cast(&self, operand: Expr, target_ty: Expr) -> Expr;
   fn object(&self, object: Expr) -> Expr;
-
+  fn index_of(&self, object: Expr, index: usize, ty: Type) -> Expr;
   fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr;
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr;
 }

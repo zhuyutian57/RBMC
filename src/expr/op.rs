@@ -26,7 +26,7 @@ impl Debug for BinOp {
       Self::Sub => write!(f, "-"),
       Self::Mul => write!(f, "*"),
       Self::Div => write!(f, "/"),
-      Self::Eq => write!(f, "="),
+      Self::Eq => write!(f, "=="),
       Self::Ne => write!(f, "!="),
       Self::Ge => write!(f, ">="),
       Self::Gt => write!(f, ">"),

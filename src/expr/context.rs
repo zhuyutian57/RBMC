@@ -1,6 +1,8 @@
 use std::fmt::Debug;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
+use stable_mir::ty::*;
+
 use crate::symbol::{nstring::*, symbol::*};
 use super::{ast::*, constant::*, expr::*, op::*, ty::*};
 
@@ -66,7 +68,7 @@ impl Context {
 
   pub fn is_terminal(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(self.nodes[i].kind(), NodeKind::Terminal(_))
+    self.nodes[i].kind().is_terminal()
   }
 
   pub fn is_true(&self, i: NodeId) -> bool { i == 0 }
@@ -76,48 +78,68 @@ impl Context {
   pub fn is_constant(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     matches!(
-      self.terminal(i),
+      self.extract_terminal(i),
       Ok(t) if matches!(*t, Terminal::Constant(_))
     )
   }
 
-  pub fn is_layout(&self, i: NodeId) -> bool {
+  pub fn is_type(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     matches!(
-      self.terminal(i),
-      Ok(t) if matches!(*t, Terminal::Layout(_))
+      self.extract_terminal(i),
+      Ok(t) if matches!(*t, Terminal::Type(_))
     )
   }
 
   pub fn is_symbol(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     matches!(
-      self.terminal(i),
+      self.extract_terminal(i),
       Ok(t) if matches!(*t, Terminal::Symbol(_))
     )
   }
 
   pub fn is_address_of(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(self.nodes[i].kind(), NodeKind::AddressOf(_))
+    self.nodes[i].kind().is_address_of()
   }
 
   pub fn is_binary(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(self.nodes[i].kind(), NodeKind::Binary(_, _, _))
+    self.nodes[i].kind().is_binary()
   }
 
   pub fn is_unary(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(self.nodes[i].kind(), NodeKind::Unary(_, _))
+    self.nodes[i].kind().is_unary()
+  }
+
+  pub fn is_cast(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_cast()
   }
 
   pub fn is_object(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(self.nodes[i].kind(), NodeKind::Object(_))
+    self.nodes[i].kind().is_object()
   }
 
-  pub(super) fn terminal(&self, i: NodeId) -> Result<Rc<Terminal>, &str> {
+  pub fn is_index_of(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_index_of()
+  }
+
+  pub fn is_ite(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_ite()
+  }
+
+  pub fn is_same_object(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_same_object()
+  }
+
+  pub(super) fn extract_terminal(&self, i: NodeId) -> Result<Rc<Terminal>, &str> {
     assert!(i < self.nodes.len());
     match self.nodes[i].kind() {
       NodeKind::Terminal(t)
@@ -126,7 +148,7 @@ impl Context {
     }
   }
   
-  pub fn symbol(&self, i: NodeId) -> Result<Symbol, &str> {
+  pub fn extract_symbol(&self, i: NodeId) -> Result<Symbol, &str> {
     assert!(i < self.nodes.len());
     match self.nodes[i].kind() {
       NodeKind::Terminal(t) => {
@@ -139,12 +161,12 @@ impl Context {
     }
   }
 
-  pub fn layout(&self, i: NodeId) -> Result<Type, &str> {
+  pub fn extract_type(&self, i: NodeId) -> Result<Type, &str> {
     assert!(i < self.nodes.len());
     match self.nodes[i].kind() {
       NodeKind::Terminal(t) => {
         match &*self.terminals[t] {
-          Terminal::Layout(l) => Ok(l.clone()),
+          Terminal::Type(l) => Ok(l.clone()),
           _ => Err("Not layout"),
         }
       }
@@ -152,7 +174,7 @@ impl Context {
     }
   }
 
-  pub fn bin_op(&self, i: NodeId) -> Result<BinOp, &str> {
+  pub fn extract_bin_op(&self, i: NodeId) -> Result<BinOp, &str> {
     assert!(self.is_binary(i));
     match self.nodes[i].kind() {
       NodeKind::Binary(op, _, _) => Ok(op),
@@ -160,7 +182,7 @@ impl Context {
     }
   }
 
-  pub fn un_op(&self, i: NodeId) ->  Result<UnOp, &str> {
+  pub fn extract_un_op(&self, i: NodeId) ->  Result<UnOp, &str> {
     assert!(self.is_unary(i));
     match self.nodes[i].kind() {
       NodeKind::Unary(op, _,) => Ok(op),
@@ -210,8 +232,8 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn constant_struct(&self, constants: Vec<Constant>, ty: Type) -> Expr {
-    let terminal = Terminal::Constant(Constant::Struct(constants));
+  fn constant_struct(&self, fields: Vec<Constant>, ty: Type) -> Expr {
+    let terminal = Terminal::Constant(Constant::Struct(fields));
     let terminal_id = self.borrow_mut().add_terminal(terminal);
     let kind = NodeKind::Terminal(terminal_id);
     let new_node = Node::new(kind, ty);
@@ -219,7 +241,7 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn symbol(&self, symbol: Symbol, ty: Type) -> Expr {
+  fn mk_symbol(&self, symbol: Symbol, ty: Type) -> Expr {
     let terminal = Terminal::Symbol(symbol);
     let terminal_id = self.borrow_mut().add_terminal(terminal);
     let kind = NodeKind::Terminal(terminal_id);
@@ -228,8 +250,8 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn layout(&self, ty: Type) -> Expr {
-    let terminal = Terminal::Layout(ty);
+  fn mk_type(&self, ty: Type) -> Expr {
+    let terminal = Terminal::Type(ty);
     let terminal_id = self.borrow_mut().add_terminal(terminal);
     let kind = NodeKind::Terminal(terminal_id);
     let new_node = Node::new(kind, ty);
@@ -283,7 +305,7 @@ impl ExprBuilder for ExprCtx {
   fn eq(&self, lhs: Expr, rhs: Expr) -> Expr {
     assert!(lhs.ty() == rhs.ty());
     let kind = NodeKind::Binary(BinOp::Eq, lhs.id, rhs.id);
-    let ty = lhs.ty();
+    let ty = Type::bool_type();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
@@ -292,7 +314,7 @@ impl ExprBuilder for ExprCtx {
   fn ne(&self, lhs: Expr, rhs: Expr) -> Expr {
     assert!(lhs.ty() == rhs.ty());
     let kind = NodeKind::Binary(BinOp::Ne, lhs.id, rhs.id);
-    let ty = lhs.ty();
+    let ty = Type::bool_type();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
@@ -301,7 +323,7 @@ impl ExprBuilder for ExprCtx {
   fn ge(&self, lhs: Expr, rhs: Expr) -> Expr {
     assert!(lhs.ty() == rhs.ty());
     let kind = NodeKind::Binary(BinOp::Ge, lhs.id, rhs.id);
-    let ty = lhs.ty();
+    let ty = Type::bool_type();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
@@ -310,7 +332,7 @@ impl ExprBuilder for ExprCtx {
   fn gt(&self, lhs: Expr, rhs: Expr) -> Expr {
     assert!(lhs.ty() == rhs.ty());
     let kind = NodeKind::Binary(BinOp::Gt, lhs.id, rhs.id);
-    let ty = lhs.ty();
+    let ty = Type::bool_type();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
@@ -319,7 +341,7 @@ impl ExprBuilder for ExprCtx {
   fn le(&self, lhs: Expr, rhs: Expr) -> Expr {
     assert!(lhs.ty() == rhs.ty());
     let kind = NodeKind::Binary(BinOp::Le, lhs.id, rhs.id);
-    let ty = lhs.ty();
+    let ty = Type::bool_type();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
@@ -328,7 +350,7 @@ impl ExprBuilder for ExprCtx {
   fn lt(&self, lhs: Expr, rhs: Expr) -> Expr {
     assert!(lhs.ty() == rhs.ty());
     let kind = NodeKind::Binary(BinOp::Lt, lhs.id, rhs.id);
-    let ty = lhs.ty();
+    let ty = Type::bool_type();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
@@ -370,13 +392,35 @@ impl ExprBuilder for ExprCtx {
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
-    
+  }
+
+  fn cast(&self, operand: Expr, target_ty: Expr) -> Expr {
+    // TODO: check the compatibility
+    let kind = NodeKind::Cast(operand.id, target_ty.id);
+    let ty = target_ty.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
   }
 
   fn object(&self, object: Expr) -> Expr {
     assert!(object.is_terminal()); // TODO: other expr
     let kind = NodeKind::Object(object.id);
     let ty = object.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+
+  fn index_of(&self, object: Expr, index: usize, ty: Type) -> Expr {
+    assert!(object.is_object());
+    let idx =
+      self.constant_integer(
+        false, 
+        index as u128, 
+        Type::unsigned_type(UintTy::Usize)
+      );
+    let kind = NodeKind::IndexOf(object.id, idx.id);
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }

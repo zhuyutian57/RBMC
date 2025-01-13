@@ -87,7 +87,7 @@ impl Renaming {
   pub fn constant_propagate(&mut self, lhs: Expr, constant: Expr) {
     self
       .constant_map
-      .entry(lhs.symbol())
+      .entry(lhs.extract_symbol())
       .and_modify(|x| *x = constant.clone())
       .or_insert(constant);
   }
@@ -104,7 +104,7 @@ impl Renaming {
       let lhs = sub_exprs[0].clone();
       let rhs = sub_exprs[1].clone();
       *expr =
-        match expr.bin_op() {
+        match expr.extract_bin_op() {
           BinOp::Add => ctx.add(lhs, rhs),
           BinOp::Sub => ctx.sub(lhs, rhs),
           BinOp::Mul => ctx.mul(lhs, rhs),
@@ -123,7 +123,7 @@ impl Renaming {
     if expr.is_unary() {
       let operand = sub_exprs[0].clone();
       *expr =
-        match expr.un_op() {
+        match expr.extract_un_op() {
           UnOp::Not => ctx.not(operand),
           UnOp::Neg => ctx.neg(operand),
         }
@@ -138,12 +138,12 @@ impl Renaming {
   pub fn l1_rename(&mut self, expr: &mut Expr) {
     if expr.is_terminal() {
       if expr.is_symbol() {
-        let mut symbol = expr.symbol();
+        let mut symbol = expr.extract_symbol();
         if !symbol.is_level1() {
           symbol = self.current_l1_symbol(symbol.identifier());
         }
         
-        *expr = expr.ctx.symbol(symbol, expr.ty());
+        *expr = expr.ctx.mk_symbol(symbol, expr.ty());
       }
       return;
     }
@@ -164,7 +164,7 @@ impl Renaming {
 
     if expr.is_terminal() {
       if expr.is_symbol() {
-        let mut symbol = expr.symbol();
+        let mut symbol = expr.extract_symbol();
         if !symbol.is_level2() {
           symbol = self.current_l2_symbol(symbol.identifier(), 0);
         }
@@ -172,7 +172,7 @@ impl Renaming {
         if self.constant_map.contains_key(&symbol) {
           *expr = self.constant_map.get(&symbol).unwrap().clone();
         } else {
-          *expr = expr.ctx.symbol(symbol, expr.ty());
+          *expr = expr.ctx.mk_symbol(symbol, expr.ty());
         }
       }
       return;
