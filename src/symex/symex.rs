@@ -56,25 +56,25 @@ impl<'sym> Symex<'sym> {
 
   fn symex(&mut self) {
     while self.exec_state.can_exec() {
-      while let Some(pc) = self.cur_frame().cur_pc() {
+      while let Some(pc) = self.top().cur_pc() {
         // Merge states
         if self.exec_state.merge_states(pc) {
           println!(
             "Enter {:?} - bb{pc}\n{:?}",
-            self.cur_frame().function().name(),
-            self.cur_frame().cur_state()
+            self.top().function().name(),
+            self.top().cur_state()
           );
-          let bb = self.cur_frame().function().basicblock(pc);
+          let bb = self.top().function().basicblock(pc);
           self.symex_basicblock(bb);
         } else {
-          self.cur_frame().inc_pc();
+          self.top().inc_pc();
         }
       }
       self.exec_state.pop_frame();
     }
   }
 
-  fn cur_frame(&mut self) -> &mut Frame<'sym> {
+  fn top(&mut self) -> &mut Frame<'sym> {
     self.exec_state.top_mut()
   }
 
@@ -170,7 +170,7 @@ impl<'sym> Symex<'sym> {
 
   /// Create l1 formula from Rvalue(MIR)
   fn make_rvalue(&mut self, rvalue: &Rvalue) -> Expr {
-    let ty = self.cur_frame().function().rvalue_type(rvalue);
+    let ty = self.top().function().rvalue_type(rvalue);
     match rvalue {
       Rvalue::AddressOf(m, p) => {
         let place = self.make_project(p);
@@ -295,25 +295,25 @@ impl<'sym> Symex<'sym> {
   }
 
   fn symex_goto(&mut self, target: &BasicBlockIdx) {
-    let state = self.cur_frame().cur_state().clone();
-    self.cur_frame().add_state(*target, state);
-    self.cur_frame().inc_pc();
+    let state = self.top().cur_state().clone();
+    self.top().add_state(*target, state);
+    self.top().inc_pc();
   }
 
   fn symex_switchint(&mut self, discr: &Operand, targets: &SwitchTargets) {
     for pc in targets.all_targets() {
-      let state = self.cur_frame().cur_state().clone();
+      let state = self.top().cur_state().clone();
       // TODO - set path condition
-      self.cur_frame().add_state(pc, state);
+      self.top().add_state(pc, state);
     }
-    self.cur_frame().inc_pc();
+    self.top().inc_pc();
   }
 
   fn symex_drop(&mut self, place: &Place, target: &BasicBlockIdx) {
-    let state = self.cur_frame().cur_state().clone();
+    let state = self.top().cur_state().clone();
     // TODO: exec drop
-    self.cur_frame().add_state(*target, state);
-    self.cur_frame().inc_pc();
+    self.top().add_state(*target, state);
+    self.top().inc_pc();
   }
 
   fn make_layout(&mut self, arg: &Operand) -> Type {
@@ -366,7 +366,7 @@ impl<'sym> Symex<'sym> {
     dest: &Place,
     target: &Option<BasicBlockIdx>
   ) {
-    let ty = self.cur_frame().function().operand_type(func);
+    let ty = self.top().function().operand_type(func);
     let fndef = ty.fn_def();
     let fnkind = self.make_fn_kind(fndef, args);
     match fnkind {
@@ -386,9 +386,9 @@ impl<'sym> Symex<'sym> {
     };
     if matches!(fnkind, FnKind::Unwind(_)) { return; }
     if let Some(t) = target {
-      let state = self.cur_frame().cur_state().clone();
-      self.cur_frame().add_state(*t, state);
-      self.cur_frame().inc_pc();
+      let state = self.top().cur_state().clone();
+      self.top().add_state(*t, state);
+      self.top().inc_pc();
     }
   }
 
@@ -407,15 +407,15 @@ impl<'sym> Symex<'sym> {
     self.exec_state.push_frame(i, dest.clone(), *target);
 
     // Set arguements
-    let args = self.cur_frame().function().args();
+    let args = self.top().function().args();
     if !args.is_empty() {
       for arg_local in args.iter() {
         let lhs = self.exec_state.l0_local(*arg_local);
         let rhs = arg_exprs[*arg_local - 1].clone();
         self.do_assignment(lhs, rhs);
       }
-      let state = self.cur_frame().cur_state().clone();
-      self.cur_frame().add_state(0, state);
+      let state = self.top().cur_state().clone();
+      self.top().add_state(0, state);
     }
   }
 
@@ -431,11 +431,11 @@ impl<'sym> Symex<'sym> {
     // TODO: set return value and register state
     // to be merged into stack
     
-    let n = self.cur_frame().function().size();
-    let mut state = self.cur_frame().cur_state().clone();
+    let n = self.top().function().size();
+    let mut state = self.top().cur_state().clone();
     // remove local
-    for local in 1..self.cur_frame().function().locals().len() {
-      if self.cur_frame().function().local_decl(local).0.is_any_ptr() {
+    for local in 1..self.top().function().locals().len() {
+      if self.top().function().local_decl(local).0.is_any_ptr() {
         let l1_count = self.exec_state.l1_local_count(local);
         for l1_num in 1..l1_count + 1 {
           let pt = self.exec_state.l1_local(local, l1_num);
@@ -443,9 +443,9 @@ impl<'sym> Symex<'sym> {
         }
       }
     }
-    self.cur_frame().add_state(n, state);
+    self.top().add_state(n, state);
 
-    self.cur_frame().inc_pc();
+    self.top().inc_pc();
   }
 
 }
