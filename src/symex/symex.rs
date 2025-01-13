@@ -105,7 +105,7 @@ impl<'sym> Symex<'sym> {
     let local =
       self
         .exec_state
-        .current_local(place.local, Level::level1);
+        .current_local(place.local, Level::Level1);
 
     if place.projection.is_empty() { return local; }
     
@@ -238,7 +238,7 @@ impl<'sym> Symex<'sym> {
     let l2_var =
       self
         .exec_state
-        .current_local(place.local, Level::level2);
+        .current_local(place.local, Level::Level2);
     let layout = self.ctx.layout(ty);
     self.do_assignment(l2_var, layout);
   }
@@ -247,9 +247,9 @@ impl<'sym> Symex<'sym> {
     assert!(lhs.is_symbol());
     
     // Rename to l2 rhs
-    self.exec_state.rename(&mut rhs, Level::level2);
+    self.exec_state.rename(&mut rhs, Level::Level2);
     // New l2 symbol
-    lhs = self.exec_state.new_symbol(&lhs, Level::level2);
+    lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
 
     self.exec_state.assignment(lhs.clone(), rhs.clone());
 
@@ -260,14 +260,14 @@ impl<'sym> Symex<'sym> {
   }
 
   fn symex_storagelive(&mut self, local: Local) {
-    let var = self.exec_state.new_local(local, Level::level1);
+    let var = self.exec_state.new_local(local, Level::Level1);
     if var.ty().is_any_ptr() {
       self.exec_state.cur_state_mut().add_pointer(var);
     }
   }
 
   fn symex_storagedead(&mut self, local: Local) {
-    let var = self.exec_state.new_local(local, Level::level1);
+    let var = self.exec_state.new_local(local, Level::Level1);
     if var.ty().is_any_ptr() {
       self.exec_state.cur_state_mut().remove_pointer(var);
     }
@@ -275,25 +275,19 @@ impl<'sym> Symex<'sym> {
 
   fn symex_terminator(&mut self, terminator: &Terminator) {
     match &terminator.kind {
-      TerminatorKind::Goto{
-        target: target
-      } => self.symex_goto(target),
-      TerminatorKind::SwitchInt{
-        discr: discr,
-        targets: targets,
-      } => self.symex_switchint(discr, targets),
-      TerminatorKind::Drop{
-        place: place,
-        target: target,
-        ..
-      } => self.symex_drop(place, target),
+      TerminatorKind::Goto{ target}
+        => self.symex_goto(target),
+      TerminatorKind::SwitchInt{discr, targets }
+        => self.symex_switchint(discr, targets),
+      TerminatorKind::Drop{ place, target, ..}
+        => self.symex_drop(place, target),
       TerminatorKind::Call{
-        func: func,
-        args: args,
-        destination: dest,
-        target: target,
+        func,
+        args,
+        destination,
+        target,
         ..
-      } => self.symex_call(func, args, dest, target),
+      } => self.symex_call(func, args, destination, target),
       TerminatorKind::Return
         => self.symex_return(),
       _ => {},
@@ -327,9 +321,9 @@ impl<'sym> Symex<'sym> {
       Operand::Move(p) => {
         assert!(p.projection.is_empty());
         let mut s =
-          self.exec_state.current_local(p.local, Level::level2);
+          self.exec_state.current_local(p.local, Level::Level2);
           
-        self.exec_state.rename(&mut s, Level::level2);
+        self.exec_state.rename(&mut s, Level::Level2);
         assert!(s.is_layout());
         Ok(s.layout())
       },

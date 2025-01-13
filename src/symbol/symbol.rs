@@ -5,9 +5,9 @@ use super::nstring::NString;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Level {
-  level0,
-  level1,
-  level2,
+  Level0,
+  Level1,
+  Level2,
 }
 
 /// Symbol are used for variables, objects, and so on.
@@ -40,9 +40,9 @@ impl Symbol {
 
   pub fn identifier(&self) -> NString { self.identifier.clone() }
 
-  pub fn is_level0(&self) -> bool { self.level == Level::level0 }
-  pub fn is_level1(&self) -> bool { self.level == Level::level1 }
-  pub fn is_level2(&self) -> bool { self.level == Level::level2 }
+  pub fn is_level0(&self) -> bool { self.level == Level::Level0 }
+  pub fn is_level1(&self) -> bool { self.level == Level::Level1 }
+  pub fn is_level2(&self) -> bool { self.level == Level::Level2 }
 
   pub fn l1_name(&self) -> NString {
     self.identifier + "::" + self.l1_num.to_string()
@@ -68,10 +68,10 @@ impl Debug for Symbol {
 impl Hash for Symbol {
   fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
     self.identifier.hash(state);
-    if self.level == Level::level1 {
+    if self.level == Level::Level1 {
       self.l1_num.hash(state);
     }
-    if self.level == Level::level2 {
+    if self.level == Level::Level2 {
       self.l1_num.hash(state);
       self.l2_num.hash(state);
     }

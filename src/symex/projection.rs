@@ -24,7 +24,7 @@ impl<'sym, 'exec> Projector<'sym, 'exec> {
   /// TODO: add assertion for dereference
   pub fn project(&mut self, place: &Place) -> Expr {
 
-    let mut ret = self.state_mut().current_local(place.local, Level::level1);
+    let mut ret = self.state_mut().current_local(place.local, Level::Level1);
 
     for elem in place.projection.iter() {
       ret =

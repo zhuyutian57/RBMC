@@ -101,13 +101,6 @@ impl Node {
 
   pub fn ty(&self) -> Type { self.ty }
 
-  pub fn terminal_id(&self) -> Option<TerminalId> {
-    match self.kind {
-      NodeKind::Terminal(t) => Some(t),
-      _ => None,
-    }
-  }
-
   /// Retrieve sub-nodes from AST
   pub fn sub_nodes(&self) -> Option<Vec<NodeId>> {
     match self.kind {

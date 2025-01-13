@@ -58,7 +58,7 @@ impl<'exec> ExecutionState<'exec> {
       NString::from("heap_object_") + self.objects.len().to_string();
     let symbol = 
       self.ctx.symbol(
-        Symbol::new(name, 0, 0, Level::level0),
+        Symbol::new(name, 0, 0, Level::Level0),
         ty
       );
     let object = self.ctx.object(symbol);
@@ -134,14 +134,14 @@ impl<'exec> ExecutionState<'exec> {
 
   pub fn l0_local(&self, local: Local) -> Expr {
     let ident = self.top().local_ident(local);
-    let symbol = Symbol::new(ident,0,0, Level::level0);
+    let symbol = Symbol::new(ident,0,0, Level::Level0);
     let ty = self.top().function().local_type(local);
     self.ctx.symbol(symbol, ty)
   }
 
   pub fn l1_local_count(&self, local: Local) -> usize {
     let ident = self.top().local_ident(local);
-    self.renaming.count(ident, Level::level1)
+    self.renaming.count(ident, Level::Level1)
   }
 
   pub fn l1_local(&self, local: Local, mut l1_num: usize) -> Expr {
@@ -149,16 +149,16 @@ impl<'exec> ExecutionState<'exec> {
     assert!(0 < l1_num && l1_num <= self.l1_local_count(local));
     let ident = self.top().local_ident(local);
     let symbol =
-      Symbol::new(ident, l1_num, 0, Level::level1);
+      Symbol::new(ident, l1_num, 0, Level::Level1);
     let ty = self.top().function().local_type(local);
     self.ctx.symbol(symbol, ty)
   }
 
   pub fn current_local(&mut self, local: Local, level: Level) -> Expr {
-    assert!(level == Level::level1 || level == Level::level2);
+    assert!(level == Level::Level1 || level == Level::Level2);
     let ident = self.top().local_ident(local);
     let symbol =
-      if level == Level::level1 {
+      if level == Level::Level1 {
         self.renaming.current_l1_symbol(ident)
       } else {
         self.renaming.current_l2_symbol(ident, 0)
@@ -168,10 +168,10 @@ impl<'exec> ExecutionState<'exec> {
   }
 
   pub fn new_local(&mut self, local: Local, level: Level) -> Expr {
-    assert!(level == Level::level1 || level == Level::level2);
+    assert!(level == Level::Level1 || level == Level::Level2);
     let ident = self.top().local_ident(local);
     let symbol =
-      if level == Level::level1 {
+      if level == Level::Level1 {
         self.renaming.new_l1_symbol(ident)
       } else {
         self.renaming.new_l2_symbol(ident, 0)
@@ -186,8 +186,8 @@ impl<'exec> ExecutionState<'exec> {
     let ident = sym.identifier();
     let new_sym =
       match level {
-        Level::level1 => Some(self.renaming.new_l1_symbol(ident)),
-        Level::level2 => Some(self.renaming.new_l2_symbol(ident, 0)),
+        Level::Level1 => Some(self.renaming.new_l1_symbol(ident)),
+        Level::Level2 => Some(self.renaming.new_l2_symbol(ident, 0)),
         _ => None,
       }.expect("Wrong symbol exper");
     self.ctx.symbol(new_sym, symbol.ty())
@@ -195,9 +195,9 @@ impl<'exec> ExecutionState<'exec> {
 
   pub fn rename(&mut self, expr: &mut Expr, level: Level) {
     match level {
-      Level::level0 => return,
-      Level::level1 => self.renaming.l1_rename(expr),
-      Level::level2 => self.renaming.l2_rename(expr),
+      Level::Level0 => return,
+      Level::Level1 => self.renaming.l1_rename(expr),
+      Level::Level2 => self.renaming.l2_rename(expr),
     };
   }
 
@@ -216,8 +216,8 @@ impl<'exec> ExecutionState<'exec> {
     if lhs.ty().is_any_ptr() {
       let mut l1_lhs = lhs.clone();
       let mut l1_rhs = rhs.clone();
-      self.rename(&mut l1_lhs, Level::level1);
-      self.rename(&mut l1_rhs, Level::level1);
+      self.rename(&mut l1_lhs, Level::Level1);
+      self.rename(&mut l1_rhs, Level::Level1);
       let mut objects = ObjectSet::new();
       self.cur_state().get_value_set(l1_rhs.clone(), &mut objects);
       self.cur_state_mut().assign(l1_lhs, objects);

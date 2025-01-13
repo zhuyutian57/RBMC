@@ -35,9 +35,9 @@ impl Renaming {
   }
 
   pub fn count(&self, ident: NString, level: Level) -> usize {
-    assert!(level == Level::level1 || level == Level::level2);
+    assert!(level == Level::Level1 || level == Level::Level2);
     let c = 
-      if level == Level::level1 { 
+      if level == Level::Level1 { 
         self.l1_renaming.get(&ident)
       } else {
         self.l2_renaming.get(&ident)
@@ -50,7 +50,7 @@ impl Renaming {
 
   pub fn current_l1_symbol(&mut self, ident: NString) -> Symbol {
     let l1_num = self.l1_num(ident, false);
-    Symbol::new(ident, l1_num, 0, Level::level1)
+    Symbol::new(ident, l1_num, 0, Level::Level1)
   }
 
   /// `l1_num = 0` means use the latest l1 number
@@ -63,12 +63,12 @@ impl Renaming {
     if l1_num == 0 { l1_num = self.l1_num(ident, false); }
     let l1_ident = ident + "::" + l1_num.to_string();
     let l2_num = self.l2_num(l1_ident, false);
-    Symbol::new(ident, l1_num, l2_num, Level::level2)
+    Symbol::new(ident, l1_num, l2_num, Level::Level2)
   }
 
   pub fn new_l1_symbol(&mut self, ident: NString) -> Symbol {
     let l1_num = self.l1_num(ident, true);
-    Symbol::new(ident, l1_num, 0, Level::level1)
+    Symbol::new(ident, l1_num, 0, Level::Level1)
   }
 
   /// `l1_num = 0` means use the latest l1 number
@@ -81,7 +81,7 @@ impl Renaming {
     if l1_num == 0 { l1_num = self.l1_num(ident, false); }
     let l1_ident = ident + "::" + l1_num.to_string();
     let l2_num = self.l2_num(l1_ident, true);
-    Symbol::new(ident, l1_num, l2_num, Level::level2)
+    Symbol::new(ident, l1_num, l2_num, Level::Level2)
   }
 
   pub fn constant_propagate(&mut self, lhs: Expr, constant: Expr) {

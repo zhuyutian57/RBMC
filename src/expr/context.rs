@@ -117,7 +117,7 @@ impl Context {
     matches!(self.nodes[i].kind(), NodeKind::Object(_))
   }
 
-  pub fn terminal(&self, i: NodeId) -> Result<Rc<Terminal>, &str> {
+  pub(super) fn terminal(&self, i: NodeId) -> Result<Rc<Terminal>, &str> {
     assert!(i < self.nodes.len());
     match self.nodes[i].kind() {
       NodeKind::Terminal(t)
