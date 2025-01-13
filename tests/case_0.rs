@@ -21,11 +21,11 @@ fn main() {
     } else if n1.x < n2.x {
         unsafe { alloc(Layout::new::<Node>()) as *mut Node }
     } else {
-        boxn.as_mut() as *mut Node
+        &mut *boxn as *mut Node
     };
   let bn = if n1.x == n2.x { &mut n1 } else { &mut n2 };
   unsafe { *pn = Node { x : 190, y : 54 }; }
-  let t = boxn.as_mut();
+  let t = &mut *boxn;
   // for i in 0..10 {
   //   let x = 10;
   //   t.x *= x;
