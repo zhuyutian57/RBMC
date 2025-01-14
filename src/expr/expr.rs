@@ -8,6 +8,7 @@ use super::ast::*;
 use super::constant::*;
 use super::context::*;
 use super::op::*;
+use super::predicates::*;
 use super::ty::*;
 
 /// `Expr` is a wrapper for AST node. It only carry node index that
@@ -28,7 +29,6 @@ impl Expr {
   pub fn is_constant(&self) -> bool { self.ctx.borrow().is_constant(self.id) }
   pub fn is_symbol(&self) -> bool { self.ctx.borrow().is_symbol(self.id) }
   pub fn is_type(&self) -> bool { self.ctx.borrow().is_type(self.id) }
-
   pub fn is_address_of(&self) -> bool { self.ctx.borrow().is_address_of(self.id) }
   pub fn is_binary(&self) -> bool { self.ctx.borrow().is_binary(self.id) }
   pub fn is_unary(&self) -> bool { self.ctx.borrow().is_unary(self.id) }
@@ -37,6 +37,22 @@ impl Expr {
   pub fn is_index_of(&self) -> bool { self.ctx.borrow().is_index_of(self.id) }
   pub fn is_ite(&self) -> bool { self.ctx.borrow().is_ite(self.id) }
   pub fn is_same_object(&self) -> bool { self.ctx.borrow().is_same_object(self.id) }
+
+  pub fn extract_symbol(&self) -> Symbol {
+    self
+      .ctx
+      .borrow()
+      .extract_symbol(self.id)
+      .expect("Not symbol")
+  }
+
+  pub fn extract_type(&self) -> Type {
+    self
+      .ctx
+      .borrow()
+      .extract_type(self.id)
+      .expect("Not layout")
+  }
 
   pub fn extract_object(&self) -> Expr {
     assert!(self.is_address_of());
@@ -58,29 +74,22 @@ impl Expr {
 
   pub fn extract_src(&self) -> Expr {
     assert!(self.is_cast());
-    self.sub_exprs().unwrap()[0].clone()
+    self.sub_exprs().unwrap().remove(0)
   }
   
   pub fn extract_target_type(&self) -> Type {
     assert!(self.is_cast());
-    let ty = self.sub_exprs().unwrap()[1].clone();
-    ty.extract_type()
+    self.sub_exprs().unwrap().remove(1).extract_type()
   }
 
-  pub fn extract_symbol(&self) -> Symbol {
-    self
-      .ctx
-      .borrow()
-      .extract_symbol(self.id)
-      .expect("Not symbol")
+  pub fn extract_inner_object(&self) -> Expr {
+    assert!(self.is_object());
+    self.sub_exprs().unwrap().remove(0)
   }
 
-  pub fn extract_type(&self) -> Type {
-    self
-      .ctx
-      .borrow()
-      .extract_type(self.id)
-      .expect("Not layout")
+  pub fn extract_ownership(&self) -> Ownership {
+    assert!(self.is_object());
+    self.ctx.borrow().extract_ownership(self.id).unwrap()
   }
 
   pub fn simplify(&mut self) {
@@ -169,7 +178,12 @@ impl Debug for Expr {
       }
 
       if self.is_object() {
-        return write!(f, "{:?}", sub_exprs[0]);
+        let o = self.extract_ownership();
+        return
+          match o {
+            Ownership::Own => write!(f, "{o:?}({:?})", sub_exprs[0]),
+            _ => write!(f, "{:?}", sub_exprs[0]),
+          };
       }
 
       if self.is_index_of() {
@@ -204,7 +218,7 @@ pub trait ExprBuilder {
   fn mk_symbol(&self, symbol: Symbol, ty: Type) -> Expr;
   fn mk_type(&self, ty: Type) -> Expr;
 
-  fn address_of(&self, place: Expr, ty: Type) -> Expr;
+  fn address_of(&self, object: Expr, ty: Type) -> Expr;
 
   fn add(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn sub(&self, lhs: Expr, rhs: Expr) -> Expr;
@@ -221,7 +235,9 @@ pub trait ExprBuilder {
   fn not(&self, operand: Expr) -> Expr;
   fn neg(&self, operand: Expr) -> Expr;
   fn cast(&self, operand: Expr, target_ty: Expr) -> Expr;
-  fn object(&self, object: Expr) -> Expr;
+
+  fn object(&self, object: Expr, ownership: Ownership) -> Expr;
+
   fn index_of(&self, object: Expr, index: usize, ty: Type) -> Expr;
   fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr;
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr;

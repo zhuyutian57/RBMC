@@ -49,10 +49,10 @@ impl State {
   }
 
   pub fn get_value_set(&self, expr: Expr, values: &mut ObjectSet) {
-    
     if expr.is_symbol() {
       let pt = expr.extract_symbol().name();
       self.value_set.get(pt, values);
+      return;
     }
 
     if expr.is_address_of() {
@@ -67,13 +67,12 @@ impl State {
     }
 
     if expr.is_object() {
-      values.insert(expr.clone());
+      let inner_object = expr.sub_exprs().unwrap().remove(0);
+      self.get_value_set(inner_object, values);
       return;
     }
 
-
-    //TODO: do more jobs
-
+    panic!("Do not support dereferencing:\n{expr:?}");
   }
 }
 

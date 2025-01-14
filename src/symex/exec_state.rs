@@ -1,11 +1,14 @@
 
 use stable_mir::mir::*;
 
-use crate::symbol::{symbol::*, nstring::*};
-use crate::program::program::*;
+
 use crate::expr::context::*;
 use crate::expr::expr::*;
+use crate::expr::predicates::*;
 use crate::expr::ty::*;
+use crate::program::program::*;
+use crate::symbol::symbol::*;
+use crate::symbol::nstring::*;
 use super::frame::*;
 use super::renaming::*;
 use super::state::*;
@@ -56,12 +59,10 @@ impl<'exec> ExecutionState<'exec> {
   pub fn new_object(&mut self, ty: Type) -> Expr {
     let name =
       NString::from("heap_object_") + self.objects.len().to_string();
-    let symbol = 
-      self.ctx.mk_symbol(
-        Symbol::new(name, 0, 0, Level::Level0),
-        ty
-      );
-    let object = self.ctx.object(symbol);
+    let symbol = Symbol::new(name, 0, 0, Level::Level0);
+    let sym_expr = self.ctx.mk_symbol(symbol, ty);
+    // Create an object not being owned by any variable.
+    let object = self.ctx.object(sym_expr, Ownership::Not);
     self.objects.push(object.clone());
     object
   }

@@ -2,6 +2,7 @@
 use stable_mir::mir::*;
 
 use crate::expr::expr::*;
+use crate::expr::predicates::*;
 use crate::expr::ty::Type;
 use crate::symbol::symbol::*;
 use super::exec_state::*;
@@ -26,8 +27,8 @@ impl<'sym, 'exec> Projector<'sym, 'exec> {
   pub fn project(&mut self, place: &Place) -> Expr {
 
     let mut ret = self.state_mut().current_local(place.local, Level::Level1);
-
     let ctx = ret.ctx.clone();
+    ret = ctx.object(ret, Ownership::Own);
 
     for elem in place.projection.iter() {
       ret =
@@ -37,13 +38,10 @@ impl<'sym, 'exec> Projector<'sym, 'exec> {
           ProjectionElem::Field(i, ty)
             => {
               if ret.ty().is_box() && *i == 0 {
-                // `box` performs as a special raw pointer.
-                // Use it directly, instead of projection
+                // `box` performs as a special raw pointer. Use it directly.
                 Some(ret)
               } else {
-                let mut object = ret;
-                if !object.is_object() { object = ctx.object(object); }
-                Some(ctx.index_of(object, *i, Type::from(*ty)))
+                Some(ctx.index_of(ret, *i, Type::from(*ty)))
               }
             },
           _ => None,

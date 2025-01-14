@@ -6,6 +6,7 @@ use std::vec;
 use crate::symbol::{symbol::*, nstring::*};
 use super::constant::*;
 use super::op::*;
+use super::predicates::*;
 use super::ty::*;
 
 pub type TerminalId = usize;
@@ -43,16 +44,16 @@ pub type NodeId = usize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) enum NodeKind {
-  /// Terminal is the bridge connecting ast and terminals
+  /// Terminal is the bridge connecting with terminals.
   Terminal(TerminalId),
   /// Get address from a place. Create `Ref` if necessary.
   AddressOf(NodeId),
   Binary(BinOp, NodeId, NodeId),
   Unary(UnOp, NodeId),
   Cast(NodeId, NodeId),
-  Object(NodeId),
-  /// `IndexOf` represents a visit for a struct or array
-  /// in an unified form
+  /// Unified form for object, including stack objects and heap objects.
+  Object(Ownership, NodeId),
+  /// `IndexOf` represents a visit for a struct or array in an unified form.
   IndexOf(NodeId, NodeId),
   Ite(NodeId, NodeId, NodeId),
   SameObject(NodeId, NodeId),
@@ -68,31 +69,31 @@ impl NodeKind {
   }
 
   pub fn is_binary(&self) -> bool {
-    matches!(self, NodeKind::Binary(_, _, _))
+    matches!(self, NodeKind::Binary(..))
   }
 
   pub fn is_unary(&self) -> bool {
-    matches!(self, NodeKind::Unary(_, _))
+    matches!(self, NodeKind::Unary(..))
   }
 
   pub fn is_cast(&self) -> bool {
-    matches!(self, NodeKind::Cast(_, _))
+    matches!(self, NodeKind::Cast(..))
   }
 
   pub fn is_object(&self) -> bool {
-    matches!(self, NodeKind::Object(_))
+    matches!(self, NodeKind::Object(..))
   }
 
   pub fn is_index_of(&self) -> bool {
-    matches!(self, NodeKind::IndexOf(_, _))
+    matches!(self, NodeKind::IndexOf(..))
   }
 
   pub fn is_ite(&self) -> bool {
-    matches!(self, NodeKind::Ite(_, _, _))
+    matches!(self, NodeKind::Ite(..))
   }
 
   pub fn is_same_object(&self) -> bool {
-    matches!(self, NodeKind::SameObject(_, _))
+    matches!(self, NodeKind::SameObject(..))
   }
 
 }
@@ -120,7 +121,7 @@ impl Node {
       NodeKind::SameObject(l, r)
         => Some(vec![l, r]),
       NodeKind::Unary(_, o) |
-      NodeKind::Object(o)
+      NodeKind::Object(_, o)
         => Some(vec![o]),
       NodeKind::IndexOf(o, i)
         => Some(vec![o, i]),

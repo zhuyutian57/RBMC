@@ -5,11 +5,15 @@ use stable_mir::mir::*;
 use stable_mir::target::*;
 use stable_mir::ty::*;
 
-use crate::expr::constant::Constant;
+
+use crate::expr::context::*;
+use crate::expr::constant::*;
+use crate::expr::expr::*;
 use crate::expr::op::BinOp;
 use crate::expr::op::UnOp;
-use crate::expr::{context::*, expr::*, ty::*};
-use crate::symbol::nstring::NString;
+use crate::expr::predicates::*;
+use crate::expr::ty::*;
+use crate::symbol::nstring::*;
 use crate::program::program::*;
 use crate::symbol::symbol::*;
 use crate::vc::vc::*;
@@ -101,17 +105,9 @@ impl<'sym> Symex<'sym> {
     }
   }
 
-  /// Interface to do projection(dereference)
-  fn make_project(&mut self, place: &Place) -> Expr {
-    let local =
-      self
-        .exec_state
-        .current_local(place.local, Level::Level1);
-
-    if place.projection.is_empty() { return local; }
-    
-    let mut projector = Projector::new(&mut self.exec_state);
-    projector.project(place)
+  /// Interface to do projection
+  fn make_project(&mut self, place: &Place) -> Expr {    
+    Projector::new(&mut self.exec_state).project(place)
   }
 
   fn make_mirconst(&mut self, mirconst: &MirConst) -> Expr {
@@ -220,9 +216,9 @@ impl<'sym> Symex<'sym> {
         todo!();
       },
       Rvalue::Ref(_, k, p) => {
-        let place = self.make_project(p);
+        let mut object = self.make_project(p);
         // TODO: handle borrow kind.
-        let address_of = self.ctx.address_of(place, ty);
+        let address_of = self.ctx.address_of(object, ty);
         Ok(address_of)
       },
       Rvalue::Use(operand)
@@ -273,11 +269,17 @@ impl<'sym> Symex<'sym> {
       return;
     }
 
-    if lhs.is_ite() {
-      println!("Need implementation");
+    if lhs.is_object() {
+      let new_lhs = lhs.extract_inner_object();
+      self.assign_rec(new_lhs, rhs);
+      return;
     }
 
-    panic!("Do not support yet:\n{lhs:?}{rhs:?}");
+    if lhs.is_ite() {
+      panic!("Assign(ite = rhs) needs implementation");
+    }
+
+    panic!("Do not support assignment:\n{lhs:?}{rhs:?}");
   }
 
   fn symex_storagelive(&mut self, local: Local) {
@@ -395,7 +397,7 @@ impl<'sym> Symex<'sym> {
         FnKind::Unwind(i) => self.symex_function(*i, args, dest, target),
         FnKind::Layout(l) => self.symex_assign_layout(dest, *l),
         FnKind::Allocation(k, t) => {
-          let object = self.symex_alloc(*t);
+          let object = self.symex_alloc(*t, *k);
           let pt = self.make_project(dest);
           let address_of =
             self.ctx.address_of(object.clone(), pt.ty());
@@ -442,8 +444,14 @@ impl<'sym> Symex<'sym> {
     }
   }
 
-  fn symex_alloc(&mut self, layout: Type) -> Expr {
-    self.exec_state.new_object(layout)
+  fn symex_alloc(&mut self, ty: Type, kind: AllocKind) -> Expr {
+    let object = self.exec_state.new_object(ty);
+    assert!(object.extract_ownership().is_not());
+    if kind == AllocKind::Box {
+      let inner_object = object.sub_exprs().unwrap().remove(0);
+      return self.ctx.object(inner_object, Ownership::Own);
+    }
+    object
   }
 
   fn symex_as_mut(&mut self, place: &Place, operand: &Operand) {

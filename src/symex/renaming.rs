@@ -96,8 +96,8 @@ impl Renaming {
     let ctx = expr.ctx.clone();
 
     if expr.is_address_of() {
-      let place = sub_exprs[0].clone();
-      *expr = ctx.address_of(place, expr.ty())
+      let object = sub_exprs[0].clone();
+      *expr = ctx.address_of(object, expr.ty())
     }
 
     if expr.is_binary() {
@@ -130,8 +130,9 @@ impl Renaming {
     }
 
     if expr.is_object() {
-      let o = sub_exprs[0].clone();
-      *expr = ctx.object(o);
+      let ownership = expr.extract_ownership();
+      let object = sub_exprs[0].clone();
+      *expr = ctx.object(object, ownership);
     }
   }
 

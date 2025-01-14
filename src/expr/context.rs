@@ -3,8 +3,14 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use stable_mir::ty::*;
 
-use crate::symbol::{nstring::*, symbol::*};
-use super::{ast::*, constant::*, expr::*, op::*, ty::*};
+use crate::symbol::nstring::*;
+use crate::symbol::symbol::*;
+use super::ast::*;
+use super::constant::*;
+use super::expr::*;
+use super::op::*;
+use super::predicates::*;
+use super::ty::*;
 
 /// Context is used to manage type and expression.
 /// TODO: do memory management
@@ -175,7 +181,7 @@ impl Context {
   }
 
   pub fn extract_bin_op(&self, i: NodeId) -> Result<BinOp, &str> {
-    assert!(self.is_binary(i));
+    assert!(i < self.nodes.len());
     match self.nodes[i].kind() {
       NodeKind::Binary(op, _, _) => Ok(op),
       _ => Err("Not binary operator"),
@@ -183,10 +189,18 @@ impl Context {
   }
 
   pub fn extract_un_op(&self, i: NodeId) ->  Result<UnOp, &str> {
-    assert!(self.is_unary(i));
+    assert!(i < self.nodes.len());
     match self.nodes[i].kind() {
       NodeKind::Unary(op, _,) => Ok(op),
       _ => Err("Not unary operator"),
+    }
+  }
+
+  pub fn extract_ownership(&self, i: NodeId) -> Result<Ownership, &str> {
+    assert!(i < self.nodes.len());
+    match self.nodes[i].kind() {
+      NodeKind::Object(o, ..) => Ok(o),
+      _ => Err("Not object"),
     }
   }
 
@@ -259,8 +273,9 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn address_of(&self, place: Expr, ty: Type) -> Expr {
-    let kind = NodeKind::AddressOf(place.id);
+  fn address_of(&self, object: Expr, ty: Type) -> Expr {
+    assert!(object.is_object());
+    let kind = NodeKind::AddressOf(object.id);
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
@@ -403,9 +418,8 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn object(&self, object: Expr) -> Expr {
-    assert!(object.is_terminal()); // TODO: other expr
-    let kind = NodeKind::Object(object.id);
+  fn object(&self, object: Expr, ownership: Ownership) -> Expr {
+    let kind = NodeKind::Object(ownership, object.id);
     let ty = object.ty();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
