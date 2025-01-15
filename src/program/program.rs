@@ -10,8 +10,6 @@ use crate::expr::ty::*;
 use crate::symbol::nstring::NString;
 
 pub type FunctionIdx = usize;
-pub type Decl = (Type, Mutability);
-pub type Decls = Vec<Decl>;
 pub type Args = Vec<Local>;
 
 /// A wrapper for functiom item in MIR
@@ -19,24 +17,15 @@ pub type Args = Vec<Local>;
 pub struct Function {
   name: NString,
   args: Args,
-  locals: Decls,
   body: Body,
 }
 
 impl Function {
   pub fn new(item: CrateItem) -> Self {
     assert!(item.kind() == ItemKind::Fn);
-    let args =
-      (1..item.body().arg_locals().len() + 1).collect();
-    let mut locals = Vec::new();
-    for local in item.body().locals() {
-      let ty = Type::from(local.ty);
-      locals.push((ty, local.mutability));
-    }
     Function {
       name: NString::from(item.name()),
-      args,
-      locals,
+      args: (1..item.body().arg_locals().len() + 1).collect(),
       body: item.body(),
     }
   }
@@ -45,16 +34,15 @@ impl Function {
 
   pub fn args(&self) -> &Args { &self.args }
 
-  pub fn locals(&self) -> &Vec<Decl> { &self.locals }
+  pub fn locals(&self) -> &[LocalDecl] { self.body.locals() }
   
-  pub fn local_decl(&self, local: Local) -> &Decl {
-    assert!(local < self.locals.len());
-    &self.locals[local]
+  pub fn local_decl(&self, local: Local) -> &LocalDecl {
+    assert!(local < self.locals().len());
+    self.body.local_decl(local).unwrap()
   }
 
   pub fn local_type(&self, local: Local) -> Type {
-    assert!(local < self.locals.len());
-    self.locals[local].0
+    Type::from(self.local_decl(local).ty)
   }
 
   pub fn body(&self) -> &Body { &self.body }

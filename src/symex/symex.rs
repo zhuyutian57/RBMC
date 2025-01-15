@@ -5,7 +5,6 @@ use stable_mir::mir::*;
 use stable_mir::target::*;
 use stable_mir::ty::*;
 
-
 use crate::expr::context::*;
 use crate::expr::constant::*;
 use crate::expr::expr::*;
@@ -212,9 +211,6 @@ impl<'sym> Symex<'sym> {
         let cast = self.ctx.cast(op, target_ty);
         Ok(cast)
       },
-      Rvalue::CopyForDeref(p) => {
-        todo!();
-      },
       Rvalue::Ref(_, k, p) => {
         let mut object = self.make_project(p);
         // TODO: handle borrow kind.
@@ -224,7 +220,7 @@ impl<'sym> Symex<'sym> {
       Rvalue::Use(operand)
         => Ok(self.make_operand(operand)),
       _ => Err(Error),
-    }.expect("Not support")
+    }.expect(format!("Do not support: {rvalue:?}").as_str())
   }
 
   fn symex_assign(&mut self, place: &Place, rvalue: &Rvalue) {
@@ -471,7 +467,7 @@ impl<'sym> Symex<'sym> {
     let mut state = self.top().cur_state().clone();
     // remove local
     for local in 1..self.top().function().locals().len() {
-      if self.top().function().local_decl(local).0.is_any_ptr() {
+      if self.top().function().local_type(local).is_any_ptr() {
         let l1_count = self.exec_state.l1_local_count(local);
         for l1_num in 1..l1_count + 1 {
           let pt = self.exec_state.l1_local(local, l1_num);
