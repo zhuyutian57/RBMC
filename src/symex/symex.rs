@@ -18,6 +18,7 @@ use crate::symbol::symbol::*;
 use crate::vc::vc::*;
 use super::exec_state::*;
 use super::frame::*;
+use super::place_state::*;
 use super::projection::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -156,8 +157,9 @@ impl<'sym> Symex<'sym> {
         self.make_project(p)
       },
       Operand::Move(p) => {
-        // TODO: handle move semantic?
-        self.make_project(p)
+        let place = self.make_project(p);
+        self.exec_state.update_place_state(place.clone(), PlaceState::Moved);
+        place
       },
       Operand::Constant(op) 
         => self.make_mirconst(&op.const_),
@@ -395,12 +397,19 @@ impl<'sym> Symex<'sym> {
         FnKind::Allocation(k, t) => {
           let object = self.symex_alloc(*t, *k);
           let pt = self.make_project(dest);
-          let address_of =
-            self.ctx.address_of(object.clone(), pt.ty());
+          let address_of = self.ctx.address_of(object.clone(), pt.ty());
           
           self.do_assignment(pt, address_of);
           
           // TODO - do assignment for constant
+
+          let object_state =
+            if matches!(k, AllocKind::Box) {
+              PlaceState::Initialized
+            } else {
+              PlaceState::Uninitialized
+            };
+          self.exec_state.update_place_state(object, object_state);
         },
         FnKind::AsMut(o) => self.symex_as_mut(dest, o),
         FnKind::AsRef(o) => {},

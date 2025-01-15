@@ -141,7 +141,7 @@ impl Renaming {
       if expr.is_symbol() {
         let mut symbol = expr.extract_symbol();
         if !symbol.is_level1() {
-          symbol = self.current_l1_symbol(symbol.identifier());
+          symbol = self.current_l1_symbol(symbol.ident());
         }
         
         *expr = expr.ctx.mk_symbol(symbol, expr.ty());
@@ -167,7 +167,7 @@ impl Renaming {
       if expr.is_symbol() {
         let mut symbol = expr.extract_symbol();
         if !symbol.is_level2() {
-          symbol = self.current_l2_symbol(symbol.identifier(), 0);
+          symbol = self.current_l2_symbol(symbol.ident(), 0);
         }
 
         if self.constant_map.contains_key(&symbol) {

@@ -3,12 +3,14 @@ use std::fmt::Debug;
 
 use crate::expr::context::*;
 use crate::expr::expr::*;
+use super::place_state::*;
 use super::value_set::*;
 
 /// Abstract program state for each program point
 #[derive(Clone)]
 pub struct State {
   pub(super) guard: Expr,
+  pub(super) place_states: PlaceStates,
   pub(super) value_set: ValueSet,
 }
 
@@ -16,11 +18,16 @@ impl State {
   pub fn new(ctx: ExprCtx) -> Self {
     State {
       guard: ctx.constant_bool(true),
+      place_states: PlaceStates::default(),
       value_set: ValueSet::default(),
     }
   }
 
   pub fn guard(&self) -> Expr { self.guard.clone() }
+
+  pub fn update_place_state(&mut self, place: NPlace, state: PlaceState) {
+    self.place_states.update(place, state);
+  }
 
   pub fn add_pointer(&mut self, pt: Expr) {
     assert!(pt.ty().is_any_ptr() && pt.is_symbol());
@@ -45,6 +52,7 @@ impl State {
   pub fn merge(&mut self, other: &State) {
     self.guard = self.guard.ctx.or(self.guard.clone(), other.guard.clone());
     self.guard.simplify();
+    self.place_states.merge(&other.place_states);
     self.value_set.merge(&other.value_set, true);
   }
 
@@ -78,6 +86,12 @@ impl State {
 
 impl Debug for State {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "State -> Guard: {:?}\n{:?}", self.guard, self.value_set)
+    write!(
+      f,
+      "State -> Guard: {:?}\n  Place States:\n{:?}\n  Value Set:\n{:?}",
+      self.guard,
+      self.place_states,
+      self.value_set
+    )
   }
 }

@@ -1,7 +1,6 @@
 
 use stable_mir::mir::*;
 
-
 use crate::expr::context::*;
 use crate::expr::expr::*;
 use crate::expr::predicates::*;
@@ -9,6 +8,7 @@ use crate::expr::ty::*;
 use crate::program::program::*;
 use crate::symbol::symbol::*;
 use crate::symbol::nstring::*;
+use crate::symex::place_state::*;
 use super::frame::*;
 use super::renaming::*;
 use super::state::*;
@@ -184,7 +184,7 @@ impl<'exec> ExecutionState<'exec> {
   pub fn new_symbol(&mut self, symbol: &Expr, level: Level) -> Expr {
     assert!(symbol.is_symbol());
     let sym = symbol.extract_symbol();
-    let ident = sym.identifier();
+    let ident = sym.ident();
     let new_sym =
       match level {
         Level::Level1 => Some(self.renaming.new_l1_symbol(ident)),
@@ -208,12 +208,43 @@ impl<'exec> ExecutionState<'exec> {
     self.renaming.constant_propagate(lhs, rhs);
   }
 
+  pub fn update_place_state(&mut self, place: Expr, state: PlaceState) {
+    if place.is_symbol() {
+      let ident = place.extract_symbol().ident();
+      let kind = PlaceKind::from(ident);
+      let nplace = NPlace::new(kind, ident);
+      self.cur_state_mut().update_place_state(nplace, state);
+      return;
+    }
+
+    if place.is_address_of() {
+      let object = place.extract_object();
+      self.update_place_state(object, state);
+      return;
+    }
+
+    if place.is_object() {
+      let inner_object = place.extract_inner_object();
+      self.update_place_state(inner_object, state);
+      return;
+    }
+
+    panic!("Do not support place state: {place:?}");
+  }
+
   pub fn assign(&mut self, lhs: Expr, rhs: Expr) {
+    assert!(lhs.is_symbol()); // TODO: do more jobs?
+
     // Constant propagation
     self.constant_propagate(lhs.clone(), rhs.clone());
 
+    // `Layout` is only used for allocation
     if rhs.is_type() { return; }
+
+    // Update place state
+    self.update_place_state(lhs.clone(), PlaceState::Initialized);
     
+    // Update value Set
     if lhs.ty().is_any_ptr() {
       let mut l1_lhs = lhs.clone();
       let mut l1_rhs = rhs.clone();

@@ -74,7 +74,7 @@ impl Debug for ValueSet {
               .map(|x| format!("{x:?}"))
               .collect::<Vec<String>>()
               .join(", ");
-            format!("  {pt:?}: {debug_objects}\n")
+            format!("    {pt:?}: {debug_objects}\n")
           }
         )
         .collect::<String>();

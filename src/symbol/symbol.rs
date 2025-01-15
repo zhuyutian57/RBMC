@@ -22,7 +22,7 @@ pub enum Level {
 /// l2_num: Used for constructing verification condition(later used)
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Symbol {
-  identifier: NString,
+  ident: NString,
   l1_num: usize,
   l2_num: usize,
   level: Level,
@@ -30,22 +30,22 @@ pub struct Symbol {
 
 impl Symbol {
   pub fn new(
-    identifier: NString,
+    ident: NString,
     l1_num: usize,
     l2_num: usize,
     level: Level
   ) -> Self {
-    Symbol { identifier, l1_num, l2_num, level }
+    Symbol { ident, l1_num, l2_num, level }
   }
 
-  pub fn identifier(&self) -> NString { self.identifier.clone() }
+  pub fn ident(&self) -> NString { self.ident.clone() }
 
   pub fn is_level0(&self) -> bool { self.level == Level::Level0 }
   pub fn is_level1(&self) -> bool { self.level == Level::Level1 }
   pub fn is_level2(&self) -> bool { self.level == Level::Level2 }
 
   pub fn l1_name(&self) -> NString {
-    self.identifier + "::" + self.l1_num.to_string()
+    self.ident + "::" + self.l1_num.to_string()
   }
 
   pub fn l2_name(&self) -> NString {
@@ -53,7 +53,7 @@ impl Symbol {
   }
 
   pub fn name(&self) -> NString {
-    if self.is_level0() { self.identifier() }
+    if self.is_level0() { self.ident() }
     else if self.is_level1() { self.l1_name() }
     else { self.l2_name() }
   }
@@ -67,7 +67,7 @@ impl Debug for Symbol {
 
 impl Hash for Symbol {
   fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-    self.identifier.hash(state);
+    self.ident.hash(state);
     if self.level == Level::Level1 {
       self.l1_num.hash(state);
     }

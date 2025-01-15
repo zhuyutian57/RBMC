@@ -129,9 +129,6 @@ impl Program {
     );
     for function in self.functions.iter() {
       println!("\n --->> Function: {:?}", function.name());
-      for local in function.locals().iter() {
-        println!("{:?}", local);
-      }
       function
         .body()
         .dump(&mut stdout().lock(), &function.name().to_string())

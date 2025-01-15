@@ -41,6 +41,14 @@ fn string_m() -> &'static mut StringManager {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct NString(usize);
 
+impl NString {
+  pub fn contains(&self, str: NString) -> bool {
+    let string = string_m().get_string(self.0);
+    let sub_str = string_m().get_string(str.0);
+    string.contains(sub_str)
+  }
+}
+
 impl PartialEq<&str> for NString {
   fn eq(&self, other: &&str) -> bool {
     *self == NString::from(*other)
