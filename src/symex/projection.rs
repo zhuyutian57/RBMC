@@ -41,7 +41,9 @@ impl<'sym, 'exec> Projector<'sym, 'exec> {
                 // `box` performs as a special raw pointer. Use it directly.
                 Some(ret)
               } else {
-                Some(ctx.index_of(ret, *i, Type::from(*ty)))
+                let index = ctx.index_of(ret, *i, Type::from(*ty));
+                let ownership = index.extract_ownership();
+                Some(ctx.object(index, ownership))
               }
             },
           _ => None,

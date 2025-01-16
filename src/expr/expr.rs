@@ -83,13 +83,18 @@ impl Expr {
   }
 
   pub fn extract_inner_object(&self) -> Expr {
-    assert!(self.is_object());
+    assert!(self.is_object() || self.is_index_of());
     self.sub_exprs().unwrap().remove(0)
   }
 
   pub fn extract_ownership(&self) -> Ownership {
-    assert!(self.is_object());
-    self.ctx.borrow().extract_ownership(self.id).unwrap()
+    if self.is_object() {
+      self.ctx.borrow().extract_ownership(self.id).unwrap()
+    } else if self.is_index_of() {
+      self.extract_inner_object().extract_ownership()
+    } else {
+      panic!("Do not have ownership:\n{self:?}")
+    }
   }
 
   pub fn simplify(&mut self) {

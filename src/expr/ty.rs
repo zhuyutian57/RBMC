@@ -47,6 +47,10 @@ impl Type {
     !self.0.kind().is_signed()
   }
 
+  pub fn is_integer(&self) -> bool {
+    self.is_signed() || self.is_unsigned()
+  }
+
   pub fn is_struct(&self) -> bool { self.0.kind().is_struct() }
 
   pub fn is_ref(&self) -> bool { self.0.kind().is_ref() }

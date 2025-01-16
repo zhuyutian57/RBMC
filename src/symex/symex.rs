@@ -114,7 +114,8 @@ impl<'sym> Symex<'sym> {
     match mirconst.kind() {
       ConstantKind::Allocated(allocation) => {
         let ty = Type::from(mirconst.ty());
-        let fields = ty.variant();
+        let fields =
+          if ty.is_struct() { ty.variant() } else { vec![ty] };
         let mut value_vec = Vec::new();
         let bytes = &allocation.bytes;
         for i in 0..fields.len() {
@@ -144,9 +145,21 @@ impl<'sym> Symex<'sym> {
           value_vec.push(Constant::Integer(sign, value));
         }
 
-        Ok(self.ctx.constant_struct(value_vec, ty))
+        if ty.is_struct() {
+          Ok(self.ctx.constant_struct(value_vec, ty))
+        } else {
+          assert!(value_vec.len() == 1);
+          if ty.is_bool() {
+            Ok(self.ctx.constant_bool(value_vec[0].bool_value()))
+          } else if ty.is_integer() {
+            let (s, u) = value_vec[0].integer_value();
+            Ok(self.ctx.constant_integer(s, u, ty))
+          } else {
+            Err(Error)
+          }
+        }
       }
-      _ => Err("Not support"),
+      _ => Err(Error),
     }.expect("Not support")
   }
 
@@ -213,8 +226,8 @@ impl<'sym> Symex<'sym> {
         let cast = self.ctx.cast(op, target_ty);
         Ok(cast)
       },
-      Rvalue::Ref(_, k, p) => {
-        let mut object = self.make_project(p);
+      Rvalue::Ref(_, _, p) => {
+        let object = self.make_project(p);
         // TODO: handle borrow kind.
         let address_of = self.ctx.address_of(object, ty);
         Ok(address_of)
@@ -277,7 +290,7 @@ impl<'sym> Symex<'sym> {
       panic!("Assign(ite = rhs) needs implementation");
     }
 
-    panic!("Do not support assignment:\n{lhs:?}{rhs:?}");
+    panic!("Do not support assignment:\n{lhs:?} = {rhs:?}");
   }
 
   fn symex_storagelive(&mut self, local: Local) {

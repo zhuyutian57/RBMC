@@ -90,6 +90,7 @@ impl Program {
     assert!(!functions.is_empty());
     for item in items {
       if item.name() == "main" { continue; }
+      if !matches!(item.kind(), ItemKind::Fn) { continue; }
       functions.push(Function::new(item));
     }
     for (i, function)
