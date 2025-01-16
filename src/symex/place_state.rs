@@ -103,6 +103,12 @@ impl PlaceStates {
         .or_insert(state);
     }
   }
+
+  pub fn remove_stack_places(&mut self) {
+    self
+      ._place_states_map
+      .retain(|k, _| matches!(k.kind(), PlaceKind::Heap));
+  }
 }
 
 impl Debug for PlaceStates {

@@ -29,6 +29,11 @@ impl State {
     self.place_states.update(place, state);
   }
 
+  pub fn remove_stack_places(&mut self) {
+    self.place_states.remove_stack_places();
+    // TODO: handle reborrow
+  }
+
   pub fn add_pointer(&mut self, pt: Expr) {
     assert!(pt.ty().is_any_ptr() && pt.is_symbol());
     let symbol = pt.extract_symbol();

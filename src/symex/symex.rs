@@ -476,14 +476,15 @@ impl<'sym> Symex<'sym> {
     let mut state = self.top().cur_state().clone();
     // remove local
     for local in 1..self.top().function().locals().len() {
-      if self.top().function().local_type(local).is_any_ptr() {
-        let l1_count = self.exec_state.l1_local_count(local);
-        for l1_num in 1..l1_count + 1 {
-          let pt = self.exec_state.l1_local(local, l1_num);
-          state.remove_pointer(pt);
+      let l1_count = self.exec_state.l1_local_count(local);
+      for l1_num in 1..l1_count + 1 {
+        let l1_local = self.exec_state.l1_local(local, l1_num);
+        if l1_local.ty().is_any_ptr() {
+          state.remove_pointer(l1_local.clone());
         }
       }
     }
+    state.remove_stack_places();
     self.top().add_state(n, state);
 
     self.top().inc_pc();

@@ -12,9 +12,11 @@ pub enum Level {
 
 /// Symbol are used for variables, objects, and so on.
 /// 
-/// identifier: The original name of variable and heap objects.
-///             Usually, it is constructed by function name,
-///             frame number and local number. 
+/// ident: The original name of variable and heap objects.
+///        Usually, it is constructed by function name,
+///        frame number and local number.
+/// 
+/// l0_num: It is frame number, which is encoded in `ident`.
 /// 
 /// l1_num: Every time we encounter a `StorageLive`, we create a
 ///         fresh l1 symbol.

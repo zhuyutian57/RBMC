@@ -103,7 +103,8 @@ impl<'exec> ExecutionState<'exec> {
     destination: Place,
     target: Option<BasicBlockIdx>
   ) {
-    let state = self.top_mut().cur_state().clone();
+    let mut state = self.top_mut().cur_state().clone();
+    state.remove_stack_places();
     self.frames.push(
       Frame::new(
         self.ctx.clone(),
@@ -210,7 +211,9 @@ impl<'exec> ExecutionState<'exec> {
 
   pub fn update_place_state(&mut self, place: Expr, state: PlaceState) {
     if place.is_symbol() {
-      let ident = place.extract_symbol().ident();
+      let mut l1_place = place;
+      self.rename(&mut l1_place, Level::Level1);
+      let ident = l1_place.extract_symbol().l1_name();
       let kind = PlaceKind::from(ident);
       let nplace = NPlace::new(kind, ident);
       self.cur_state_mut().update_place_state(nplace, state);
