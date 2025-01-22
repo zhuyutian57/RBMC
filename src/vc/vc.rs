@@ -44,7 +44,6 @@ impl VCSystem {
 
 impl Debug for VCSystem {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "Verification Conditions:");
     let eqs =
       self
         .equantions
@@ -55,6 +54,6 @@ impl Debug for VCSystem {
           format!("#{i}  {eq:?}\n")
         )
         .collect::<String>();
-    write!(f, "{eqs}")
+    write!(f, "Verification Conditions:\n{eqs}")
   }
 }
