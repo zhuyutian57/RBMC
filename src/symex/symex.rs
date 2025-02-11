@@ -255,10 +255,10 @@ impl<'sym> Symex<'sym> {
   fn do_assignment(&mut self, lhs: Expr, rhs: Expr) {
     assert!(lhs.ty().is_layout() || lhs.ty() == rhs.ty());
     // TODO: do more jobs
-    self.assign_rec(lhs, rhs);
+    self.assign_rec(lhs, rhs, self.ctx.constant_bool(true));
   }
 
-  fn assign_symbol(&mut self, mut lhs: Expr, mut rhs: Expr) {
+  fn assign_symbol(&mut self, mut lhs: Expr, mut rhs: Expr, guard: Expr) {
     assert!(lhs.is_symbol());
 
     // Rename to l2 rhs
@@ -271,23 +271,44 @@ impl<'sym> Symex<'sym> {
     if rhs.is_type() { return; }
 
     // Build VC system
-    self.vc_system.assign(lhs, rhs);
+    let new_guard =
+      self.ctx.and(guard, self.exec_state.cur_state().guard());
+    self.vc_system.assign(new_guard, lhs, rhs);
   }
 
-  fn assign_rec(&mut self, lhs: Expr, rhs: Expr) {
+  fn assign_rec(&mut self, lhs: Expr, rhs: Expr, guard: Expr) {
     if lhs.is_symbol() {
-      self.assign_symbol(lhs, rhs);
+      self.assign_symbol(lhs, rhs, guard);
       return;
     }
 
     if lhs.is_object() {
       let new_lhs = lhs.extract_inner_object();
-      self.assign_rec(new_lhs, rhs);
+      self.assign_rec(new_lhs, rhs, guard);
       return;
     }
 
     if lhs.is_ite() {
-      panic!("Assign(ite = rhs) needs implementation");
+      let sub_exprs = lhs.sub_exprs().unwrap();
+      let cond = sub_exprs[0].clone();
+      let true_value = sub_exprs[1].clone();
+      let false_value = sub_exprs[2].clone();
+      
+      let true_guard = self.ctx.and(guard.clone(), cond.clone());
+      self.assign_rec(true_value, rhs.clone(), true_guard);
+      
+      let false_guard =
+        self.ctx.and(
+          guard.clone(),
+          self.ctx.not(cond.clone())
+        );
+      self.assign_rec(false_value, rhs.clone(), false_guard);
+
+      return;
+    }
+
+    if lhs.is_index_of() {
+      panic!("Do not support index_of yet {lhs:?}");
     }
 
     panic!("Do not support assignment:\n{lhs:?} = {rhs:?}");
