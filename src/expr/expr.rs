@@ -171,7 +171,14 @@ impl Hash for Expr {
 impl Debug for Expr {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     if self.is_terminal() {
-      write!(f, "{:?}", self.ctx.borrow().extract_terminal(self.id).unwrap())
+      let mut struct_ty = "".to_string();
+      if self.is_constant() && self.ty().is_struct() {
+        struct_ty = format!(" as {:?} ", self.ty());
+      }
+      write!(
+        f, "{:?}{struct_ty}",
+        self.ctx.borrow().extract_terminal(self.id).unwrap()
+      )
     } else {
       let sub_exprs = self.sub_exprs().unwrap();
 

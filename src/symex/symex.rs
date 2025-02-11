@@ -274,9 +274,7 @@ impl<'sym> Symex<'sym> {
     // Build VC system
     let mut new_guard =
       self.ctx.and(guard, self.exec_state.cur_state().guard());
-    println!("before {new_guard:?}");
     new_guard.simplify();
-    println!("after {new_guard:?}");
     self.vc_system.assign(new_guard, lhs, rhs);
   }
 
