@@ -23,6 +23,9 @@ pub struct Context {
 }
 
 impl Context {
+  pub const TRUE_ID : usize = 0;
+  pub const FALSE_ID : usize = 1;
+
   pub fn new() -> Self {
     let mut ctx = Context::default();
     ctx.init_terminals();
@@ -77,9 +80,9 @@ impl Context {
     self.nodes[i].kind().is_terminal()
   }
 
-  pub fn is_true(&self, i: NodeId) -> bool { i == 0 }
+  pub fn is_true(&self, i: NodeId) -> bool { i == Context::TRUE_ID }
 
-  pub fn is_false(&self, i: NodeId) -> bool { i == 1 }
+  pub fn is_false(&self, i: NodeId) -> bool { i == Context::FALSE_ID }
 
   pub fn is_constant(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
@@ -143,6 +146,11 @@ impl Context {
   pub fn is_same_object(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     self.nodes[i].kind().is_same_object()
+  }
+
+  pub fn is_with(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_with()
   }
 
   pub(super) fn extract_terminal(&self, i: NodeId) -> Result<Rc<Terminal>, &str> {
@@ -453,6 +461,14 @@ impl ExprBuilder for ExprCtx {
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr {
     let kind = NodeKind::SameObject(lhs.id, rhs.id);
     let ty = Type::bool_type();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+
+  fn with(&self, object: Expr, index: Expr, value: Expr) -> Expr {
+    let kind = NodeKind::With(object.id, index.id, value.id);
+    let ty = object.ty();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }

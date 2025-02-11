@@ -37,6 +37,7 @@ impl Expr {
   pub fn is_index_of(&self) -> bool { self.ctx.borrow().is_index_of(self.id) }
   pub fn is_ite(&self) -> bool { self.ctx.borrow().is_ite(self.id) }
   pub fn is_same_object(&self) -> bool { self.ctx.borrow().is_same_object(self.id) }
+  pub fn is_with(&self) -> bool { self.ctx.borrow().is_with(self.id) }
 
   pub fn extract_symbol(&self) -> Symbol {
     self
@@ -87,6 +88,11 @@ impl Expr {
     self.sub_exprs().unwrap().remove(0)
   }
 
+  pub fn extract_index(&self) -> Expr {
+    assert!(self.is_index_of());
+    self.sub_exprs().unwrap().remove(1)
+  }
+
   pub fn extract_ownership(&self) -> Ownership {
     if self.is_object() {
       self.ctx.borrow().extract_ownership(self.id).unwrap()
@@ -105,17 +111,25 @@ impl Expr {
         let rhs = &sub_exprs[1];
         match self.extract_bin_op() {
           BinOp::And => {
-            if lhs.is_true() && rhs.is_true() || lhs.is_false(){
-              self.id = lhs.id
-            } else if rhs.is_false() {
-              self.id = rhs.id
+            if lhs.is_true() {
+              self.id = rhs.id;
+            } else if rhs.is_true() {
+              self.id = lhs.id;
+            } else if lhs.is_false() || rhs.is_false() {
+              self.id = Context::FALSE_ID;
+            } else {
+              *self = self.ctx.and(lhs.clone(), rhs.clone());
             }
           },
           BinOp::Or => {
-            if lhs.is_false() && rhs.is_false() || lhs.is_true() {
-              self.id = lhs.id;
-            } else if rhs.is_false() {
+            if lhs.is_false() {
               self.id = rhs.id;
+            } else if rhs.is_false() {
+              self.id = lhs.id;
+            } else if lhs.is_true() || rhs.is_true() {
+              self.id = Context::TRUE_ID;
+            } else {
+              *self = self.ctx.or(lhs.clone(), rhs.clone());
             }
           },
           _ => {},
@@ -169,11 +183,11 @@ impl Debug for Expr {
       if self.is_binary() {
         let lhs = &sub_exprs[0];
         let rhs = &sub_exprs[1];
-        return write!(f, "{:?} {:?} {:?}", lhs, self.extract_bin_op(), rhs);
+        return write!(f, "{lhs:?} {:?} {rhs:?}", self.extract_bin_op());
       }
 
       if self.is_unary() {
-        return write!(f, "{:?} {:?}", self.extract_un_op(), sub_exprs[0]);
+        return write!(f, "{:?}{:?}", self.extract_un_op(), sub_exprs[0]);
       }
 
       if self.is_cast() {
@@ -207,7 +221,14 @@ impl Debug for Expr {
       if self.is_same_object() {
         let lhs = &sub_exprs[0];
         let rhs = &sub_exprs[1];
-        return write!(f, "same_object({:?}, {:?})", lhs, rhs);
+        return write!(f, "same_object({lhs:?}, {rhs:?})");
+      }
+
+      if self.is_with() {
+        let object = &sub_exprs[0];
+        let index = &sub_exprs[1];
+        let value = &sub_exprs[2];
+        return write!(f, "{object:?} with[{index:?} := {value:?}]");
       }
 
       println!("Incomplete Debug for Expr");
@@ -246,4 +267,5 @@ pub trait ExprBuilder {
   fn index_of(&self, object: Expr, index: usize, ty: Type) -> Expr;
   fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr;
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr;
+  fn with(&self, object: Expr, index: Expr, value: Expr) -> Expr;
 }

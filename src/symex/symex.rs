@@ -77,6 +77,7 @@ impl<'sym> Symex<'sym> {
       }
       self.exec_state.pop_frame();
     }
+    println!("{:?}", self.vc_system);
   }
 
   fn top(&mut self) -> &mut Frame<'sym> {
@@ -271,8 +272,11 @@ impl<'sym> Symex<'sym> {
     if rhs.is_type() { return; }
 
     // Build VC system
-    let new_guard =
+    let mut new_guard =
       self.ctx.and(guard, self.exec_state.cur_state().guard());
+    println!("before {new_guard:?}");
+    new_guard.simplify();
+    println!("after {new_guard:?}");
     self.vc_system.assign(new_guard, lhs, rhs);
   }
 
@@ -308,7 +312,9 @@ impl<'sym> Symex<'sym> {
     }
 
     if lhs.is_index_of() {
-      panic!("Do not support index_of yet {lhs:?}");
+      let index = lhs.extract_index();
+      let new_rhs = self.ctx.with(lhs.clone(), index, rhs.clone());
+      return;
     }
 
     panic!("Do not support assignment:\n{lhs:?} = {rhs:?}");
