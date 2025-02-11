@@ -28,6 +28,27 @@ impl Terminal {
       Terminal::Symbol(s) => s.name(),
     }
   }
+
+  pub fn to_constant(&self) -> Constant {
+    match self {
+      Terminal::Constant(c) => Some(c.clone()),
+      _ => None,
+    }.expect("Not constant")
+  }
+
+  pub fn to_type(&self) -> Type {
+    match self {
+      Terminal::Type(t) => Some(t.clone()),
+      _ => None,
+    }.expect("Not constant")
+  }
+
+  pub fn to_symbol(&self) -> Symbol {
+    match self {
+      Terminal::Symbol(s) => Some(s.clone()),
+      _ => None,
+    }.expect("Not constant")
+  }
 }
 
 impl Debug for Terminal {

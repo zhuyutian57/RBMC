@@ -97,7 +97,8 @@ impl Renaming {
 
     if expr.is_address_of() {
       let object = sub_exprs[0].clone();
-      *expr = ctx.address_of(object, expr.ty())
+      *expr = ctx.address_of(object, expr.ty());
+      return;
     }
 
     if expr.is_binary() {
@@ -118,6 +119,7 @@ impl Renaming {
           BinOp::And => ctx.and(lhs, rhs),
           BinOp::Or => ctx.or(lhs, rhs),
         };
+      return;
     }
 
     if expr.is_unary() {
@@ -126,14 +128,58 @@ impl Renaming {
         match expr.extract_un_op() {
           UnOp::Not => ctx.not(operand),
           UnOp::Neg => ctx.neg(operand),
-        }
+        };
+      return;
+    }
+
+    if expr.is_cast() {
+      let operand = sub_exprs[0].clone();
+      let target_ty = sub_exprs[1].clone();
+      *expr = ctx.cast(operand, target_ty);
+      return;
     }
 
     if expr.is_object() {
       let ownership = expr.extract_ownership();
       let object = sub_exprs[0].clone();
       *expr = ctx.object(object, ownership);
+      return;
     }
+
+    if expr.is_index_of() {
+      let object = sub_exprs[0].clone();
+      let (sign, value) = sub_exprs[1].extract_constant().integer_value();
+      assert!(!sign);
+      let index = value as usize;
+      let ty = expr.ty();
+      *expr = ctx.index_of(object, index, ty);
+      return;
+    }
+
+    if expr.is_ite() {
+      let cond = sub_exprs[0].clone();
+      let true_value = sub_exprs[1].clone();
+      let false_value = sub_exprs[2].clone();
+      *expr = ctx.ite(cond, true_value, false_value);
+      return;
+    }
+
+    if expr.is_same_object() {
+      let lhs = sub_exprs[0].clone();
+      let rhs = sub_exprs[1].clone();
+      *expr = ctx.same_object(lhs, rhs);
+      return;
+    }
+
+    if expr.is_with() {
+      let object = sub_exprs[0].clone();
+      let index = sub_exprs[1].clone();
+      let value = sub_exprs[2].clone();
+      *expr = ctx.with(object, index, value);
+      return;
+    }
+
+    panic!("Do not support renaming: {expr:?}");
   }
 
   pub fn l1_rename(&mut self, expr: &mut Expr) {

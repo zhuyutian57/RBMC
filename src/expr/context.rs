@@ -162,30 +162,25 @@ impl Context {
     }
   }
   
-  pub fn extract_symbol(&self, i: NodeId) -> Result<Symbol, &str> {
-    assert!(i < self.nodes.len());
-    match self.nodes[i].kind() {
-      NodeKind::Terminal(t) => {
-        match &*self.terminals[t] {
-          Terminal::Symbol(s) => Ok(s.clone()),
-          _ => Err("Not symbol"),
-        }
-      },
-      _ => Err("Not symbol")
-    }
+  pub fn extract_constant(&self, i: NodeId) -> Result<Constant, &str> {
+    Ok(self
+      .extract_terminal(i)
+      .expect("Not terminal")
+      .to_constant())
   }
 
   pub fn extract_type(&self, i: NodeId) -> Result<Type, &str> {
-    assert!(i < self.nodes.len());
-    match self.nodes[i].kind() {
-      NodeKind::Terminal(t) => {
-        match &*self.terminals[t] {
-          Terminal::Type(l) => Ok(l.clone()),
-          _ => Err("Not layout"),
-        }
-      }
-      _ => Err("Not layout"),
-    }
+    Ok(self
+      .extract_terminal(i)
+      .expect("Not terminal")
+      .to_type())
+  }
+
+  pub fn extract_symbol(&self, i: NodeId) -> Result<Symbol, &str> {
+    Ok(self
+      .extract_terminal(i)
+      .expect("Not terminal")
+      .to_symbol())
   }
 
   pub fn extract_bin_op(&self, i: NodeId) -> Result<BinOp, &str> {

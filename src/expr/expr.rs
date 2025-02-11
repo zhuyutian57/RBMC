@@ -47,7 +47,15 @@ impl Expr {
       .expect("Not symbol")
   }
 
-  pub fn extract_type(&self) -> Type {
+  pub fn extract_constant(&self) -> Constant {
+    self
+      .ctx
+      .borrow()
+      .extract_constant(self.id)
+      .expect("Not constant")
+  }
+
+  pub fn extract_layout(&self) -> Type {
     self
       .ctx
       .borrow()
@@ -80,7 +88,7 @@ impl Expr {
   
   pub fn extract_target_type(&self) -> Type {
     assert!(self.is_cast());
-    self.sub_exprs().unwrap().remove(1).extract_type()
+    self.sub_exprs().unwrap().remove(1).extract_layout()
   }
 
   pub fn extract_inner_object(&self) -> Expr {

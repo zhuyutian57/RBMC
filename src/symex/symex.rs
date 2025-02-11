@@ -310,8 +310,10 @@ impl<'sym> Symex<'sym> {
     }
 
     if lhs.is_index_of() {
+      let new_lhs = lhs.extract_inner_object();
       let index = lhs.extract_index();
-      let new_rhs = self.ctx.with(lhs.clone(), index, rhs.clone());
+      let new_rhs = self.ctx.with(new_lhs.clone(), index, rhs.clone());
+      self.assign_rec(new_lhs, new_rhs, guard);
       return;
     }
 
@@ -383,7 +385,7 @@ impl<'sym> Symex<'sym> {
           self.exec_state.current_local(p.local, Level::Level2);
         self.exec_state.rename(&mut ty, Level::Level2);
         assert!(ty.is_type());
-        Ok(ty.extract_type())
+        Ok(ty.extract_layout())
       },
       Operand::Constant(c) => {
         Ok(Type::from(c.ty()))
