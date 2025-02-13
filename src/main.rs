@@ -18,6 +18,7 @@ use stable_mir::*;
 mod analysis;
 mod expr;
 mod program;
+mod solvers;
 mod symbol;
 mod symex;
 mod vc;
