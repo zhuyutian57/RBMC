@@ -79,8 +79,8 @@ pub(super) enum NodeKind {
   Ite(NodeId, NodeId, NodeId),
   /// A pointer's value is the address of an object...
   SameObject(NodeId, NodeId),
-  /// `With(obj, i, value)` updates the value of obj
-  With(NodeId, NodeId, NodeId),
+  /// `Store(obj, i, value)` updates the value of obj
+  Store(NodeId, NodeId, NodeId),
 }
 
 impl NodeKind {
@@ -120,8 +120,8 @@ impl NodeKind {
     matches!(self, NodeKind::SameObject(..))
   }
 
-  pub fn is_with(&self) -> bool {
-    matches!(self, NodeKind::With(..))
+  pub fn is_store(&self) -> bool {
+    matches!(self, NodeKind::Store(..))
   }
 
 }
@@ -155,7 +155,7 @@ impl Node {
         => Some(vec![o, i]),
       NodeKind::Ite(c, tv, fv)
         => Some(vec![c, tv, fv]),
-      NodeKind::With(o, i, v)
+      NodeKind::Store(o, i, v)
         => Some(vec![o, i, v]),
       _ => None,
     }

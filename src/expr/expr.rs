@@ -37,7 +37,7 @@ impl Expr {
   pub fn is_index_of(&self) -> bool { self.ctx.borrow().is_index_of(self.id) }
   pub fn is_ite(&self) -> bool { self.ctx.borrow().is_ite(self.id) }
   pub fn is_same_object(&self) -> bool { self.ctx.borrow().is_same_object(self.id) }
-  pub fn is_with(&self) -> bool { self.ctx.borrow().is_with(self.id) }
+  pub fn is_store(&self) -> bool { self.ctx.borrow().is_store(self.id) }
 
   pub fn extract_symbol(&self) -> Symbol {
     self
@@ -239,11 +239,11 @@ impl Debug for Expr {
         return write!(f, "same_object({lhs:?}, {rhs:?})");
       }
 
-      if self.is_with() {
+      if self.is_store() {
         let object = &sub_exprs[0];
         let index = &sub_exprs[1];
         let value = &sub_exprs[2];
-        return write!(f, "{object:?} with[{index:?} := {value:?}]");
+        return write!(f, "store({object:?}, {index:?}, {value:?})");
       }
 
       println!("Incomplete Debug for Expr");
@@ -282,5 +282,5 @@ pub trait ExprBuilder {
   fn index_of(&self, object: Expr, index: usize, ty: Type) -> Expr;
   fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr;
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr;
-  fn with(&self, object: Expr, index: Expr, value: Expr) -> Expr;
+  fn store(&self, object: Expr, index: Expr, value: Expr) -> Expr;
 }

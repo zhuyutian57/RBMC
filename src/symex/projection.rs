@@ -59,6 +59,12 @@ impl<'sym, 'exec> Projector<'sym, 'exec> {
     
     let ctx = expr.ctx.clone();
 
+    for object in objects.iter() {
+      if object.extract_ownership().is_own() { continue; }
+      // assertion for invalid dereference
+      // use uninterpreted function?
+    }
+
     let mut ret = None;
     for object in objects {
       ret =

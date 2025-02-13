@@ -262,19 +262,21 @@ impl<'sym> Symex<'sym> {
   fn assign_symbol(&mut self, mut lhs: Expr, mut rhs: Expr, guard: Expr) {
     assert!(lhs.is_symbol());
 
+    let mut new_guard =
+      self.ctx.and(guard, self.exec_state.cur_state().guard());
+    self.exec_state.rename(&mut new_guard, Level::Level2);
+    new_guard.simplify();
+
     // Rename to l2 rhs
     self.exec_state.rename(&mut rhs, Level::Level2);
     // New l2 symbol
     lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
 
-    self.exec_state.assign(lhs.clone(), rhs.clone());
+    self.exec_state.assign(lhs.clone(), rhs.clone(), new_guard.clone());
 
     if rhs.is_type() { return; }
 
     // Build VC system
-    let mut new_guard =
-      self.ctx.and(guard, self.exec_state.cur_state().guard());
-    new_guard.simplify();
     self.vc_system.assign(new_guard, lhs, rhs);
   }
 
@@ -312,7 +314,7 @@ impl<'sym> Symex<'sym> {
     if lhs.is_index_of() {
       let new_lhs = lhs.extract_inner_object();
       let index = lhs.extract_index();
-      let new_rhs = self.ctx.with(new_lhs.clone(), index, rhs.clone());
+      let new_rhs = self.ctx.store(new_lhs.clone(), index, rhs.clone());
       self.assign_rec(new_lhs, new_rhs, guard);
       return;
     }

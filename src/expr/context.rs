@@ -148,9 +148,9 @@ impl Context {
     self.nodes[i].kind().is_same_object()
   }
 
-  pub fn is_with(&self, i: NodeId) -> bool {
+  pub fn is_store(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    self.nodes[i].kind().is_with()
+    self.nodes[i].kind().is_store()
   }
 
   pub(super) fn extract_terminal(&self, i: NodeId) -> Result<Rc<Terminal>, &str> {
@@ -461,8 +461,8 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn with(&self, object: Expr, index: Expr, value: Expr) -> Expr {
-    let kind = NodeKind::With(object.id, index.id, value.id);
+  fn store(&self, object: Expr, index: Expr, value: Expr) -> Expr {
+    let kind = NodeKind::Store(object.id, index.id, value.id);
     let ty = object.ty();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);

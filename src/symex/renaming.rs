@@ -171,11 +171,11 @@ impl Renaming {
       return;
     }
 
-    if expr.is_with() {
+    if expr.is_store() {
       let object = sub_exprs[0].clone();
       let index = sub_exprs[1].clone();
       let value = sub_exprs[2].clone();
-      *expr = ctx.with(object, index, value);
+      *expr = ctx.store(object, index, value);
       return;
     }
 
