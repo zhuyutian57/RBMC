@@ -16,6 +16,7 @@ use std::process::ExitCode;
 use stable_mir::*;
 
 mod analysis;
+mod config;
 mod expr;
 mod program;
 mod solvers;
@@ -24,6 +25,7 @@ mod symex;
 mod vc;
 
 use crate::analysis::Analyzer;
+use crate::config::Config;
 use crate::expr::context::*;
 use crate::program::program::Program;
 use crate::symbol::nstring::NString;
@@ -41,13 +43,13 @@ fn main() -> ExitCode {
 }
 
 fn start_demo() -> ControlFlow<()> {
-  let ctx = ExprCtx::new(RefCell::new(Context::new()));
+  let config = Config::new();
 
   let _crate = NString::from(stable_mir::local_crate().name);
   let items = stable_mir::all_local_items();
   let program = Program::new(_crate, items);
 
-  let mut analyzer = Analyzer::new(program, ctx);
+  let mut analyzer = Analyzer::new(program, config);
   
   analyzer.do_analysis();
 

@@ -12,10 +12,12 @@ use crate::expr::op::BinOp;
 use crate::expr::op::UnOp;
 use crate::expr::predicates::*;
 use crate::expr::ty::*;
+use crate::solvers::solver::Solver;
 use crate::symbol::nstring::*;
 use crate::program::program::*;
 use crate::symbol::symbol::*;
 use crate::vc::vc::*;
+use crate::Config;
 use super::exec_state::*;
 use super::frame::*;
 use super::place_state::*;
@@ -41,15 +43,17 @@ pub struct Symex<'sym> {
   ctx: ExprCtx,
   exec_state: ExecutionState<'sym>,
   vc_system: VCSystem,
+  smt_solver: Solver<'sym>,
 }
 
 impl<'sym> Symex<'sym> {
-  pub fn new(program: &'sym mut Program, ctx: ExprCtx) -> Self {
+  pub fn new(program: &'sym mut Program, config: &'sym Config) -> Self {
     Symex {
       program,
-      ctx: ctx.clone(),
-      exec_state: ExecutionState::new(program, ctx),
+      ctx: config.expr_ctx(),
+      exec_state: ExecutionState::new(program, config.expr_ctx()),
       vc_system: VCSystem::default(),
+      smt_solver: Solver::new(config.solver_config())
     }
   }
   
