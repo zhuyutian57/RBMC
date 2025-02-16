@@ -17,7 +17,7 @@ use crate::symbol::nstring::*;
 use crate::program::program::*;
 use crate::symbol::symbol::*;
 use crate::vc::vc::*;
-use crate::Config;
+use crate::config::Config;
 use super::exec_state::*;
 use super::frame::*;
 use super::place_state::*;

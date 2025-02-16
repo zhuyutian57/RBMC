@@ -1,17 +1,23 @@
 
 use crate::expr::expr::*;
 use crate::expr::ty::*;
+use crate::solvers::solver::Result;
 use crate::NString;
 
-pub trait SolverApi {
-  fn add(&self, expr: Expr);
-  fn check(&self);
+pub(crate) trait Decide {
+  fn assert_expr(&self, expr: Expr);
+  fn push(&self);
+  fn pop(&self, n: u32);
+  fn reset(&self);
+  fn dec_check(&self) -> Result;
 }
 
-pub trait Convert<SmtSort, SmtAst> {
-
-  fn convert_sort(&self, ty: Expr) -> SmtSort {
-    todo!()
+pub(crate) trait Convert<SmtSort, SmtAst> {
+  fn convert_sort(&self, ty: Type) -> SmtSort {
+    if ty.is_bool() { return self.mk_bool_sort(); }
+    if ty.is_integer() { return self.mk_int_sort(); }
+    if ty.is_struct() { panic!("mk tuple"); }
+    panic!("Not support yet");
   }
 
   fn convert_ast(&self, expr: Expr) -> SmtAst {
@@ -80,7 +86,9 @@ pub trait Convert<SmtSort, SmtAst> {
   fn mk_smt_int(&self, i: u128) -> SmtAst; // TODO: set bigint
   
   // variable
-  fn mk_variable(&self, name: String, sort: SmtSort) -> SmtAst;
+  fn mk_bool_var(&self, name: String) -> SmtAst;
+  fn mk_int_var(&self, name: String) -> SmtAst;
+  fn mk_array_var(&self, name: String, domain: SmtSort, range: SmtSort) -> SmtAst;
 
   // expr
   fn mk_add(&self, lhs: SmtAst, rhs: SmtAst) -> SmtAst;
