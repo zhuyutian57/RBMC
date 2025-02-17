@@ -18,9 +18,12 @@ pub struct Bmc<'bmc> {
 
 impl<'bmc> Bmc<'bmc> {
   pub fn new(program: &'bmc Program, config: &'bmc Config) -> Self {
-    let vc_system = VCSysPtr::new(RefCell::new(VCSystem::default()));
-    let symex = Symex::new(program, config.expr_ctx(), vc_system.clone());
-    let runtime_solver = Solver::new(config.solver_config());
+    let vc_system =
+      VCSysPtr::new(RefCell::new(VCSystem::default()));
+    let symex =
+      Symex::new(program, config.expr_ctx(), vc_system.clone());
+    let runtime_solver =
+      Solver::new(program, config.solver_config());
     Bmc { program, config, symex, vc_system, runtime_solver }
   }
 
@@ -31,5 +34,6 @@ impl<'bmc> Bmc<'bmc> {
   }
 
   fn check_properties(&self) {
+    
   }
 }

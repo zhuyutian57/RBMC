@@ -6,6 +6,11 @@ use stable_mir::CrateDef;
 use stable_mir::mir::*;
 use stable_mir::ty::*;
 
+use crate::NString;
+
+pub type FieldDef = (NString, Type);
+pub type StructDef = (NString, Vec<FieldDef>);
+
 /// A wrapper for `Ty` in MIR
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Type(Ty);
@@ -51,7 +56,9 @@ impl Type {
     self.is_signed() || self.is_unsigned()
   }
 
-  pub fn is_struct(&self) -> bool { self.0.kind().is_struct() }
+  pub fn is_struct(&self) -> bool {
+    self.0.kind().is_struct() && !self.is_box() && !self.is_layout()
+  }
 
   pub fn is_ref(&self) -> bool { self.0.kind().is_ref() }
 
@@ -71,18 +78,28 @@ impl Type {
     (_def.0, _def.1.clone())
   }
 
-  pub fn variant(&self) -> Vec<Type> {
+  pub fn struct_name(&self) -> NString {
     assert!(self.is_struct());
-    let mut fields=  Vec::new();
     if let TyKind::RigidTy(rigid_ty) = self.0.kind() {
-      if let RigidTy::Adt(def, _) = rigid_ty {
-        for field in def.variants()[0].fields() {
-          fields.push(Type::from(field.ty()));
+      if let RigidTy::Adt(adt, _) = rigid_ty {
+        return NString::from(adt.trimmed_name());
+      }
+    }
+    panic!("Wrong struct type");
+  }
+
+  pub fn struct_def(&self) -> StructDef {
+    assert!(self.is_struct());
+    let mut def = (self.struct_name(), Vec::new());
+    if let TyKind::RigidTy(rigid_ty) = self.0.kind() {
+      if let RigidTy::Adt(adt, _) = rigid_ty {
+        for field in adt.variants()[0].fields() {
+          def.1.push((NString::from(field.name.clone()), Type::from(field.ty())));
         }
       }
     }
-    assert!(!fields.is_empty());
-    fields
+    assert!(!def.1.is_empty());
+    def
   }
 }
 

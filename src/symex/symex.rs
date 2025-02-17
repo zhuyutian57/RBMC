@@ -111,7 +111,8 @@ impl<'sym> Symex<'sym> {
       ConstantKind::Allocated(allocation) => {
         let ty = Type::from(mirconst.ty());
         let fields =
-          if ty.is_struct() { ty.variant() } else { vec![ty] };
+          if ty.is_struct() { ty.struct_def().1 }
+          else { vec![(NString::EMPTY, ty)] };
         let mut value_vec = Vec::new();
         let bytes = &allocation.bytes;
         for i in 0..fields.len() {
@@ -128,7 +129,7 @@ impl<'sym> Symex<'sym> {
               raw_bytes.push(x);
             }
           }
-          if fields[i].is_bool() {
+          if fields[i].1.is_bool() {
             assert!(raw_bytes.len() == 1);
             value_vec.push(Constant::Bool(raw_bytes[0] == 1));
             continue;
@@ -136,7 +137,7 @@ impl<'sym> Symex<'sym> {
           let (sign, value) =
             read_target_integer(
               raw_bytes.as_slice(),
-              fields[i].is_signed()
+              fields[i].1.is_signed()
             );
           value_vec.push(Constant::Integer(sign, value));
         }

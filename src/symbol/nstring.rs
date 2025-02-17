@@ -5,24 +5,30 @@ use std::fmt::Debug;
 use std::ops::Add;
 
 /// Used to manage String. Reduce allocation for String
-#[derive(Default)]
 struct StringManager {
   strings: Vec<String>,
-  string_map: HashMap<String, usize>,
+  map: HashMap<String, usize>,
 }
 
 impl StringManager {
+  fn new() -> Self {
+    let strings = vec!["".to_string()];
+    let mut map = HashMap::new();
+    map.insert("".to_string(), 0);
+    StringManager { strings, map }
+  }
+
   fn get_string(&self, i: usize) -> &String {
     assert!(i < self.strings.len());
     &self.strings[i]
   }
 
   fn get_id(&mut self, s: &String) -> usize {
-    if !self.string_map.contains_key(s) {
+    if !self.map.contains_key(s) {
       self.strings.push(s.clone());
-      self.string_map.insert(s.clone(), self.strings.len() - 1); 
+      self.map.insert(s.clone(), self.strings.len() - 1); 
     }
-    *self.string_map.get(s).expect("Do not exists")
+    *self.map.get(s).expect("Do not exists")
   }
 }
 
@@ -33,7 +39,7 @@ fn string_m() -> &'static mut StringManager {
   unsafe {
     if STRING_M.is_null() {
       STRING_M = alloc(Layout::new::<StringManager>()) as *mut StringManager;
-      std::ptr::write(STRING_M, StringManager::default());
+      std::ptr::write(STRING_M, StringManager::new());
     }
     
     &mut *STRING_M
@@ -45,10 +51,18 @@ fn string_m() -> &'static mut StringManager {
 pub(crate) struct NString(usize);
 
 impl NString {
+  pub const EMPTY: NString = NString(0);
+
   pub fn contains(&self, str: NString) -> bool {
     let string = string_m().get_string(self.0);
     let sub_str = string_m().get_string(str.0);
     string.contains(sub_str)
+  }
+  
+  /// During the symex, we do not delete any NString.
+  /// Thus, returning static str is safe.
+  pub fn as_str(&self) -> &'static str {
+    string_m().get_string(self.0).as_str()
   }
 }
 

@@ -107,6 +107,10 @@ impl Program {
     &self.functions[i]
   }
 
+  pub fn functions(&self) -> &Vec<Function> {
+    &self.functions
+  }
+
   pub fn size(&self) -> usize { self.functions.len() }
 
   pub fn function_idx(&self, name: NString) -> FunctionIdx {
