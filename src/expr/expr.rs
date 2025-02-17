@@ -1,5 +1,6 @@
 
-use std::fmt::{Debug, Error};
+use std::fmt::Debug;
+use std::fmt::Error;
 use std::hash::Hash;
 
 use crate::symbol::symbol::*;

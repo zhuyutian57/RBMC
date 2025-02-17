@@ -1,5 +1,8 @@
 
-use std::{alloc::{alloc, Layout}, collections::HashMap, fmt::Debug, ops::Add};
+use std::alloc::*;
+use std::collections::HashMap;
+use std::fmt::Debug;
+use std::ops::Add;
 
 /// Used to manage String. Reduce allocation for String
 #[derive(Default)]

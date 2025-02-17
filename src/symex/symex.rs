@@ -41,47 +41,38 @@ enum FnKind {
 pub struct Symex<'sym> {
   program : &'sym Program,
   ctx: ExprCtx,
-  exec_state: ExecutionState<'sym>,
-  vc_system: VCSystem,
-  smt_solver: Solver<'sym>,
+  pub(super) exec_state: ExecutionState<'sym>,
+  pub(super) vc_system: VCSysPtr,
 }
 
 impl<'sym> Symex<'sym> {
-  pub fn new(program: &'sym mut Program, config: &'sym Config) -> Self {
-    Symex {
-      program,
-      ctx: config.expr_ctx(),
-      exec_state: ExecutionState::new(program, config.expr_ctx()),
-      vc_system: VCSystem::default(),
-      smt_solver: Solver::new(config.solver_config())
-    }
-  }
-  
-  pub fn run(&mut self) {
-    self.program.show();
-    self.exec_state.setup();
-    self.symex();
+  pub fn new(
+    program: &'sym Program,
+    ctx: ExprCtx,
+    vc_system: VCSysPtr) -> Self {
+    let mut exec_state = ExecutionState::new(program, ctx.clone());
+    exec_state.setup();
+    Symex { program, ctx, exec_state, vc_system }
   }
 
-  fn symex(&mut self) {
-    while self.exec_state.can_exec() {
-      while let Some(pc) = self.top().cur_pc() {
-        // Merge states
-        if self.exec_state.merge_states(pc) {
-          println!(
-            "Enter {:?} - bb{pc}\n{:?}",
-            self.top().function().name(),
-            self.top().cur_state()
-          );
-          let bb = self.top().function().basicblock(pc);
-          self.symex_basicblock(bb);
-        } else {
-          self.top().inc_pc();
-        }
+  pub fn can_exec(&self) -> bool { self.exec_state.can_exec() }
+
+  pub fn symex(&mut self) {
+    while let Some(pc) = self.top().cur_pc() {
+      // Merge states
+      if self.exec_state.merge_states(pc) {
+        println!(
+          "Enter {:?} - bb{pc}\n{:?}",
+          self.top().function().name(),
+          self.top().cur_state()
+        );
+        let bb = self.top().function().basicblock(pc);
+        self.symex_basicblock(bb);
+      } else {
+        self.top().inc_pc();
       }
-      self.exec_state.pop_frame();
     }
-    println!("{:?}", self.vc_system);
+    self.exec_state.pop_frame();
   }
 
   fn top(&mut self) -> &mut Frame<'sym> {
@@ -112,7 +103,7 @@ impl<'sym> Symex<'sym> {
 
   /// Interface to do projection
   fn make_project(&mut self, place: &Place) -> Expr {    
-    Projector::new(&mut self.exec_state).project(place)
+    Projector::new(self).project(place)
   }
 
   fn make_mirconst(&mut self, mirconst: &MirConst) -> Expr {
@@ -281,7 +272,7 @@ impl<'sym> Symex<'sym> {
     if rhs.is_type() { return; }
 
     // Build VC system
-    self.vc_system.assign(new_guard, lhs, rhs);
+    self.vc_system.borrow_mut().assign(new_guard, lhs, rhs);
   }
 
   fn assign_rec(&mut self, lhs: Expr, rhs: Expr, guard: Expr) {

@@ -5,28 +5,28 @@ use crate::expr::expr::*;
 use crate::expr::predicates::*;
 use crate::expr::ty::Type;
 use crate::symbol::symbol::*;
+use crate::vc::vc::VCSystem;
 use super::exec_state::*;
+use super::symex::Symex;
 use super::value_set::*;
 
 /// Dereferencing a place
-pub(super) struct Projector<'sym, 'exec> {
-  _callback_state: &'sym mut ExecutionState<'exec>,
+pub(super) struct Projector<'a, 'sym> {
+  _callback_symex: &'a mut Symex<'sym>,
 }
 
-impl<'sym, 'exec> Projector<'sym, 'exec> {
-  pub fn new(state: &'sym mut ExecutionState<'exec>) -> Self {
-    Projector { _callback_state: state }
-  }
-
-  #[inline]
-  fn state_mut(&mut self) -> &mut ExecutionState<'exec> {
-    &mut self._callback_state
+impl<'a, 'sym> Projector<'a, 'sym> {
+  pub fn new(state: &'a mut Symex<'sym>) -> Self {
+    Projector { _callback_symex: state }
   }
 
   /// TODO: add assertion for dereference
   pub fn project(&mut self, place: &Place) -> Expr {
-
-    let mut ret = self.state_mut().current_local(place.local, Level::Level1);
+    let mut ret =
+      self
+        ._callback_symex
+        .exec_state
+        .current_local(place.local, Level::Level1);
     let ctx = ret.ctx.clone();
     ret = ctx.object(ret, Ownership::Own);
 
@@ -55,7 +55,11 @@ impl<'sym, 'exec> Projector<'sym, 'exec> {
 
   fn project_deref(&mut self, expr: Expr) -> Expr {
     let mut objects = ObjectSet::new();
-    self.state_mut().cur_state().get_value_set(expr.clone(), &mut objects);
+    self
+      ._callback_symex
+      .exec_state
+      .cur_state()
+      .get_value_set(expr.clone(), &mut objects);
     
     let ctx = expr.ctx.clone();
 

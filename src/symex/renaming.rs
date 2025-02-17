@@ -3,7 +3,8 @@ use std::collections::HashMap;
 
 use crate::expr::expr::*;
 use crate::expr::op::*;
-use crate::symbol::{symbol::*, nstring::*};
+use crate::symbol::symbol::*;
+use crate::symbol::nstring::*;
 
 /// Renaming for symbol
 /// 

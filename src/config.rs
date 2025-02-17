@@ -6,7 +6,6 @@ use crate::solvers::solver;
 use crate::ExprCtx;
 use crate::solvers;
 
-
 pub(crate) struct Config {
   expr_ctx: ExprCtx,
   solver_config: solvers::config::Config,

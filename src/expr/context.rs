@@ -1,5 +1,8 @@
+
+use std::cell::RefCell;
+use std:: collections::HashMap;
 use std::fmt::Debug;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::rc::Rc;
 
 use stable_mir::ty::*;
 

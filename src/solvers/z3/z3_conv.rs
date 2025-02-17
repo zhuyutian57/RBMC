@@ -1,9 +1,8 @@
 
 use z3;
-use z3::ast::Ast;
+use z3::ast::{Array, Ast, Bool, Dynamic, Int};
 use z3::Sort;
 use z3::SortKind;
-use z3::ast::{Array, Bool, Dynamic, Int};
 
 use crate::expr::expr::*;
 use crate::expr::ty::Type;

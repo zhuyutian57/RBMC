@@ -3,7 +3,8 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::vec;
 
-use crate::symbol::{symbol::*, nstring::*};
+use crate::symbol::symbol::*;
+use crate::symbol::nstring::*;
 use super::constant::*;
 use super::op::*;
 use super::predicates::*;

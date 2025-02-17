@@ -9,13 +9,14 @@ extern crate rustc_middle;
 extern crate rustc_smir;
 extern crate stable_mir;
 
+use bmc::bmc::Bmc;
 use rustc_smir::{run, rustc_internal};
 use std::cell::RefCell;
 use std::ops::ControlFlow;
 use std::process::ExitCode;
 use stable_mir::*;
 
-mod analysis;
+mod bmc;
 mod config;
 mod expr;
 mod program;
@@ -24,7 +25,6 @@ mod symbol;
 mod symex;
 mod vc;
 
-use crate::analysis::Analyzer;
 use crate::config::Config;
 use crate::expr::context::*;
 use crate::program::program::Program;
@@ -43,15 +43,15 @@ fn main() -> ExitCode {
 }
 
 fn start_demo() -> ControlFlow<()> {
+  // TODO: set config according to args
   let config = Config::new();
 
   let _crate = NString::from(stable_mir::local_crate().name);
   let items = stable_mir::all_local_items();
   let program = Program::new(_crate, items);
 
-  let mut analyzer = Analyzer::new(program, config);
-  
-  analyzer.do_analysis();
+  let mut bmc = Bmc::new(&program, &config);
+  bmc.do_bmc();
 
   ControlFlow::Break(())
 }
