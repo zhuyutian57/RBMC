@@ -143,7 +143,11 @@ impl<'sym> Symex<'sym> {
         }
 
         if ty.is_struct() {
-          Ok(self.ctx.constant_struct(value_vec, ty))
+          let mut struct_fields = Vec::new();
+          for i in 0..fields.len() {
+            struct_fields.push((value_vec[i].clone(), fields[i].1.clone()));
+          }
+          Ok(self.ctx.constant_struct(struct_fields, ty))
         } else {
           assert!(value_vec.len() == 1);
           if ty.is_bool() {

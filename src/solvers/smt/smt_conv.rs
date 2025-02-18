@@ -26,7 +26,7 @@ pub(crate) trait Convert<Sort, Ast> {
       let range = self.convert_sort(ty.array_range());
       return self.mk_array_sort(domain, range);
     }
-    if ty.is_struct() { self.convert_tuple_sort(ty); }
+    if ty.is_struct() { return self.convert_tuple_sort(ty); }
     panic!("Not support yet");
   }
 
@@ -44,15 +44,7 @@ pub(crate) trait Convert<Sort, Ast> {
 
     let sort = self.convert_sort(expr.ty());
     if expr.is_constant() {
-      return 
-        match expr.extract_constant() {
-          Constant::Bool(b)
-            => self.mk_smt_bool(b),
-          Constant::Integer(s, n)
-            => self.mk_smt_int(s, n),
-          Constant::Tuple(fields)
-            => todo!(),
-        };
+      return self.convert_constant(&expr.extract_constant(), expr.ty());
     }
     
     if expr.is_symbol() {
@@ -98,6 +90,8 @@ pub(crate) trait Convert<Sort, Ast> {
 
     todo!()
   }
+
+  fn convert_constant(&self, constant: &Constant, ty: Type) -> Ast;
 
   // tuple
   fn convert_tuple_sort(&self, ty: Type) -> Sort;

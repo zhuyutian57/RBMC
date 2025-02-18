@@ -1,7 +1,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use z3;
+use z3::{self, SortKind};
 use z3::ast::Ast;
 
 use crate::expr::constant::{Constant, Sign};
@@ -54,7 +54,7 @@ impl<'ctx> Solve for Z3Conv<'ctx> {
     }
     
     for struct_type in struct_types {
-      let struct_def = self.mk_tuple_sort(struct_type);
+      let struct_def = self.create_tuple_sort(struct_type);
       let sort_name = NString::from(struct_def.sort.to_string());
       self.tuple_sorts.insert(sort_name, struct_def);
     }
@@ -94,8 +94,27 @@ impl<'ctx> Solve for Z3Conv<'ctx> {
 }
 
 impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
+  fn convert_constant(&self, constant: &Constant, ty: Type) -> z3::ast::Dynamic<'ctx> {
+    match constant {
+      Constant::Bool(b) => self.mk_smt_bool(*b),
+      Constant::Integer(s, i) => self.mk_smt_int(*s, *i),
+      Constant::Struct(constants) => {
+        let mut fields = Vec::new();
+        for (c, st) in constants {
+          fields.push(self.convert_constant(c, st.clone()));
+        }
+        let sort = self.convert_sort(ty);
+        let dtname = NString::from(sort.to_string());
+        let dtsort =
+          self.tuple_sorts.get(&dtname).expect("Something wrong");
+        self.create_tuple(fields, dtsort)
+      },
+    }
+      
+  }
+
   fn convert_tuple_sort(&self, ty: Type) -> z3::Sort<'ctx> {
-    let dtsort = self.mk_tuple_sort(ty);
+    let dtsort = self.create_tuple_sort(ty);
     dtsort.sort
   }
 
@@ -260,7 +279,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 }
 
 impl<'ctx> Tuple<z3::DatatypeSort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
-  fn mk_tuple_sort(&self, ty: Type) -> z3::DatatypeSort<'ctx> {
+  fn create_tuple_sort(&self, ty: Type) -> z3::DatatypeSort<'ctx> {
     assert!(ty.is_struct());
     let def = ty.struct_def();
 
@@ -275,5 +294,19 @@ impl<'ctx> Tuple<z3::DatatypeSort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx
     z3::DatatypeBuilder::new(&self.z3_ctx, dt_name.clone())
       .variant(dt_name.as_str(), fields)
       .finish()
+  }
+  
+  fn create_tuple(
+    &self,
+    fields: Vec<z3::ast::Dynamic<'ctx>>,
+    sort: &z3::DatatypeSort<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
+    assert!(sort.variants.len() == 1);
+    let f = &sort.variants[0].constructor;
+    let mut args = Vec::new();
+    for arg in fields.iter() { 
+      args.push(arg as &dyn Ast<'_>);
+    }
+    f.apply(args.as_slice())
   }
 }

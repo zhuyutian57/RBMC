@@ -252,8 +252,8 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn constant_struct(&self, fields: Vec<Constant>, ty: Type) -> Expr {
-    let terminal = Terminal::Constant(Constant::Tuple(fields));
+  fn constant_struct(&self, fields: Vec<StructField>, ty: Type) -> Expr {
+    let terminal = Terminal::Constant(Constant::Struct(fields));
     let terminal_id = self.borrow_mut().add_terminal(terminal);
     let kind = NodeKind::Terminal(terminal_id);
     let new_node = Node::new(kind, ty);

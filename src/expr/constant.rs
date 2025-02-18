@@ -1,12 +1,15 @@
 use std::fmt::Debug;
 
+use super::ty::Type;
+
 pub type Sign = bool;
+pub type StructField = (Constant, Type);
 
 #[derive(Clone)]
 pub enum Constant {
   Bool(bool),
   Integer(Sign, u128),
-  Tuple(Vec<Constant>),
+  Struct(Vec<StructField>),
 }
 
 impl Constant {
@@ -24,9 +27,9 @@ impl Constant {
     }
   }
 
-  pub fn fields(&self) -> Vec<Constant> {
+  pub fn fields(&self) -> &Vec<StructField> {
     match self {
-      Constant::Tuple(f) => f.clone(),
+      Constant::Struct(f) => f,
       _ => panic!("Not struct constant"),
     }
   }
@@ -39,7 +42,7 @@ impl Debug for Constant {
         f.write_fmt(format_args!("{b}")),
       Constant::Integer(s, v) =>
         f.write_fmt(format_args!("{}{v}",if *s { "-" } else { "" })),
-      Constant::Tuple(v) =>
+      Constant::Struct(v) =>
         write!(f, "{v:?}"),
     }
   }

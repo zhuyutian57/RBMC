@@ -43,11 +43,11 @@ impl Type {
   }
 
   pub fn is_unsigned(&self) -> bool {
-    !self.0.kind().is_signed()
+    self.0.kind().is_unit()
   }
 
   pub fn is_integer(&self) -> bool {
-    self.is_signed() || self.is_unsigned()
+    self.0.kind().is_integral()
   }
 
   pub fn is_array(&self) -> bool {
