@@ -21,7 +21,12 @@ pub(crate) trait Convert<Sort, Ast> {
   fn convert_sort(&self, ty: Type) -> Sort {
     if ty.is_bool() { return self.mk_bool_sort(); }
     if ty.is_integer() { return self.mk_int_sort(); }
-    if ty.is_struct() { panic!("mk tuple"); }
+    if ty.is_array() {
+      let domain = self.convert_sort(ty.array_domain());
+      let range = self.convert_sort(ty.array_range());
+      return self.mk_array_sort(domain, range);
+    }
+    if ty.is_struct() { self.convert_tuple_sort(ty); }
     panic!("Not support yet");
   }
 
@@ -46,7 +51,7 @@ pub(crate) trait Convert<Sort, Ast> {
           Constant::Integer(s, n)
             => self.mk_smt_int(s, n),
           Constant::Tuple(fields)
-            => self.mk_smt_tuple(fields, sort),
+            => todo!(),
         };
     }
     
@@ -94,16 +99,19 @@ pub(crate) trait Convert<Sort, Ast> {
     todo!()
   }
 
+  // tuple
+  fn convert_tuple_sort(&self, ty: Type) -> Sort;
+
   // sort
   fn mk_bool_sort(&self) -> Sort;
   fn mk_int_sort(&self) -> Sort;
+  fn mk_array_sort(&self, domain: Sort, range: Sort) -> Sort;
 
   // constant
   fn mk_smt_bool(&self, b: bool) -> Ast;
   fn mk_smt_int(&self, sign: Sign, i: u128) -> Ast;
-  fn mk_smt_tuple(&self, fields: Vec<Constant>, sort: Sort) -> Ast;
-  
-  // variable
+
+  // symbol
   fn mk_smt_symbol(&self, name: NString, sort: Sort) -> Ast;
   fn mk_bool_symbol(&self, name: NString) -> Ast;
   fn mk_int_symbol(&self, name: NString) -> Ast;
@@ -125,5 +133,4 @@ pub(crate) trait Convert<Sort, Ast> {
   fn mk_or(&self, lhs: Ast, rhs: Ast) -> Ast;
   fn mk_not(&self, operand: Ast) -> Ast;
   fn mk_implies(&self, cond: Ast, conseq: Ast) -> Ast;
-
 }

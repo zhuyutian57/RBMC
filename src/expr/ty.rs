@@ -75,6 +75,10 @@ impl Type {
   }
 
   pub fn array_domain(&self) -> Type {
+    Type::unsigned_type(UintTy::Usize)
+  }
+
+  pub fn array_range(&self) -> Type {
     if let TyKind::RigidTy(r) = self.0.kind() {
       if let RigidTy::Array(t, ..) = r {
         return Type::from(t);
@@ -146,7 +150,8 @@ impl Debug for Type {
         }
       },
       RigidTy::Array(ty, c) => {
-        write!(f, "Array_{ty:?}-{c:?}")
+        let t = Type::from(*ty);
+        write!(f, "Array({t:?})")
       },
       RigidTy::RawPtr(ty, m) => {
         let t = Type::from(*ty);
