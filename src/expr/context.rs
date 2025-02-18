@@ -253,7 +253,7 @@ impl ExprBuilder for ExprCtx {
   }
 
   fn constant_struct(&self, fields: Vec<Constant>, ty: Type) -> Expr {
-    let terminal = Terminal::Constant(Constant::Struct(fields));
+    let terminal = Terminal::Constant(Constant::Tuple(fields));
     let terminal_id = self.borrow_mut().add_terminal(terminal);
     let kind = NodeKind::Terminal(terminal_id);
     let new_node = Node::new(kind, ty);

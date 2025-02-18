@@ -32,7 +32,11 @@ impl<'bmc> Bmc<'bmc> {
     self.check_properties();
   }
 
-  fn check_properties(&self) {
-    println!("{:?}", *self.vc_system.borrow());
+  fn check_properties(&mut self) {
+    // println!("{:?}", *self.vc_system.borrow());
+    for vc in self.vc_system.borrow().iter() {
+      println!("{vc:?}");
+      self.runtime_solver.assert(vc);
+    }
   }
 }

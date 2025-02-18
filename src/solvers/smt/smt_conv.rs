@@ -1,4 +1,6 @@
 
+use crate::expr::constant::Constant;
+use crate::expr::constant::Sign;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::program::program::Program;
@@ -7,6 +9,7 @@ use crate::NString;
 
 pub(crate) trait Solve {
   fn init(&mut self, program: &Program);
+  fn assert_assign(&self, lhs: Expr, rhs: Expr);
   fn assert_expr(&self, expr: Expr);
   fn push(&self);
   fn pop(&self, n: u32);
@@ -34,13 +37,26 @@ pub(crate) trait Convert<Sort, Ast> {
       }
     }
 
-    // let mut a;
-    if expr.is_terminal() {
-
+    let sort = self.convert_sort(expr.ty());
+    if expr.is_constant() {
+      return 
+        match expr.extract_constant() {
+          Constant::Bool(b)
+            => self.mk_smt_bool(b),
+          Constant::Integer(s, n)
+            => self.mk_smt_int(s, n),
+          Constant::Tuple(fields)
+            => self.mk_smt_tuple(fields, sort),
+        };
+    }
+    
+    if expr.is_symbol() {
+      let name = expr.extract_symbol().name();
+      return self.mk_smt_symbol(name, sort);
     }
 
     if expr.is_address_of() {
-
+      todo!()
     }
 
     if expr.is_binary() {
@@ -81,16 +97,18 @@ pub(crate) trait Convert<Sort, Ast> {
   // sort
   fn mk_bool_sort(&self) -> Sort;
   fn mk_int_sort(&self) -> Sort;
-  fn mk_array_sort(&self, domain: Sort, range: Sort) -> Sort;
 
   // constant
   fn mk_smt_bool(&self, b: bool) -> Ast;
-  fn mk_smt_int(&self, i: u128) -> Ast; // TODO: set bigint
+  fn mk_smt_int(&self, sign: Sign, i: u128) -> Ast;
+  fn mk_smt_tuple(&self, fields: Vec<Constant>, sort: Sort) -> Ast;
   
   // variable
-  fn mk_smt_var(&self, name: NString, ty: Type) -> Ast;
-  fn mk_bool_var(&self, name: NString) -> Ast;
-  fn mk_int_var(&self, name: NString) -> Ast;
+  fn mk_smt_symbol(&self, name: NString, sort: Sort) -> Ast;
+  fn mk_bool_symbol(&self, name: NString) -> Ast;
+  fn mk_int_symbol(&self, name: NString) -> Ast;
+  fn mk_array_symbol(&self, name: NString, sort: Sort) -> Ast;
+  fn mk_tuple_symbol(&self, name: NString, sort: Sort) -> Ast;
 
   // expr
   fn mk_add(&self, lhs: Ast, rhs: Ast) -> Ast;

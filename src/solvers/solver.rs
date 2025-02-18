@@ -2,6 +2,7 @@
 use std::marker::PhantomData;
 
 use crate::program::program::Program;
+use crate::vc::vc::*;
 
 use super::config::Config;
 use super::smt::smt_conv::*;
@@ -23,5 +24,14 @@ impl<'ctx> Solver<'ctx> {
     let mut runtime_solver = Box::new(Z3Conv::new(config.to_z3_ctx()));
     runtime_solver.init(program);
     Solver { solver: runtime_solver }
+  }
+
+  pub fn assert(&mut self, vc: &Vc) {
+    match vc.kind() {
+      VcKind::Assign(lhs, rhs)
+        => self.solver.assert_assign(lhs, rhs),
+      VcKind::Assert(expr) | VcKind::Assume(expr)
+        => self.solver.assert_expr(expr),
+    }
   }
 }

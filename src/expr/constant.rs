@@ -6,7 +6,7 @@ pub type Sign = bool;
 pub enum Constant {
   Bool(bool),
   Integer(Sign, u128),
-  Struct(Vec<Constant>),
+  Tuple(Vec<Constant>),
 }
 
 impl Constant {
@@ -26,7 +26,7 @@ impl Constant {
 
   pub fn fields(&self) -> Vec<Constant> {
     match self {
-      Constant::Struct(f) => f.clone(),
+      Constant::Tuple(f) => f.clone(),
       _ => panic!("Not struct constant"),
     }
   }
@@ -39,7 +39,7 @@ impl Debug for Constant {
         f.write_fmt(format_args!("{b}")),
       Constant::Integer(s, v) =>
         f.write_fmt(format_args!("{}{v}",if *s { "-" } else { "" })),
-      Constant::Struct(v) =>
+      Constant::Tuple(v) =>
         write!(f, "{v:?}"),
     }
   }

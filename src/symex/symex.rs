@@ -185,6 +185,10 @@ impl<'sym> Symex<'sym> {
         let address_of = self.ctx.address_of(place, ty);
         Ok(address_of)
       },
+      Rvalue::Aggregate(k, operands) => {
+        println!("{k:?}\n{:?}", operands.len());
+        todo!()
+      },
       Rvalue::BinaryOp(mir_op, lop, rop) => {
         let op = BinOp::from(mir_op.clone());
         let lhs = self.make_operand(lop);

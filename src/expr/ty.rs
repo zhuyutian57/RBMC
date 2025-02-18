@@ -38,17 +38,11 @@ impl Type {
 
   pub fn is_bool(&self) -> bool { self.0.kind().is_bool() }
 
-  pub fn is_fn(&self) -> bool { self.0.kind().is_fn() }
-
-  pub fn is_layout(&self) -> bool { format!("{self:?}") == "Layout" }
-
   pub fn is_signed(&self) -> bool {
-    assert!(self.0.kind().is_integral());
     self.0.kind().is_signed()
   }
 
   pub fn is_unsigned(&self) -> bool {
-    assert!(self.0.kind().is_integral());
     !self.0.kind().is_signed()
   }
 
@@ -56,6 +50,15 @@ impl Type {
     self.is_signed() || self.is_unsigned()
   }
 
+  pub fn is_array(&self) -> bool {
+    self.0.kind().is_array()
+  }
+
+  pub fn is_fn(&self) -> bool { self.0.kind().is_fn() }
+
+  pub fn is_layout(&self) -> bool { format!("{self:?}") == "Layout" }
+
+  
   pub fn is_struct(&self) -> bool {
     self.0.kind().is_struct() && !self.is_box() && !self.is_layout()
   }
@@ -71,6 +74,15 @@ impl Type {
     self.is_ref() || self.is_ptr() || self.is_box()
   }
 
+  pub fn array_domain(&self) -> Type {
+    if let TyKind::RigidTy(r) = self.0.kind() {
+      if let RigidTy::Array(t, ..) = r {
+        return Type::from(t);
+      }
+    }
+    panic!("Wrong struct type");
+  }
+
   pub fn fn_def(&self) -> (FnDef, GenericArgs) {
     assert!(self.is_fn());
     let kind = self.0.kind();
@@ -80,8 +92,8 @@ impl Type {
 
   pub fn struct_name(&self) -> NString {
     assert!(self.is_struct());
-    if let TyKind::RigidTy(rigid_ty) = self.0.kind() {
-      if let RigidTy::Adt(adt, _) = rigid_ty {
+    if let TyKind::RigidTy(r) = self.0.kind() {
+      if let RigidTy::Adt(adt, _) = r {
         return NString::from(adt.trimmed_name());
       }
     }
@@ -91,8 +103,8 @@ impl Type {
   pub fn struct_def(&self) -> StructDef {
     assert!(self.is_struct());
     let mut def = (self.struct_name(), Vec::new());
-    if let TyKind::RigidTy(rigid_ty) = self.0.kind() {
-      if let RigidTy::Adt(adt, _) = rigid_ty {
+    if let TyKind::RigidTy(r) = self.0.kind() {
+      if let RigidTy::Adt(adt, _) = r {
         for field in adt.variants()[0].fields() {
           def.1.push((NString::from(field.name.clone()), Type::from(field.ty())));
         }
@@ -133,6 +145,9 @@ impl Debug for Type {
           write!(f, "{name}")
         }
       },
+      RigidTy::Array(ty, c) => {
+        write!(f, "Array_{ty:?}-{c:?}")
+      },
       RigidTy::RawPtr(ty, m) => {
         let t = Type::from(*ty);
         write!(f, "RawPtr({t:?}, {m:?})")
@@ -157,5 +172,11 @@ impl From<Ty> for Type {
   fn from(value: Ty) -> Self {
     assert!(matches!(value.kind(), TyKind::RigidTy(_)));
     Type(value)
+  }
+}
+
+impl ToString for Type {
+  fn to_string(&self) -> String {
+    format!("{self:?}")
   }
 }

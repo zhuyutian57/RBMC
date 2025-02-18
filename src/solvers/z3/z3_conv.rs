@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 use z3;
 use z3::ast::Ast;
 
+use crate::expr::constant::{Constant, Sign};
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
 use crate::program::program::Program;
@@ -15,7 +16,8 @@ use crate::NString;
 
 pub struct Z3Conv<'ctx> {
   z3_ctx: &'ctx z3::Context,
-  tuples: HashMap<Type, z3::DatatypeSort<'ctx>>,
+  array_sorts: HashMap<NString, (z3::Sort<'ctx>, z3::Sort<'ctx>)>,
+  tuple_sorts: HashMap<NString, z3::DatatypeSort<'ctx>>,
   z3_solver: z3::Solver<'ctx>,
 }
 
@@ -24,7 +26,8 @@ impl<'ctx> Z3Conv<'ctx> {
     let z3_solver = z3::Solver::new(z3_ctx);
     Z3Conv {
       z3_ctx,
-      tuples: HashMap::default(),
+      array_sorts: HashMap::default(),
+      tuple_sorts: HashMap::default(),
       z3_solver
     }
   }
@@ -32,17 +35,38 @@ impl<'ctx> Z3Conv<'ctx> {
 
 impl<'ctx> Solve for Z3Conv<'ctx> {
   fn init(&mut self, program: &Program) {
+    let mut array_types = HashSet::new();
     let mut struct_types = HashSet::new();
     for func in program.functions() {
       for local in func.locals() {
         let ty = Type::from(local.ty);
+        if ty.is_array() { array_types.insert(ty); }
         if ty.is_struct() { struct_types.insert(ty); }
       }
     }
+
+    for array_type in array_types {
+      let (domain, range) = self.mk_array_sort(array_type);
+      let array_name = NString::from(array_type.to_string());
+      self.array_sorts.insert(array_name, (domain, range));
+    }
+    
     for struct_type in struct_types {
       let struct_def = self.mk_tuple_sort(struct_type);
-      self.tuples.insert(struct_type, struct_def);
+      let sort_name = NString::from(struct_def.sort.to_string());
+      self.tuple_sorts.insert(sort_name, struct_def);
     }
+  }
+
+  fn assert_assign(&self, lhs: Expr, rhs: Expr) {
+    let a = self.convert_ast(lhs);
+    println!("{a:?}");
+    let b = self.convert_ast(rhs);
+    
+    let res = a._eq(&b);
+    println!("{res:?}");
+
+    self.z3_solver.assert(&res);
   }
 
   fn assert_expr(&self, expr: Expr) {
@@ -74,31 +98,57 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     z3::Sort::int(&self.z3_ctx)
   }
 
-  fn mk_array_sort(&self, domain: z3::Sort<'ctx>, range: z3::Sort<'ctx>) -> z3::Sort<'ctx> {
-    z3::Sort::array(&self.z3_ctx, &domain, &range)
-  }
-
   fn mk_smt_bool(&self, b: bool) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(z3::ast::Bool::from_bool(&self.z3_ctx, b))
   }
 
-  fn mk_smt_int(&self, i: u128) -> z3::ast::Dynamic<'ctx> {
-    z3::ast::Dynamic::from(z3::ast::Int::from_u64(&self.z3_ctx, i as u64))
+  fn mk_smt_int(&self, sign: Sign, i: u128) -> z3::ast::Dynamic<'ctx> {
+    let num = if sign { "-" } else { "" }.to_string() + i.to_string().as_str();
+    z3::ast::Dynamic::from(
+      z3::ast::Int::from_str(&self.z3_ctx, &num)
+      .expect("Wrong integer")
+    )
   }
 
-  fn mk_smt_var(&self, name: NString, ty: Type) -> z3::ast::Dynamic<'ctx> {
-    if ty.is_bool() { return self.mk_bool_var(name); }
-    if ty.is_integer() { return self.mk_int_var(name); }
-    if ty.is_struct() { return self.mk_tuple_var(name, ty); }
-    panic!("Not support yet")
+  fn mk_smt_tuple(
+    &self,
+    fields: Vec<Constant>,
+    sort: z3::Sort<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
+    todo!()
   }
 
-  fn mk_bool_var(&self, name: NString) -> z3::ast::Dynamic<'ctx> {
+  fn mk_smt_symbol(&self, name: NString, sort: z3::Sort<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    match sort.kind() {
+      z3::SortKind::Bool => self.mk_bool_symbol(name),
+      z3::SortKind::Int => self.mk_int_symbol(name),
+      z3::SortKind::Array => {
+        let domain = sort.array_domain();
+        todo!()
+      },
+      z3::SortKind::Datatype => self.mk_tuple_symbol(name, sort),
+      _ => panic!("Not support yet"),
+    }
+  }
+
+  fn mk_bool_symbol(&self, name: NString) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(z3::ast::Bool::new_const(&self.z3_ctx, name.to_string()))
   }
 
-  fn mk_int_var(&self, name: NString) -> z3::ast::Dynamic<'ctx> {
+  fn mk_int_symbol(&self, name: NString) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(z3::ast::Int::new_const(&self.z3_ctx, name.to_string()))
+  }
+
+  fn mk_array_symbol(&self, name: NString, sort: z3::Sort<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    assert!(sort.is_array());
+    todo!()
+  }
+
+  fn mk_tuple_symbol(&self, name: NString, sort: z3::Sort<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    assert!(sort.kind() == z3::SortKind::Datatype);
+    z3::ast::Dynamic::from(
+      z3::ast::Datatype::new_const(&self.z3_ctx, name.to_string(), &sort)
+    )
   }
 
   fn mk_add(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
@@ -202,13 +252,12 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   }
 }
 
-impl<'ctx> Array<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
-  fn mk_array_sort(&self, ty: Type) -> z3::Sort<'ctx> {
-    todo!()
-  }
-
-  fn mk_array_var(&self, name: NString, ty: Type) -> z3::ast::Dynamic<'ctx> {
-    todo!()
+impl<'ctx> Array<(z3::Sort<'ctx>, z3::Sort<'ctx>), z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
+  fn mk_array_sort(&self, ty: Type) -> (z3::Sort<'ctx>, z3::Sort<'ctx>) {
+    assert!(ty.is_array());
+    let domain = self.mk_int_sort();
+    let range = self.convert_sort(ty.array_domain());
+    (domain, range)
   }
 }
 
@@ -228,9 +277,5 @@ impl<'ctx> Tuple<z3::DatatypeSort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx
     z3::DatatypeBuilder::new(&self.z3_ctx, dt_name.clone())
       .variant(dt_name.as_str(), fields)
       .finish()
-  }
-
-  fn mk_tuple_var(&self, name: NString, ty: Type) -> z3::ast::Dynamic<'ctx> {
-          todo!()
   }
 }
