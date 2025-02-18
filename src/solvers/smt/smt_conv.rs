@@ -88,9 +88,9 @@ pub(crate) trait Convert<Sort, Ast> {
   fn mk_smt_int(&self, i: u128) -> Ast; // TODO: set bigint
   
   // variable
+  fn mk_smt_var(&self, name: NString, ty: Type) -> Ast;
   fn mk_bool_var(&self, name: NString) -> Ast;
   fn mk_int_var(&self, name: NString) -> Ast;
-  fn mk_array_var(&self, name: NString, domain: Sort, range: Sort) -> Ast;
 
   // expr
   fn mk_add(&self, lhs: Ast, rhs: Ast) -> Ast;

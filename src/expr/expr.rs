@@ -213,12 +213,7 @@ impl Debug for Expr {
       }
 
       if self.is_object() {
-        let o = self.extract_ownership();
-        return
-          match o {
-            Ownership::Own => write!(f, "{o:?}({:?})", sub_exprs[0]),
-            _ => write!(f, "{:?}", sub_exprs[0]),
-          };
+        return write!(f, "{:?}", sub_exprs[0]);
       }
 
       if self.is_index_of() {

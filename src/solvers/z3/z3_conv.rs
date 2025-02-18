@@ -2,13 +2,12 @@
 use std::collections::{HashMap, HashSet};
 
 use z3;
-use z3::ast::{Array, Ast, Bool, Dynamic, Int};
-use z3::Sort;
-use z3::SortKind;
+use z3::ast::Ast;
 
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
 use crate::program::program::Program;
+use crate::solvers::smt::smt_array::Array;
 use crate::solvers::smt::smt_conv::*;
 use crate::solvers::smt::smt_tuple::Tuple;
 use crate::solvers::solver::Result;
@@ -16,7 +15,7 @@ use crate::NString;
 
 pub struct Z3Conv<'ctx> {
   z3_ctx: &'ctx z3::Context,
-  tuples: HashMap<NString, z3::DatatypeSort<'ctx>>,
+  tuples: HashMap<Type, z3::DatatypeSort<'ctx>>,
   z3_solver: z3::Solver<'ctx>,
 }
 
@@ -41,9 +40,8 @@ impl<'ctx> Solve for Z3Conv<'ctx> {
       }
     }
     for struct_type in struct_types {
-      let struct_def = self.create_tuple(struct_type);
-      let struct_name = NString::from(struct_def.sort.to_string());
-      self.tuples.insert(struct_name, struct_def);
+      let struct_def = self.mk_tuple_sort(struct_type);
+      self.tuples.insert(struct_type, struct_def);
     }
   }
 
@@ -67,119 +65,112 @@ impl<'ctx> Solve for Z3Conv<'ctx> {
   }
 }
 
-impl<'ctx> Convert<Sort<'ctx>, Dynamic<'ctx>> for Z3Conv<'ctx> {
-  fn mk_bool_sort(&self) -> Sort<'ctx> {
-    Sort::bool(&self.z3_ctx)
+impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
+  fn mk_bool_sort(&self) -> z3::Sort<'ctx> {
+    z3::Sort::bool(&self.z3_ctx)
   }
 
-  fn mk_int_sort(&self) -> Sort<'ctx> {
-    Sort::int(&self.z3_ctx)
+  fn mk_int_sort(&self) -> z3::Sort<'ctx> {
+    z3::Sort::int(&self.z3_ctx)
   }
 
-  fn mk_array_sort(&self, domain: Sort<'ctx>, range: Sort<'ctx>) -> Sort<'ctx> {
-    Sort::array(&self.z3_ctx, &domain, &range)
+  fn mk_array_sort(&self, domain: z3::Sort<'ctx>, range: z3::Sort<'ctx>) -> z3::Sort<'ctx> {
+    z3::Sort::array(&self.z3_ctx, &domain, &range)
   }
 
-  fn mk_smt_bool(&self, b: bool) -> Dynamic<'ctx> {
-    Dynamic::from(z3::ast::Bool::from_bool(&self.z3_ctx, b))
+  fn mk_smt_bool(&self, b: bool) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(z3::ast::Bool::from_bool(&self.z3_ctx, b))
   }
 
-  fn mk_smt_int(&self, i: u128) -> Dynamic<'ctx> {
-    Dynamic::from(z3::ast::Int::from_u64(&self.z3_ctx, i as u64))
+  fn mk_smt_int(&self, i: u128) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(z3::ast::Int::from_u64(&self.z3_ctx, i as u64))
   }
 
-  fn mk_bool_var(&self, name: NString) -> Dynamic<'ctx> {
-    Dynamic::from(z3::ast::Bool::new_const(&self.z3_ctx, name.to_string()))
+  fn mk_smt_var(&self, name: NString, ty: Type) -> z3::ast::Dynamic<'ctx> {
+    if ty.is_bool() { return self.mk_bool_var(name); }
+    if ty.is_integer() { return self.mk_int_var(name); }
+    if ty.is_struct() { return self.mk_tuple_var(name, ty); }
+    panic!("Not support yet")
   }
 
-  fn mk_int_var(&self, name: NString) -> Dynamic<'ctx> {
-    Dynamic::from(z3::ast::Int::new_const(&self.z3_ctx, name.to_string()))
+  fn mk_bool_var(&self, name: NString) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(z3::ast::Bool::new_const(&self.z3_ctx, name.to_string()))
   }
 
-  fn mk_array_var(
-    &self,
-    name: NString,
-    domain: Sort<'ctx>,
-    range: Sort<'ctx>) -> Dynamic<'ctx> {
-    Dynamic::from(
-      z3::ast::Array::new_const(
-        &self.z3_ctx, 
-        name.to_string(),
-        &domain, &range
-      )
-    )
+  fn mk_int_var(&self, name: NString) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(z3::ast::Int::new_const(&self.z3_ctx, name.to_string()))
   }
 
-  fn mk_add(&self, lhs: Dynamic<'ctx>, rhs: Dynamic<'ctx>) -> Dynamic<'ctx> {
-    Dynamic::from(
+  fn mk_add(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer") +
       rhs.as_int().expect("rhs is not integer")
     )
   }
 
-  fn mk_sub(&self, lhs: Dynamic<'ctx>, rhs: Dynamic<'ctx>) -> Dynamic<'ctx> {
-    Dynamic::from(
+  fn mk_sub(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer") -
       rhs.as_int().expect("rhs is not integer")
     )
   }
 
-  fn mk_mul(&self, lhs: Dynamic<'ctx>, rhs: Dynamic<'ctx>) -> Dynamic<'ctx> {
-    Dynamic::from(
+  fn mk_mul(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer") *
       rhs.as_int().expect("rhs is not integer")
     )
   }
 
-  fn mk_div(&self, lhs: Dynamic<'ctx>, rhs: Dynamic<'ctx>) -> Dynamic<'ctx> {
-    Dynamic::from(
+  fn mk_div(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer") /
       rhs.as_int().expect("rhs is not integer")
     )
   }
 
-  fn mk_eq(&self, lhs: Dynamic<'ctx>, rhs: Dynamic<'ctx>) -> Dynamic<'ctx> {
-    Dynamic::from(
+  fn mk_eq(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer")
         ._eq(&rhs.as_int().expect("rhs is not integer"))
     )
   }
 
-  fn mk_ne(&self, lhs: Dynamic<'ctx>, rhs: Dynamic<'ctx>) -> Dynamic<'ctx> {
-    Dynamic::from(Bool::not(&self.mk_eq(lhs, rhs).as_bool().unwrap()))
+  fn mk_ne(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(z3::ast::Bool::not(&self.mk_eq(lhs, rhs).as_bool().unwrap()))
   }
 
-  fn mk_ge(&self, lhs: Dynamic<'ctx>, rhs: Dynamic<'ctx>) -> Dynamic<'ctx> {
-    Dynamic::from(
+  fn mk_ge(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer")
         .ge(&rhs.as_int().expect("rhs is not integer"))
     )
   }
 
-  fn mk_gt(&self, lhs: Dynamic<'ctx>, rhs: Dynamic<'ctx>) -> Dynamic<'ctx> {
-    Dynamic::from(
+  fn mk_gt(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer")
         .gt(&rhs.as_int().expect("rhs is not integer"))
     )
   }
 
-  fn mk_le(&self, lhs: Dynamic<'ctx>, rhs: Dynamic<'ctx>) -> Dynamic<'ctx> {
-    Dynamic::from(
+  fn mk_le(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer")
         .le(&rhs.as_int().expect("rhs is not integer"))
     )
   }
 
-  fn mk_lt(&self, lhs: Dynamic<'ctx>, rhs: Dynamic<'ctx>) -> Dynamic<'ctx> {
-    Dynamic::from(
+  fn mk_lt(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer")
         .lt(&rhs.as_int().expect("rhs is not integer"))
     )
   }
 
-  fn mk_and(&self, lhs: Dynamic<'ctx>, rhs: Dynamic<'ctx>) -> Dynamic<'ctx> {
-    Dynamic::from(
-      Bool::and(
+  fn mk_and(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(
+      z3::ast::Bool::and(
         &self.z3_ctx, 
         &[&lhs.as_bool().expect("lhs is not bool"),
         &rhs.as_bool().expect("rhs is not bool")]
@@ -187,9 +178,9 @@ impl<'ctx> Convert<Sort<'ctx>, Dynamic<'ctx>> for Z3Conv<'ctx> {
     )
   }
 
-  fn mk_or(&self, lhs: Dynamic<'ctx>, rhs: Dynamic<'ctx>) -> Dynamic<'ctx> {
-    Dynamic::from(
-      Bool::or(
+  fn mk_or(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(
+      z3::ast::Bool::or(
         &self.z3_ctx, 
         &[&lhs.as_bool().expect("lhs is not bool"),
         &rhs.as_bool().expect("rhs is not bool")]
@@ -197,12 +188,12 @@ impl<'ctx> Convert<Sort<'ctx>, Dynamic<'ctx>> for Z3Conv<'ctx> {
     )
   }
 
-  fn mk_not(&self, operand: Dynamic<'ctx>) -> Dynamic<'ctx> {
-    Dynamic::from(operand.as_bool().expect("operand is no bool").not())
+  fn mk_not(&self, operand: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(operand.as_bool().expect("operand is no bool").not())
   }
 
-  fn mk_implies(&self, cond: Dynamic<'ctx>, conseq: Dynamic<'ctx>) -> Dynamic<'ctx> {
-    Dynamic::from(
+  fn mk_implies(&self, cond: z3::ast::Dynamic<'ctx>, conseq: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(
       cond
         .as_bool()
         .expect("cond is not bool")
@@ -211,8 +202,18 @@ impl<'ctx> Convert<Sort<'ctx>, Dynamic<'ctx>> for Z3Conv<'ctx> {
   }
 }
 
-impl<'ctx> Tuple<z3::DatatypeSort<'ctx>> for Z3Conv<'ctx> {
-  fn create_tuple(&self, ty: Type) -> z3::DatatypeSort<'ctx> {
+impl<'ctx> Array<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
+  fn mk_array_sort(&self, ty: Type) -> z3::Sort<'ctx> {
+    todo!()
+  }
+
+  fn mk_array_var(&self, name: NString, ty: Type) -> z3::ast::Dynamic<'ctx> {
+    todo!()
+  }
+}
+
+impl<'ctx> Tuple<z3::DatatypeSort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
+  fn mk_tuple_sort(&self, ty: Type) -> z3::DatatypeSort<'ctx> {
     assert!(ty.is_struct());
     let def = ty.struct_def();
 
@@ -227,5 +228,9 @@ impl<'ctx> Tuple<z3::DatatypeSort<'ctx>> for Z3Conv<'ctx> {
     z3::DatatypeBuilder::new(&self.z3_ctx, dt_name.clone())
       .variant(dt_name.as_str(), fields)
       .finish()
+  }
+
+  fn mk_tuple_var(&self, name: NString, ty: Type) -> z3::ast::Dynamic<'ctx> {
+          todo!()
   }
 }

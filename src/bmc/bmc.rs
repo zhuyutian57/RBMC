@@ -29,11 +29,10 @@ impl<'bmc> Bmc<'bmc> {
 
   pub fn do_bmc(&mut self) {
     while self.symex.can_exec() { self.symex.symex(); }
-    println!("{:?}", self.vc_system);
     self.check_properties();
   }
 
   fn check_properties(&self) {
-    
+    println!("{:?}", *self.vc_system.borrow());
   }
 }
