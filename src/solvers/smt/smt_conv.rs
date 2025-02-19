@@ -62,8 +62,8 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
     }
 
     if expr.is_binary() {
-      let lhs = args[0].clone();
-      let rhs = args[1].clone();
+      let lhs = &args[0];
+      let rhs = &args[1];
       return 
         match expr.extract_bin_op() {
           BinOp::Add => self.mk_add(lhs, rhs),
@@ -82,10 +82,9 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
     }
 
     if expr.is_unary() {
-      let operand = args[0].clone();
       return
         match expr.extract_un_op() {
-          UnOp::Not => self.mk_not(operand),
+          UnOp::Not => self.mk_not(&args[0]),
           _ => panic!("Not support"),
         };
     }
@@ -103,7 +102,7 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
     }
 
     if expr.is_ite() {
-
+      
     }
 
     if expr.is_same_object() {
@@ -136,19 +135,19 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
   fn mk_tuple_symbol(&self, name: NString, sort: Sort) -> Ast;
 
   // expr
-  fn mk_add(&self, lhs: Ast, rhs: Ast) -> Ast;
-  fn mk_sub(&self, lhs: Ast, rhs: Ast) -> Ast;
-  fn mk_mul(&self, lhs: Ast, rhs: Ast) -> Ast;
-  fn mk_div(&self, lhs: Ast, rhs: Ast) -> Ast;
-  fn mk_eq(&self, lhs: Ast, rhs: Ast) -> Ast;
-  fn mk_ne(&self, lhs: Ast, rhs: Ast) -> Ast;
-  fn mk_ge(&self, lhs: Ast, rhs: Ast) -> Ast;
-  fn mk_gt(&self, lhs: Ast, rhs: Ast) -> Ast;
-  fn mk_le(&self, lhs: Ast, rhs: Ast) -> Ast;
-  fn mk_lt(&self, lhs: Ast, rhs: Ast) -> Ast;
-  fn mk_and(&self, lhs: Ast, rhs: Ast) -> Ast;
-  fn mk_or(&self, lhs: Ast, rhs: Ast) -> Ast;
-  fn mk_not(&self, operand: Ast) -> Ast;
-  fn mk_implies(&self, cond: Ast, conseq: Ast) -> Ast;
-  fn mk_ite(&self, cond: Ast, true_value: Ast, false_value: Ast) -> Ast;
+  fn mk_add(&self, lhs: &Ast, rhs: &Ast) -> Ast;
+  fn mk_sub(&self, lhs: &Ast, rhs: &Ast) -> Ast;
+  fn mk_mul(&self, lhs: &Ast, rhs: &Ast) -> Ast;
+  fn mk_div(&self, lhs: &Ast, rhs: &Ast) -> Ast;
+  fn mk_eq(&self, lhs: &Ast, rhs: &Ast) -> Ast;
+  fn mk_ne(&self, lhs: &Ast, rhs: &Ast) -> Ast;
+  fn mk_ge(&self, lhs: &Ast, rhs: &Ast) -> Ast;
+  fn mk_gt(&self, lhs: &Ast, rhs: &Ast) -> Ast;
+  fn mk_le(&self, lhs: &Ast, rhs: &Ast) -> Ast;
+  fn mk_lt(&self, lhs: &Ast, rhs: &Ast) -> Ast;
+  fn mk_and(&self, lhs: &Ast, rhs: &Ast) -> Ast;
+  fn mk_or(&self, lhs: &Ast, rhs: &Ast) -> Ast;
+  fn mk_not(&self, operand: &Ast) -> Ast;
+  fn mk_implies(&self, cond: &Ast, conseq: &Ast) -> Ast;
+  fn mk_ite(&self, cond: &Ast, true_value: &Ast, false_value: &Ast) -> Ast;
 }
