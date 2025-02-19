@@ -28,12 +28,16 @@ impl Type {
     Type::from(Ty::unsigned_ty(ty))
   }
 
-  pub fn ptr_type(pointee_ty: Ty, mutability: Mutability) -> Self {
-    Type::from(Ty::new_ptr(pointee_ty, mutability))
+  pub fn unit_type() -> Self {
+    Type::from(Ty::new_tuple(&[]))
   }
 
-  pub fn ref_type(reg: Region, pointee_ty: Ty, mutability: Mutability) -> Self {
-    Type::from(Ty::new_ref(reg, pointee_ty, mutability))
+  pub fn ptr_type(pointee_type: Type, mutability: Mutability) -> Self {
+    Type::from(Ty::new_ptr(pointee_type.0, mutability))
+  }
+
+  pub fn ref_type(reg: Region, pointee_type: Type, mutability: Mutability) -> Self {
+    Type::from(Ty::new_ref(reg, pointee_type.0, mutability))
   }
 
   pub fn is_bool(&self) -> bool { self.0.kind().is_bool() }
@@ -48,6 +52,10 @@ impl Type {
 
   pub fn is_integer(&self) -> bool {
     self.0.kind().is_integral()
+  }
+
+  pub fn is_unit(&self) -> bool {
+    self.0.kind().is_unit()
   }
 
   pub fn is_array(&self) -> bool {

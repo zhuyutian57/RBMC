@@ -180,12 +180,8 @@ impl Hash for Expr {
 impl Debug for Expr {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     if self.is_terminal() {
-      let mut struct_ty = "".to_string();
-      if self.is_constant() && self.ty().is_struct() {
-        struct_ty = format!(" as {:?} ", self.ty());
-      }
       write!(
-        f, "{:?}{struct_ty}",
+        f, "{:?}",
         self.ctx.borrow().extract_terminal(self.id).unwrap()
       )
     } else {

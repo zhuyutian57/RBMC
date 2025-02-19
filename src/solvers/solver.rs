@@ -15,7 +15,7 @@ pub(crate) enum Result {
 }
 
 pub struct Solver<'ctx> {
-  solver: Box<dyn Solve + 'ctx>,
+  solver: Box<dyn SmtSolver + 'ctx>,
 }
 
 impl<'ctx> Solver<'ctx> {
