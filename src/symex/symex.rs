@@ -291,7 +291,7 @@ impl<'sym> Symex<'sym> {
     }
 
     if lhs.is_object() {
-      let new_lhs = lhs.extract_inner_object();
+      let new_lhs = lhs.extract_inner_expr();
       self.assign_rec(new_lhs, rhs, guard);
       return;
     }
@@ -316,7 +316,7 @@ impl<'sym> Symex<'sym> {
     }
 
     if lhs.is_index_of() {
-      let new_lhs = lhs.extract_inner_object();
+      let new_lhs = lhs.extract_object();
       let index = lhs.extract_index();
       let new_rhs = self.ctx.store(new_lhs.clone(), index, rhs.clone());
       self.assign_rec(new_lhs, new_rhs, guard);

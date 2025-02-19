@@ -9,8 +9,8 @@ use crate::NString;
 
 pub(crate) trait SmtSolver {
   fn init(&mut self, program: &Program);
-  fn assert_assign(&self, lhs: Expr, rhs: Expr);
-  fn assert_expr(&self, expr: Expr);
+  fn assert_assign(&mut self, lhs: Expr, rhs: Expr);
+  fn assert_expr(&mut self, expr: Expr);
   fn push(&self);
   fn pop(&self, n: u32);
   fn reset(&self);
@@ -32,7 +32,7 @@ pub(crate) trait Convert<Sort, Ast> {
   fn convert_array_sort(&self, ty: Type) -> Sort;
   fn convert_tuple_sort(&self, ty: Type) -> Sort;
 
-  fn convert_ast(&self, expr: Expr) -> Ast {
+  fn convert_ast(&mut self, expr: Expr) -> Ast {
 
     // cache SMT ast
 
@@ -56,7 +56,8 @@ pub(crate) trait Convert<Sort, Ast> {
     }
 
     if expr.is_address_of() {
-      return self.convert_address_of(expr.extract_object());
+      let object = expr.extract_object();
+      return self.convert_address_of(object);
     }
 
     if expr.is_binary() {
@@ -96,7 +97,7 @@ pub(crate) trait Convert<Sort, Ast> {
 
   fn convert_constant(&self, constant: &Constant, ty: Type) -> Ast;
   fn convert_symbol(&self, name: NString, ty: Type) -> Ast;
-  fn convert_address_of(&self, object: Expr) -> Ast;
+  fn convert_address_of(&mut self, object: Expr) -> Ast;
 
   // sort
   fn mk_bool_sort(&self) -> Sort;

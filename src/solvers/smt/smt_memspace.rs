@@ -1,0 +1,68 @@
+
+use std::collections::HashMap;
+
+use crate::expr::expr::Expr;
+
+pub type ObjectSpace<Ast> = (Ast, (Ast, Ast));
+
+/// The space of an object is identified by `(ident, (base, len))`,
+/// where `ident` is a natural variable for identification and
+/// `(base, len)` is used to model the size of the space.
+/// Moreover, it's not neccessary th make `ident = base`.
+pub struct PointerLogic<Ast: Clone> {
+  object_spaces: HashMap<Expr, ObjectSpace<Ast>>,
+}
+
+impl<Ast: Clone> PointerLogic<Ast> {
+  pub fn new() -> Self {
+    PointerLogic { object_spaces: HashMap::new() }
+  }
+
+  pub fn contains(&self, object: &Expr) -> bool {
+    self.object_spaces.contains_key(&object)
+  }
+
+  pub fn set_object_space(
+    &mut self,
+    object: Expr,
+    space: ObjectSpace<Ast>) {
+    assert!(!self.contains(&object));
+    self.object_spaces.insert(object, space);
+  }
+
+  pub fn get_object_space_ident(&self, object: &Expr) -> Ast {
+    self
+      .object_spaces
+      .get(object)
+      .expect(format!("Object space dose not have {object:?}").as_str())
+      .0
+      .clone()
+  }
+
+  pub fn get_object_space_base(&self, object: &Expr) -> Ast {
+    self
+      .object_spaces
+      .get(object)
+      .expect(format!("Object space dose not have {object:?}").as_str())
+      .1
+      .0
+      .clone()
+  }
+
+  pub fn get_object_space_len(&self, object: &Expr) -> Ast {
+    self
+      .object_spaces
+      .get(object)
+      .expect(format!("Object space dose not have {object:?}").as_str())
+      .1
+      .1
+      .clone()
+  }
+}
+
+pub trait MemSpace<Sort, Ast> {
+  fn set_pointer_logic(&mut self);
+  fn init_pointer_object(&mut self, object: Expr);
+  fn convert_identifier_space(&mut self, ident: Expr) -> Ast;
+  fn mk_pointer(&self, ident: Ast, offset: Ast) -> Ast;
+}

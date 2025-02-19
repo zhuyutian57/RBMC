@@ -12,17 +12,21 @@ use crate::expr::constant::*;
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
 use crate::program::program::Program;
-use crate::solvers::smt::smt_array::Array;
+use crate::solvers::smt::smt_array::*;
 use crate::solvers::smt::smt_conv::*;
-use crate::solvers::smt::smt_tuple::Tuple;
+use crate::solvers::smt::smt_memspace::*;
+use crate::solvers::smt::smt_tuple::*;
 use crate::solvers::solver::Result;
 use crate::NString;
 
 pub struct Z3Conv<'ctx> {
   z3_ctx: &'ctx z3::Context,
+  z3_solver: z3::Solver<'ctx>,
   array_sorts: HashMap<Type, (z3::Sort<'ctx>, z3::Sort<'ctx>)>,
   tuple_sorts: HashMap<Type, z3::DatatypeSort<'ctx>>,
-  z3_solver: z3::Solver<'ctx>,
+  /// Use for making pointer tuple
+  pointer_type: Type,
+  pointer_logic: PointerLogic<z3::ast::Dynamic<'ctx>>,
 }
 
 impl<'ctx> Z3Conv<'ctx> {
@@ -30,35 +34,39 @@ impl<'ctx> Z3Conv<'ctx> {
     let z3_solver = z3::Solver::new(z3_ctx);
     Z3Conv {
       z3_ctx,
+      z3_solver,
       array_sorts: HashMap::default(),
       tuple_sorts: HashMap::default(),
-      z3_solver
+      pointer_type: Type::ptr_type(Type::unit_type(), Mutability::Not),
+      pointer_logic: PointerLogic::new(),
     }
+  }
+
+  fn assert(&self, e: z3::ast::Dynamic<'ctx>) {
+    println!("{e:?}");
+    self.z3_solver.assert(&e.as_bool().expect("the assertion is not bool"));
   }
 }
 
 impl<'ctx> SmtSolver for Z3Conv<'ctx> {
   fn init(&mut self, program: &Program) {
-    // self.set_arrays();
-    self.set_tuples();
+    self.set_pointer_logic();
     self.set_arrays_from_program(program);
     self.set_tuples_from_program(program);
   }
 
-  fn assert_assign(&self, lhs: Expr, rhs: Expr) {
+  fn assert_assign(&mut self, lhs: Expr, rhs: Expr) {
     let a = self.convert_ast(lhs);
     let b = self.convert_ast(rhs);
     
     let res = a._eq(&b);
 
-    println!("{res:?}");
-
-    self.z3_solver.assert(&res);
+    self.assert(z3::ast::Dynamic::from(res));
   }
 
-  fn assert_expr(&self, expr: Expr) {
-    let a = self.convert_ast(expr);
-    self.z3_solver.assert(&a.as_bool().expect("the assertion is not bool"));
+  fn assert_expr(&mut self, expr: Expr) {
+    let e = self.convert_ast(expr);
+    self.assert(e);
   }
 
   fn push(&self) { self.z3_solver.push(); }
@@ -79,11 +87,9 @@ impl<'ctx> SmtSolver for Z3Conv<'ctx> {
 impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn convert_pointer_sort(&self, ty: Type) -> z3::Sort<'ctx> {
     assert!(ty.is_any_ptr());
-    let unit_ptr_type =
-      Type::ptr_type(Type::unit_type(), Mutability::Not);
     self
       .tuple_sorts
-      .get(&unit_ptr_type)
+      .get(&self.pointer_type)
       .expect("Not pointer?")
       .sort
       .clone()
@@ -143,13 +149,20 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     panic!("{ty:?} symbol is not support?")
   }
 
-  fn convert_address_of(&self, object: Expr) -> z3::ast::Dynamic<'ctx> {
+  fn convert_address_of(&mut self, object: Expr) -> z3::ast::Dynamic<'ctx> {
     assert!(object.is_object());
-    // add index_of later
-    let symbol = object.extract_inner_object();
-    assert!(symbol.is_symbol());
-    let ty = object.ty();
-    todo!()
+    let inner_expr = object.extract_inner_expr();
+    if inner_expr.is_index_of() {
+      todo!()
+    }
+
+    if inner_expr.is_symbol() {
+      let ident = self.convert_identifier_space(inner_expr);
+      let offset = self.mk_smt_int(false, 0);
+      return self.mk_pointer(ident, offset);
+    }
+
+    panic!("Do not support address_of {object:?}")
   }
 
   fn mk_bool_sort(&self) -> z3::Sort<'ctx> {
@@ -318,10 +331,6 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
 
 impl<'ctx> Array<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
-  fn set_arrays(&mut self) {
-      todo!()
-  }
-
   fn set_arrays_from_program(&mut self, program: &Program) {
     let mut array_types = HashSet::new();
     for func in program.functions() {
@@ -339,27 +348,6 @@ impl<'ctx> Array<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 }
 
 impl<'ctx> Tuple<z3::DatatypeSort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
-  fn set_tuples(&mut self) {
-    // A pointer is a tuple (base, offset)
-    let pointer_tuple_sort =
-      z3::DatatypeBuilder
-        ::new(&self.z3_ctx, "pointer")
-        .variant(
-          "pointer",
-          vec![
-            ("base", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx))),
-            ("offset", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx)))
-            ]
-          )
-        .finish();
-    let void = Type::unit_type();
-    println!("is unit ? {}", void.is_unit());
-    // Use `*unit` as key for storage.
-    let unit_ptr_type =
-      Type::ptr_type(Type::unit_type(), Mutability::Not);
-    self.tuple_sorts.insert(unit_ptr_type, pointer_tuple_sort);
-  }
-
   fn set_tuples_from_program(&mut self, program: &Program) {
     let mut struct_types = HashSet::new();
     for func in program.functions() {
@@ -404,5 +392,69 @@ impl<'ctx> Tuple<z3::DatatypeSort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx
       args.push(arg as &dyn Ast<'_>);
     }
     f.apply(args.as_slice())
+  }
+}
+
+impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
+  fn set_pointer_logic(&mut self) {
+    // A pointer is a tuple (base, offset)
+    let pointer_tuple_sort =
+      z3::DatatypeBuilder
+        ::new(&self.z3_ctx, "pointer")
+        .variant(
+          "pointer",
+          vec![
+            ("base", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx))),
+            ("offset", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx)))
+            ]
+          )
+        .finish();
+    self.tuple_sorts.insert(self.pointer_type, pointer_tuple_sort);
+  }
+
+  fn init_pointer_object(&mut self, object: Expr) {
+    assert!(!self.pointer_logic.contains(&object));
+    assert!(object.is_symbol());
+
+    // Use l0 as identifier
+    let space_ident = NString::from(object.extract_symbol().ident());
+    let space_base = space_ident + "_base";
+    // The size is field-level
+    let space_len =
+      if object.ty().is_struct() {
+        object.ty().struct_def().1.len()
+      } else { 1 };
+
+    let ident = self.mk_int_symbol(space_ident);
+    let base = self.mk_int_symbol(space_base);
+    let len = self.mk_smt_int(false, space_len as u128);
+
+    // Ident is greater than 0
+    self.assert(self.mk_gt(ident.clone(), self.mk_smt_int(false, 0)));
+    // base is also greater than 0
+    self.assert(self.mk_gt(base.clone(), self.mk_smt_int(false, 0)));
+
+    // TODO: set disjoint relationship
+    
+    self.pointer_logic.set_object_space(object, (ident, (base, len)));
+  }
+  
+  fn convert_identifier_space(&mut self, ident: Expr) -> z3::ast::Dynamic<'ctx> {
+    assert!(ident.is_symbol());
+    if self.pointer_logic.contains(&ident) {
+      return self.pointer_logic.get_object_space_ident(&ident);
+    }
+    self.init_pointer_object(ident.clone());
+    self.pointer_logic.get_object_space_ident(&ident)
+  }
+
+  fn mk_pointer(
+    &self,
+    ident: z3::ast::Dynamic<'ctx>,
+    offset: z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
+    let sort = self.tuple_sorts.get(&self.pointer_type).unwrap();
+    let args = [&ident as &dyn Ast, &offset as &dyn Ast];
+    sort.variants[0].constructor.apply(&args)
   }
 }

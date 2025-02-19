@@ -227,7 +227,7 @@ impl<'exec> ExecutionState<'exec> {
     }
 
     if place.is_object() {
-      let inner_object = place.extract_inner_object();
+      let inner_object = place.extract_inner_expr();
       self.update_place_state(inner_object, state);
       return;
     }

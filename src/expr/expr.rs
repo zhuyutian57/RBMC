@@ -65,11 +65,8 @@ impl Expr {
   }
 
   pub fn extract_object(&self) -> Expr {
-    assert!(self.is_address_of());
-    self
-      .sub_exprs()
-      .expect("Wrong address_of")[0]
-      .clone()
+    assert!(self.is_address_of() || self.is_index_of());
+    self.sub_exprs().unwrap().remove(0)
   }
 
   pub fn extract_bin_op(&self) -> BinOp {
@@ -92,8 +89,8 @@ impl Expr {
     self.sub_exprs().unwrap().remove(1).extract_layout()
   }
 
-  pub fn extract_inner_object(&self) -> Expr {
-    assert!(self.is_object() || self.is_index_of());
+  pub fn extract_inner_expr(&self) -> Expr {
+    assert!(self.is_object());
     self.sub_exprs().unwrap().remove(0)
   }
 
@@ -106,7 +103,7 @@ impl Expr {
     if self.is_object() {
       self.ctx.borrow().extract_ownership(self.id).unwrap()
     } else if self.is_index_of() {
-      self.extract_inner_object().extract_ownership()
+      self.extract_object().extract_ownership()
     } else {
       panic!("Do not have ownership:\n{self:?}")
     }
