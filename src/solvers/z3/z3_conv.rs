@@ -178,7 +178,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   }
 
   fn mk_smt_int(&self, sign: Sign, i: u128) -> z3::ast::Dynamic<'ctx> {
-    let num = if sign { "-" } else { "" }.to_string() + i.to_string().as_str();
+    let num =
+      if sign { "-" } else { "" }.to_string() + i.to_string().as_str();
     z3::ast::Dynamic::from(
       z3::ast::Int::from_str(&self.z3_ctx, &num)
       .expect("Wrong integer")
@@ -235,67 +236,107 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     )
   }
 
-  fn mk_sub(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+  fn mk_sub(
+    &self,
+    lhs: z3::ast::Dynamic<'ctx>,
+    rhs: z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer") -
       rhs.as_int().expect("rhs is not integer")
     )
   }
 
-  fn mk_mul(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+  fn mk_mul(
+    &self,
+    lhs: z3::ast::Dynamic<'ctx>,
+    rhs: z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer") *
       rhs.as_int().expect("rhs is not integer")
     )
   }
 
-  fn mk_div(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+  fn mk_div(
+    &self,
+    lhs: z3::ast::Dynamic<'ctx>,
+    rhs: z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer") /
       rhs.as_int().expect("rhs is not integer")
     )
   }
 
-  fn mk_eq(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+  fn mk_eq(
+    &self,
+    lhs: z3::ast::Dynamic<'ctx>,
+    rhs: z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer")
         ._eq(&rhs.as_int().expect("rhs is not integer"))
     )
   }
 
-  fn mk_ne(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+  fn mk_ne(
+    &self,
+    lhs: z3::ast::Dynamic<'ctx>,
+    rhs: z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(z3::ast::Bool::not(&self.mk_eq(lhs, rhs).as_bool().unwrap()))
   }
 
-  fn mk_ge(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+  fn mk_ge(
+    &self,
+    lhs: z3::ast::Dynamic<'ctx>,
+    rhs: z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer")
         .ge(&rhs.as_int().expect("rhs is not integer"))
     )
   }
 
-  fn mk_gt(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+  fn mk_gt(
+    &self,
+    lhs: z3::ast::Dynamic<'ctx>,
+    rhs: z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer")
         .gt(&rhs.as_int().expect("rhs is not integer"))
     )
   }
 
-  fn mk_le(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+  fn mk_le(
+    &self,
+    lhs: z3::ast::Dynamic<'ctx>,
+    rhs: z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer")
         .le(&rhs.as_int().expect("rhs is not integer"))
     )
   }
 
-  fn mk_lt(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+  fn mk_lt(
+    &self,
+    lhs: z3::ast::Dynamic<'ctx>,
+    rhs: z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer")
         .lt(&rhs.as_int().expect("rhs is not integer"))
     )
   }
 
-  fn mk_and(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+  fn mk_and(
+    &self,
+    lhs: z3::ast::Dynamic<'ctx>,
+    rhs: z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       z3::ast::Bool::and(
         &self.z3_ctx, 
@@ -305,7 +346,11 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     )
   }
 
-  fn mk_or(&self, lhs: z3::ast::Dynamic<'ctx>, rhs: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+  fn mk_or(
+    &self,
+    lhs: z3::ast::Dynamic<'ctx>,
+    rhs: z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       z3::ast::Bool::or(
         &self.z3_ctx, 
@@ -315,17 +360,36 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     )
   }
 
-  fn mk_not(&self, operand: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+  fn mk_not(
+    &self,
+    operand: z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(operand.as_bool().expect("operand is no bool").not())
   }
 
-  fn mk_implies(&self, cond: z3::ast::Dynamic<'ctx>, conseq: z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+  fn mk_implies(
+    &self,
+    cond: z3::ast::Dynamic<'ctx>,
+    conseq: z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       cond
         .as_bool()
         .expect("cond is not bool")
         .implies(&conseq.as_bool().expect("conseq is not bool"))
     )
+  }
+
+  fn mk_ite(
+    &self,
+    cond: z3::ast::Dynamic<'ctx>,
+    true_value: z3::ast::Dynamic<'ctx>,
+    false_value: z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
+    cond
+      .as_bool()
+      .expect("condition must be bool")
+      .ite(&true_value, &false_value)
   }
 }
 

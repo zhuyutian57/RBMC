@@ -2,6 +2,7 @@
 use crate::expr::constant::Constant;
 use crate::expr::constant::Sign;
 use crate::expr::expr::*;
+use crate::expr::op::*;
 use crate::expr::ty::*;
 use crate::program::program::Program;
 use crate::solvers::solver::Result;
@@ -17,7 +18,7 @@ pub(crate) trait SmtSolver {
   fn dec_check(&self) -> Result;
 }
 
-pub(crate) trait Convert<Sort, Ast> {
+pub(crate) trait Convert<Sort, Ast: Clone> {
   fn convert_sort(&self, ty: Type) -> Sort {
     if ty.is_bool() { return self.mk_bool_sort(); }
     if ty.is_integer() { return self.mk_int_sort(); }
@@ -61,11 +62,32 @@ pub(crate) trait Convert<Sort, Ast> {
     }
 
     if expr.is_binary() {
-
+      let lhs = args[0].clone();
+      let rhs = args[1].clone();
+      return 
+        match expr.extract_bin_op() {
+          BinOp::Add => self.mk_add(lhs, rhs),
+          BinOp::Sub => self.mk_sub(lhs, rhs),
+          BinOp::Mul => self.mk_mul(lhs, rhs),
+          BinOp::Div => self.mk_div(lhs, rhs),
+          BinOp::Eq => self.mk_eq(lhs, rhs),
+          BinOp::Ne => self.mk_ne(lhs, rhs),
+          BinOp::Ge => self.mk_ge(lhs, rhs),
+          BinOp::Gt => self.mk_gt(lhs, rhs),
+          BinOp::Le => self.mk_le(lhs, rhs),
+          BinOp::Lt => self.mk_lt(lhs, rhs),
+          BinOp::And => self.mk_and(lhs, rhs),
+          BinOp::Or => self.mk_or(lhs, rhs),
+        };
     }
 
     if expr.is_unary() {
-
+      let operand = args[0].clone();
+      return
+        match expr.extract_un_op() {
+          UnOp::Not => self.mk_not(operand),
+          _ => panic!("Not support"),
+        };
     }
 
     if expr.is_cast() {
@@ -73,7 +95,7 @@ pub(crate) trait Convert<Sort, Ast> {
     }
 
     if expr.is_object() {
-
+      return self.convert_ast(expr.extract_inner_expr());
     }
 
     if expr.is_index_of() {
@@ -128,4 +150,5 @@ pub(crate) trait Convert<Sort, Ast> {
   fn mk_or(&self, lhs: Ast, rhs: Ast) -> Ast;
   fn mk_not(&self, operand: Ast) -> Ast;
   fn mk_implies(&self, cond: Ast, conseq: Ast) -> Ast;
+  fn mk_ite(&self, cond: Ast, true_value: Ast, false_value: Ast) -> Ast;
 }
