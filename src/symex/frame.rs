@@ -61,12 +61,12 @@ impl<'func> Frame<'func> {
   }
 
   pub fn inc_pc(&mut self) {
-    println!(
-      "Done {:?} - bb{}\n{:?}",
-      self.function.name(),
-      self.pc,
-      self.cur_state
-    );
+    // println!(
+    //   "Done {:?} - bb{}\n{:?}",
+    //   self.function.name(),
+    //   self.pc,
+    //   self.cur_state
+    // );
     self.pc += 1;
   }
 

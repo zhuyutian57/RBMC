@@ -26,14 +26,16 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
     if ty.is_bool() { return self.mk_bool_sort(); }
     if ty.is_integer() { return self.mk_int_sort(); }
 
-    if ty.is_any_ptr() { return self.convert_pointer_sort(ty); }
-    if ty.is_array() { return self.convert_array_sort(ty); }
+    if ty.is_any_ptr() { return self.mk_pointer_sort(); }
+    if ty.is_array() {
+      let domain = self.convert_sort(ty.array_domain());
+      let range = self.convert_sort(ty.array_range());
+      return self.mk_array_sort(&domain, &range);
+    }
     if ty.is_struct() { return self.convert_tuple_sort(ty); }
     panic!("Not support yet");
   }
 
-  fn convert_pointer_sort(&self, ty: Type) -> Sort;
-  fn convert_array_sort(&mut self, ty: Type) -> Sort;
   fn convert_tuple_sort(&mut self, ty: Type) -> Sort;
 
   fn convert_ast(&mut self, expr: Expr) -> Ast {
@@ -129,17 +131,75 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
     }
   }
 
-  fn convert_constant(&mut self, constant: &Constant, ty: Type) -> Ast;
-  fn convert_symbol(&mut self, name: NString, ty: Type) -> Ast;
-  fn convert_address_of(&mut self, object: Expr) -> Ast;
+  fn convert_constant(&mut self, constant: &Constant, ty: Type) -> Ast {
+    match constant {
+      Constant::Bool(b) => self.mk_smt_bool(*b),
+      Constant::Integer(s, i) => self.mk_smt_int(*s, *i),
+      Constant::Array(c, t) => {
+        let domain = self.convert_sort(ty.array_domain());
+        let val = self.convert_constant(&**c,*t);
+        self.mk_smt_const_array(&domain, &val)
+      },
+      Constant::Struct(constants) => {
+        let mut fields = Vec::new();
+        for (c, st) in constants {
+          fields.push(self.convert_constant(c, st.clone()));
+        }
+        self.convert_tuple(fields, ty)
+      },
+    }
+  }
+
+  fn convert_pointer(&self, ident: Ast, offset: Ast) -> Ast;
+  fn convert_tuple(&mut self, fields: Vec<Ast>, ty: Type) -> Ast;
+
+  fn convert_symbol(&mut self, name: NString, ty: Type) -> Ast {
+    if ty.is_bool() { return self.mk_bool_symbol(name); }
+    if ty.is_integer() { return self.mk_int_symbol(name); }
+    if ty.is_any_ptr() {
+      let sort = self.mk_pointer_sort();
+      return self.mk_tuple_symbol(name, sort);
+    }
+    if ty.is_array() {
+      let domain = self.convert_sort(ty.array_domain());
+      let range = self.convert_sort(ty.array_range());
+      return self.mk_array_symbol(name, domain, range);
+    }
+    if ty.is_struct() {
+      let sort = self.convert_tuple_sort(ty);
+      return self.mk_tuple_symbol(name, sort)
+    }
+    panic!("{ty:?} symbol is not support?")
+  }
+
+  fn convert_address_of(&mut self, object: Expr) -> Ast {
+    assert!(object.is_object());
+    let inner_expr = object.extract_inner_expr();
+    if inner_expr.is_index_of() {
+      todo!()
+    }
+
+    if inner_expr.is_symbol() {
+      let ident = self.convert_object_space(inner_expr);
+      let offset = self.mk_smt_int(false, 0);
+      return self.convert_pointer(ident, offset);
+    }
+
+    panic!("Do not support address_of {object:?}")
+  }
+
+  fn convert_object_space(&mut self, ident: Expr) -> Ast;
 
   // sort
   fn mk_bool_sort(&self) -> Sort;
   fn mk_int_sort(&self) -> Sort;
+  fn mk_pointer_sort(&self) -> Sort;
+  fn mk_array_sort(&mut self, domain: &Sort, range: &Sort) -> Sort;
 
   // constant
   fn mk_smt_bool(&self, b: bool) -> Ast;
   fn mk_smt_int(&self, sign: Sign, i: u128) -> Ast;
+  fn mk_smt_const_array(&self, domain: &Sort, val: &Ast) -> Ast;
 
   // symbol
   fn mk_bool_symbol(&self, name: NString) -> Ast;

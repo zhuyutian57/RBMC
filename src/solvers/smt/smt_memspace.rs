@@ -64,8 +64,8 @@ pub trait MemSpace<Sort, Ast> {
   fn set_pointer_logic(&mut self);
   fn init_pointer_object(&mut self, object: Expr);
 
-  fn convert_identifier_space(&mut self, ident: Expr) -> Ast;
+  fn create_object_space(&mut self, ident: Expr) -> Ast;
 
-  fn mk_pointer_sort(&self, ty: Type) -> Sort;
-  fn mk_pointer(&self, ident: Ast, offset: Ast) -> Ast;
+  fn pointer_sort(&self) -> Sort;
+  fn create_pointer(&self, ident: Ast, offset: Ast) -> Ast;
 }
