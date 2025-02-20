@@ -19,6 +19,9 @@ pub(crate) trait SmtSolver {
 }
 
 pub(crate) trait Convert<Sort, Ast: Clone> {
+  fn cache_ast(&mut self, expr: Expr, ast: Ast);
+  fn get_cache_ast(&self, expr: &Expr) -> Option<Ast>;
+
   fn convert_sort(&self, ty: Type) -> Sort {
     if ty.is_bool() { return self.mk_bool_sort(); }
     if ty.is_integer() { return self.mk_int_sort(); }
@@ -35,7 +38,7 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
 
   fn convert_ast(&mut self, expr: Expr) -> Ast {
 
-    // cache SMT ast
+    if let Some(a) = self.get_cache_ast(&expr) { return a; }
 
     // convert sub exprs firstly
     let mut args: Vec<Ast> = Vec::new();
@@ -47,24 +50,25 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
       }
     }
 
+    let mut a = None;
     if expr.is_constant() {
-      return self.convert_constant(&expr.extract_constant(), expr.ty());
+      a = Some(self.convert_constant(&expr.extract_constant(), expr.ty()));
     }
     
     if expr.is_symbol() {
       let name = expr.extract_symbol().name();
-      return self.convert_symbol(name, expr.ty());
+      a = Some(self.convert_symbol(name, expr.ty()));
     }
 
     if expr.is_address_of() {
       let object = expr.extract_object();
-      return self.convert_address_of(object);
+      a = Some(self.convert_address_of(object));
     }
 
     if expr.is_binary() {
       let lhs = &args[0];
       let rhs = &args[1];
-      return 
+      a = Some(
         match expr.extract_bin_op() {
           BinOp::Add => self.mk_add(lhs, rhs),
           BinOp::Sub => self.mk_sub(lhs, rhs),
@@ -78,15 +82,15 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
           BinOp::Lt => self.mk_lt(lhs, rhs),
           BinOp::And => self.mk_and(lhs, rhs),
           BinOp::Or => self.mk_or(lhs, rhs),
-        };
+        });
     }
 
     if expr.is_unary() {
-      return
+      a = Some(
         match expr.extract_un_op() {
           UnOp::Not => self.mk_not(&args[0]),
           _ => panic!("Not support"),
-        };
+        });
     }
 
     if expr.is_cast() {
@@ -94,7 +98,7 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
     }
 
     if expr.is_object() {
-      return self.convert_ast(expr.extract_inner_expr());
+      a = Some(self.convert_ast(expr.extract_inner_expr()));
     }
 
     if expr.is_index_of() {
@@ -102,7 +106,10 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
     }
 
     if expr.is_ite() {
-      
+      let cond = &args[0];
+      let true_value = &args[1];
+      let false_value = &args[2];
+      a = Some(self.mk_ite(cond, true_value, false_value));
     }
 
     if expr.is_same_object() {
@@ -113,7 +120,13 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
 
     }
 
-    panic!("Not impl: {expr:?}")
+    match a {
+      Some(ast) => {
+        self.cache_ast(expr, ast.clone());
+        ast
+      },
+      None => panic!("Not implememt: {expr:?}"),
+    }
   }
 
   fn convert_constant(&self, constant: &Constant, ty: Type) -> Ast;

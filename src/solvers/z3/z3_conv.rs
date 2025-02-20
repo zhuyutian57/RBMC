@@ -27,6 +27,8 @@ pub struct Z3Conv<'ctx> {
   /// Use for making pointer tuple
   pointer_type: Type,
   pointer_logic: PointerLogic<z3::ast::Dynamic<'ctx>>,
+  /// Cache Ast
+  cache: HashMap<Expr, z3::ast::Dynamic<'ctx>>,
 }
 
 impl<'ctx> Z3Conv<'ctx> {
@@ -35,10 +37,11 @@ impl<'ctx> Z3Conv<'ctx> {
     Z3Conv {
       z3_ctx,
       z3_solver,
-      array_sorts: HashMap::default(),
-      tuple_sorts: HashMap::default(),
+      array_sorts: HashMap::new(),
+      tuple_sorts: HashMap::new(),
       pointer_type: Type::ptr_type(Type::unit_type(), Mutability::Not),
       pointer_logic: PointerLogic::new(),
+      cache: HashMap::new(),
     }
   }
 
@@ -85,6 +88,21 @@ impl<'ctx> SmtSolver for Z3Conv<'ctx> {
 }
 
 impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
+  fn cache_ast(&mut self, expr: Expr, ast: z3::ast::Dynamic<'ctx>) {
+    self
+      .cache
+      .entry(expr.clone())
+      .and_modify(
+        |x|
+        panic!("Exists: {expr:?} = {x:?}")
+      )
+      .or_insert(ast);
+  }
+
+  fn get_cache_ast(&self, expr: &Expr) -> Option<z3::ast::Dynamic<'ctx>> {
+    self.cache.get(expr).cloned()
+  }
+
   fn convert_pointer_sort(&self, ty: Type) -> z3::Sort<'ctx> {
     assert!(ty.is_any_ptr());
     self
