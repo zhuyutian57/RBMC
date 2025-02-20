@@ -134,11 +134,28 @@ impl<'exec> ExecutionState<'exec> {
     self.top_mut().inc_pc();
   }
 
+  pub fn l0_symbol(&self, ident: NString, ty: Type) -> Expr {
+    let symbol = Symbol::new(ident,0,0, Level::Level0);
+    self.ctx.mk_symbol(symbol, ty)
+  }
+
+  pub fn new_symbol(&mut self, symbol: &Expr, level: Level) -> Expr {
+    assert!(symbol.is_symbol());
+    let sym = symbol.extract_symbol();
+    let ident = sym.ident();
+    let new_sym =
+      match level {
+        Level::Level1 => Some(self.renaming.new_l1_symbol(ident)),
+        Level::Level2 => Some(self.renaming.new_l2_symbol(ident, 0)),
+        _ => None,
+      }.expect("Wrong symbol exper");
+    self.ctx.mk_symbol(new_sym, symbol.ty())
+  }
+
   pub fn l0_local(&self, local: Local) -> Expr {
     let ident = self.top().local_ident(local);
-    let symbol = Symbol::new(ident,0,0, Level::Level0);
     let ty = self.top().function().local_type(local);
-    self.ctx.mk_symbol(symbol, ty)
+    self.l0_symbol(ident, ty)
   }
 
   pub fn l1_local_count(&self, local: Local) -> usize {
@@ -180,19 +197,6 @@ impl<'exec> ExecutionState<'exec> {
       };
     let ty = self.top().function().local_type(local);
     self.ctx.mk_symbol(symbol, ty)
-  }
-
-  pub fn new_symbol(&mut self, symbol: &Expr, level: Level) -> Expr {
-    assert!(symbol.is_symbol());
-    let sym = symbol.extract_symbol();
-    let ident = sym.ident();
-    let new_sym =
-      match level {
-        Level::Level1 => Some(self.renaming.new_l1_symbol(ident)),
-        Level::Level2 => Some(self.renaming.new_l2_symbol(ident, 0)),
-        _ => None,
-      }.expect("Wrong symbol exper");
-    self.ctx.mk_symbol(new_sym, symbol.ty())
   }
 
   pub fn rename(&mut self, expr: &mut Expr, level: Level) {

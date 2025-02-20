@@ -22,7 +22,7 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
   fn cache_ast(&mut self, expr: Expr, ast: Ast);
   fn get_cache_ast(&self, expr: &Expr) -> Option<Ast>;
 
-  fn convert_sort(&self, ty: Type) -> Sort {
+  fn convert_sort(&mut self, ty: Type) -> Sort {
     if ty.is_bool() { return self.mk_bool_sort(); }
     if ty.is_integer() { return self.mk_int_sort(); }
 
@@ -33,8 +33,8 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
   }
 
   fn convert_pointer_sort(&self, ty: Type) -> Sort;
-  fn convert_array_sort(&self, ty: Type) -> Sort;
-  fn convert_tuple_sort(&self, ty: Type) -> Sort;
+  fn convert_array_sort(&mut self, ty: Type) -> Sort;
+  fn convert_tuple_sort(&mut self, ty: Type) -> Sort;
 
   fn convert_ast(&mut self, expr: Expr) -> Ast {
 
@@ -129,8 +129,8 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
     }
   }
 
-  fn convert_constant(&self, constant: &Constant, ty: Type) -> Ast;
-  fn convert_symbol(&self, name: NString, ty: Type) -> Ast;
+  fn convert_constant(&mut self, constant: &Constant, ty: Type) -> Ast;
+  fn convert_symbol(&mut self, name: NString, ty: Type) -> Ast;
   fn convert_address_of(&mut self, object: Expr) -> Ast;
 
   // sort

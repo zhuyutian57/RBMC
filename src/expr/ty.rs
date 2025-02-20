@@ -28,6 +28,18 @@ impl Type {
     Type::from(Ty::unsigned_ty(ty))
   }
 
+  pub fn array_type(ty: Type, len: u64) -> Self {
+    Type::from(
+      Ty::try_new_array(ty.0, len)
+      .expect(format!("({ty:?}, {len}) is wrong for an array type").as_str())
+    )
+  }
+
+  pub fn const_array_type(ty: Type) -> Self {
+    // Array with len 0 as const array type
+    Type::array_type(ty, 0)
+  }
+
   pub fn unit_type() -> Self {
     Type::from(Ty::new_tuple(&[]))
   }
@@ -62,6 +74,10 @@ impl Type {
     self.0.kind().is_array()
   }
 
+  pub fn is_const_array(&self) -> bool {
+    self.is_array() && self.array_size() == None
+  }
+
   pub fn is_fn(&self) -> bool { self.0.kind().is_fn() }
 
   pub fn is_layout(&self) -> bool { format!("{self:?}") == "Layout" }
@@ -82,7 +98,26 @@ impl Type {
     self.is_ref() || self.is_ptr() || self.is_box()
   }
 
+  pub fn array_size(&self) -> Option<u64> {
+    assert!(self.is_array());
+    let size = 
+      match self.0.kind() {
+        TyKind::RigidTy(r) => {
+          match r {
+            RigidTy::Array(_, c) => {
+              c.eval_target_usize()
+            },
+            _ => panic!("Not array"),
+          }
+        },
+        _ => panic!("Not array"),
+      }.expect("Wrong array size");
+    if size == 0 { None } else { Some(size) }
+  }
+
+  /// Assume that all index is integer.
   pub fn array_domain(&self) -> Type {
+    assert!(self.is_array());
     Type::unsigned_type(UintTy::Usize)
   }
 

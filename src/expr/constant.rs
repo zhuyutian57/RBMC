@@ -9,6 +9,7 @@ pub type StructField = (Constant, Type);
 pub enum Constant {
   Bool(bool),
   Integer(Sign, u128),
+  Array(Box<Constant>, Type),
   Struct(Vec<StructField>),
 }
 
@@ -26,13 +27,6 @@ impl Constant {
       _ => panic!("Not integer constant"),
     }
   }
-
-  pub fn fields(&self) -> &Vec<StructField> {
-    match self {
-      Constant::Struct(f) => f,
-      _ => panic!("Not struct constant"),
-    }
-  }
 }
 
 impl Debug for Constant {
@@ -42,6 +36,8 @@ impl Debug for Constant {
         f.write_fmt(format_args!("{b}")),
       Constant::Integer(s, v) =>
         f.write_fmt(format_args!("{}{v}",if *s { "-" } else { "" })),
+        Constant::Array(v, _) =>
+        f.write_fmt(format_args!("as-const {:?}", *v)),
       Constant::Struct(v) =>
         write!(f, "{v:?}"),
     }

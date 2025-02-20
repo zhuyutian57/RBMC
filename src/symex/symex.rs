@@ -52,7 +52,14 @@ impl<'sym> Symex<'sym> {
     vc_system: VCSysPtr) -> Self {
     let mut exec_state = ExecutionState::new(program, ctx.clone());
     exec_state.setup();
-    Symex { program, ctx, exec_state, vc_system }
+    let mut symex = Symex { program, ctx: ctx.clone(), exec_state, vc_system };
+    // Initializing for common values
+    let ty = Type::const_array_type(Type::bool_type());
+    let mut alloc_sym = symex.exec_state.l0_symbol(NString::from("alloc"), ty);
+    let mut const_array =
+      ctx.constant_array(Constant::Bool(false), Type::bool_type());
+    symex.assign_symbol(alloc_sym, const_array, ctx.constant_bool(true));
+    symex
   }
 
   pub fn can_exec(&self) -> bool { self.exec_state.can_exec() }
@@ -61,11 +68,11 @@ impl<'sym> Symex<'sym> {
     while let Some(pc) = self.top().cur_pc() {
       // Merge states
       if self.exec_state.merge_states(pc) {
-        println!(
-          "Enter {:?} - bb{pc}\n{:?}",
-          self.top().function().name(),
-          self.top().cur_state()
-        );
+        // println!(
+        //   "Enter {:?} - bb{pc}\n{:?}",
+        //   self.top().function().name(),
+        //   self.top().cur_state()
+        // );
         let bb = self.top().function().basicblock(pc);
         self.symex_basicblock(bb);
       } else {
