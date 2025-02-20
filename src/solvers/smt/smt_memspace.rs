@@ -19,7 +19,7 @@ impl<Ast: Clone> PointerLogic<Ast> {
   }
 
   pub fn contains(&self, object: &Expr) -> bool {
-    self.object_spaces.contains_key(&object)
+    self.object_spaces.contains_key(object)
   }
 
   pub fn set_object_space(
@@ -62,10 +62,13 @@ impl<Ast: Clone> PointerLogic<Ast> {
 
 pub trait MemSpace<Sort, Ast> {
   fn set_pointer_logic(&mut self);
-  fn init_pointer_object(&mut self, object: Expr);
-
-  fn create_object_space(&mut self, ident: Expr) -> Ast;
-
+  
   fn pointer_sort(&self) -> Sort;
-  fn create_pointer(&self, ident: Ast, offset: Ast) -> Ast;
+  
+  fn create_object_space(&mut self, object: &Expr) -> Ast;
+  fn init_pointer_space(&mut self, object: &Expr);
+
+  fn mk_pointer(&self, ident: &Ast, offset: &Ast) -> Ast;
+  fn mk_pointer_ident(&self, pt: &Ast) -> Ast;
+  fn mk_pointer_offset(&self, pt: &Ast) -> Ast;
 }

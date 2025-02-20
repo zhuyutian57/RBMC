@@ -232,7 +232,7 @@ impl Debug for Expr {
         let cond = &sub_exprs[0];
         let true_value = &sub_exprs[1];
         let false_value = &sub_exprs[2];
-        return write!(f, "ite({:?}, {:?}, {:?})", cond, true_value, false_value);
+        return write!(f, "{:?} ? {:?} : {:?}", cond, true_value, false_value);
       }
 
       if self.is_same_object() {

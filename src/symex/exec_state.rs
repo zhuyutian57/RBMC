@@ -239,13 +239,11 @@ impl<'exec> ExecutionState<'exec> {
     panic!("Do not support place state: {place:?}");
   }
 
-  pub fn assign(&mut self, lhs: Expr, rhs: Expr, guard: Expr) {
+  pub fn assign(&mut self, lhs: Expr, rhs: Expr) {
     assert!(lhs.is_symbol()); // TODO: do more jobs?
 
     // Constant propagation
-    if guard.is_true() {
-      self.constant_propagate(lhs.clone(), rhs.clone());
-    }
+    self.constant_propagate(lhs.clone(), rhs.clone());
     
     // `Layout` is only used for allocation
     if rhs.is_type() { return; }

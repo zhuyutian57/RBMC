@@ -273,23 +273,22 @@ impl<'sym> Symex<'sym> {
 
   fn assign_symbol(&mut self, mut lhs: Expr, mut rhs: Expr, guard: Expr) {
     assert!(lhs.is_symbol());
-
-    let mut new_guard =
-      self.ctx.and(guard, self.exec_state.cur_state().guard());
-    self.exec_state.rename(&mut new_guard, Level::Level2);
-    new_guard.simplify();
+    
+    if !guard.is_true() {
+      rhs = self.ctx.ite(guard, rhs, lhs.clone());
+    }
 
     // Rename to l2 rhs
     self.exec_state.rename(&mut rhs, Level::Level2);
     // New l2 symbol
     lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
 
-    self.exec_state.assign(lhs.clone(), rhs.clone(), new_guard.clone());
+    self.exec_state.assign(lhs.clone(), rhs.clone());
 
     if rhs.is_type() { return; }
 
     // Build VC system
-    self.vc_system.borrow_mut().assign(new_guard, lhs, rhs);
+    self.vc_system.borrow_mut().assign(lhs, rhs);
   }
 
   fn assign_rec(&mut self, lhs: Expr, rhs: Expr, guard: Expr) {
@@ -310,14 +309,16 @@ impl<'sym> Symex<'sym> {
       let true_value = sub_exprs[1].clone();
       let false_value = sub_exprs[2].clone();
       
-      let true_guard = self.ctx.and(guard.clone(), cond.clone());
+      let mut true_guard = self.ctx.and(guard.clone(), cond.clone());
+      true_guard.simplify();
       self.assign_rec(true_value, rhs.clone(), true_guard);
       
-      let false_guard =
+      let mut false_guard =
         self.ctx.and(
           guard.clone(),
           self.ctx.not(cond.clone())
         );
+      false_guard.simplify();
       self.assign_rec(false_value, rhs.clone(), false_guard);
 
       return;

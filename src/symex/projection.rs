@@ -81,7 +81,8 @@ impl<'a, 'sym> Projector<'a, 'sym> {
       ret =
         match ret {
           Some(x) => {
-            let cond = ctx.same_object(expr.clone(), object.clone());
+            let obj_adr = ctx.address_of(object.clone(), expr.ty());
+            let cond = ctx.same_object(expr.clone(), obj_adr);
             Some(ctx.ite(cond, object.clone(), x))
           },
           None => Some(object),

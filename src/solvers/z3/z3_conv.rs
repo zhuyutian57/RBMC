@@ -105,10 +105,10 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
   fn convert_pointer(
     &self,
-    ident: z3::ast::Dynamic<'ctx>,
-    offset: z3::ast::Dynamic<'ctx>)
+    ident: &z3::ast::Dynamic<'ctx>,
+    offset: &z3::ast::Dynamic<'ctx>)
     -> z3::ast::Dynamic<'ctx> {
-    self.create_pointer(ident, offset)
+    self.mk_pointer(ident, offset)
   }
 
   fn convert_tuple(
@@ -119,8 +119,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     self.create_tuple(fields, ty)
   }
 
-  fn convert_object_space(&mut self, ident: Expr) -> z3::ast::Dynamic<'ctx> {
-    self.create_object_space(ident)
+  fn convert_object_space(&mut self, object: &Expr) -> z3::ast::Dynamic<'ctx> {
+    self.create_object_space(object)
   }
 
   fn convert_tuple_load(
@@ -129,7 +129,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     field: Expr)
     -> z3::ast::Dynamic<'ctx> {
     let i = field.extract_integer().to_uint() as usize;
-    self.load_tuple_field(object, i)
+    self.mk_tuple_select(object, i)
   }
 
   fn convert_tuple_update(
@@ -139,7 +139,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     value: Expr)
     -> z3::ast::Dynamic<'ctx> {
     let i = field.extract_constant().to_integer().to_uint() as usize;
-    self.update_tuple_field(object, i, value)
+    self.mk_tuple_store(object, i, value)
   }
 
   fn mk_bool_sort(&self) -> z3::Sort<'ctx> {
@@ -150,9 +150,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     z3::Sort::int(&self.z3_ctx)
   }
 
-  fn mk_pointer_sort(&self) -> z3::Sort<'ctx> {
-    self.pointer_sort()
-  }
+  fn mk_pointer_sort(&self) -> z3::Sort<'ctx> { self.pointer_sort() }
 
   fn mk_array_sort(
     &mut self,
@@ -219,6 +217,10 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     z3::ast::Dynamic::from(
       z3::ast::Datatype::new_const(&self.z3_ctx, name.to_string(), sort)
     )
+  }
+
+  fn project(&self, pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    self.mk_pointer_ident(pt)
   }
 
   fn mk_select(
@@ -450,7 +452,7 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     f.apply(args.as_slice())
   }
 
-  fn load_tuple_field(&mut self, object: Expr, field: usize) -> z3::ast::Dynamic<'ctx> {
+  fn mk_tuple_select(&mut self, object: Expr, field: usize) -> z3::ast::Dynamic<'ctx> {
     let args = 
       &[&self.convert_ast(object.clone()) as &dyn Ast];
     let dtsort =
@@ -463,7 +465,7 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
       .apply(args)
   }
   
-  fn update_tuple_field(
+  fn mk_tuple_store(
     &mut self,
     object: Expr,
     field: usize,
@@ -474,7 +476,7 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     let update_value = self.convert_ast(value);
     for i in 0..n {
       if i != field {
-        fields_values.push(self.load_tuple_field(object.clone(), i));
+        fields_values.push(self.mk_tuple_select(object.clone(), i));
       } else {
         fields_values.push(update_value.clone());
       }
@@ -503,7 +505,7 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         .variant(
           "pointer",
           vec![
-            ("base", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx))),
+            ("ident", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx))),
             ("offset", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx)))
             ]
           )
@@ -511,8 +513,26 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     self.tuple_sorts.insert(self.pointer_type, pointer_tuple_sort);
   }
 
-  fn init_pointer_object(&mut self, object: Expr) {
-    assert!(!self.pointer_logic.contains(&object));
+  fn pointer_sort(&self) -> z3::Sort<'ctx> {
+    self
+      .tuple_sorts
+      .get(&self.pointer_type)
+      .expect("Pointer tuple is not initialized")
+      .sort
+      .clone()
+  }
+
+  fn create_object_space(&mut self, object: &Expr) -> z3::ast::Dynamic<'ctx> {
+    assert!(object.is_symbol());
+    if self.pointer_logic.contains(object) {
+      return self.pointer_logic.get_object_space_ident(object);
+    }
+    self.init_pointer_space(object);
+    self.pointer_logic.get_object_space_ident(object)
+  }
+
+  fn init_pointer_space(&mut self, object: &Expr) {
+    assert!(!self.pointer_logic.contains(object));
     assert!(object.is_symbol());
 
     // Use l0 as identifier
@@ -535,34 +555,40 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
     // TODO: set disjoint relationship
     
-    self.pointer_logic.set_object_space(object, (ident, (base, len)));
-  }
-  
-  fn create_object_space(&mut self, ident: Expr) -> z3::ast::Dynamic<'ctx> {
-    assert!(ident.is_symbol());
-    if self.pointer_logic.contains(&ident) {
-      return self.pointer_logic.get_object_space_ident(&ident);
-    }
-    self.init_pointer_object(ident.clone());
-    self.pointer_logic.get_object_space_ident(&ident)
+    self.pointer_logic.set_object_space(object.clone(), (ident, (base, len)));
   }
 
-  fn pointer_sort(&self) -> z3::Sort<'ctx> {
+  fn mk_pointer(
+    &self,
+    base: &z3::ast::Dynamic<'ctx>,
+    offset: &z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
     self
       .tuple_sorts
       .get(&self.pointer_type)
-      .expect("Pointer tuple is not initialized")
-      .sort
-      .clone()
+      .unwrap()
+      .variants[0]
+      .constructor
+      .apply(&[base as &dyn Ast, offset as &dyn Ast])
   }
 
-  fn create_pointer(
-    &self,
-    ident: z3::ast::Dynamic<'ctx>,
-    offset: z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
-    let sort = self.tuple_sorts.get(&self.pointer_type).unwrap();
-    let args = [&ident as &dyn Ast, &offset as &dyn Ast];
-    sort.variants[0].constructor.apply(&args)
+  fn mk_pointer_ident(&self, pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    self
+      .tuple_sorts
+      .get(&self.pointer_type)
+      .unwrap()
+      .variants[0]
+      .accessors[0]
+      .apply(&[pt as &dyn Ast])
+  }
+
+  fn mk_pointer_offset(&self, pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    self
+      .tuple_sorts
+      .get(&self.pointer_type)
+      .unwrap()
+      .variants[0]
+      .accessors[1]
+      .apply(&[pt as &dyn Ast])
   }
 }

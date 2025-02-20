@@ -27,11 +27,11 @@ impl<'ctx> Solver<'ctx> {
   }
 
   pub fn assert(&mut self, vc: &Vc) {
-    match vc.kind() {
+    match &vc.kind {
       VcKind::Assign(lhs, rhs)
-        => self.solver.assert_assign(lhs, rhs),
+        => self.solver.assert_assign(lhs.clone(), rhs.clone()),
       VcKind::Assert(expr) | VcKind::Assume(expr)
-        => self.solver.assert_expr(expr),
+        => self.solver.assert_expr(expr.clone()),
     }
   }
 }

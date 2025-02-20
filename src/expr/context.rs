@@ -454,6 +454,7 @@ impl ExprBuilder for ExprCtx {
   }
 
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr {
+    assert!(lhs.ty().is_any_ptr() && rhs.ty().is_any_ptr());
     let kind = NodeKind::SameObject(lhs.id, rhs.id);
     let ty = Type::bool_type();
     let new_node = Node::new(kind, ty);

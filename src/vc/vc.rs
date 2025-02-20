@@ -26,31 +26,31 @@ impl Debug for VcKind {
 
 #[derive(Clone)]
 pub struct Vc {
-  guard: Expr,
-  kind: VcKind,
-  is_sliced: bool,
+  pub kind: VcKind,
+  pub is_sliced: bool,
 }
 
 impl Vc {
-  pub fn new(guard: Expr, kind: VcKind) -> Self {
-    Vc { guard, kind, is_sliced: false }
+  pub fn new(kind: VcKind) -> Self {
+    Vc { kind, is_sliced: false }
   }
 
-  pub fn guard(&self) -> Expr { self.guard.clone() }
-
-  pub fn kind(&self) -> VcKind { self.kind.clone() }
+  pub fn is_assign(&self) -> bool {
+    matches!(self.kind, VcKind::Assign(..))
+  }
+  
+  pub fn is_assert(&self) -> bool {
+    matches!(self.kind, VcKind::Assert(..))
+  }
+  
+  pub fn is_assume(&self) -> bool {
+    matches!(self.kind, VcKind::Assume(..))
+  }
 }
 
 impl Debug for Vc {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(
-      f,
-      "{}{:?}",
-      if !self.guard.is_true() {
-        format!("{:?} => ", self.guard)
-      } else { "".to_string() },
-      self.kind
-      )
+    write!(f, "{:?}", self.kind)
   }
 }
 
@@ -62,25 +62,17 @@ pub struct VCSystem {
 }
 
 impl VCSystem {
-  pub fn assign(&mut self, guard: Expr, lhs: Expr, mut rhs: Expr) {
+  pub fn assign(&mut self, lhs: Expr, mut rhs: Expr) {
     println!("ASSIGN: {lhs:?} = {rhs:?}");
-    self.vconds.push(Vc::new(guard, VcKind::Assign(lhs, rhs)));
+    self.vconds.push(Vc::new(VcKind::Assign(lhs, rhs)));
   }
 
   pub fn assert(&mut self, cond: Expr) {
-    self.vconds.push(
-      Vc::new(
-        cond.ctx.constant_bool(true),
-        VcKind::Assert(cond))
-      );
+    self.vconds.push(Vc::new(VcKind::Assert(cond)));
   }
   
   pub fn assume(&mut self, cond: Expr) {
-    self.vconds.push(
-      Vc::new(
-        cond.ctx.constant_bool(true),
-        VcKind::Assume(cond))
-      );
+    self.vconds.push(Vc::new(VcKind::Assume(cond)));
   }
 
   pub fn iter(&self) -> Iter<'_, Vc> {

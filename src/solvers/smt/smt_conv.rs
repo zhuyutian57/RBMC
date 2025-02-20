@@ -1,4 +1,6 @@
 
+use std::fmt::Debug;
+
 use crate::expr::constant::BigInt;
 use crate::expr::constant::Constant;
 use crate::expr::expr::*;
@@ -18,7 +20,7 @@ pub(crate) trait SmtSolver {
   fn dec_check(&self) -> Result;
 }
 
-pub(crate) trait Convert<Sort, Ast: Clone> {
+pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
   fn cache_ast(&mut self, expr: Expr, ast: Ast);
   fn get_cache_ast(&self, expr: &Expr) -> Option<Ast>;
 
@@ -119,7 +121,9 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
     }
 
     if expr.is_same_object() {
-
+      let base_1 = self.project(&args[0]);
+      let base_2 = self.project(&args[1]);
+      a = Some(self.mk_eq(&base_1, &base_2));
     }
 
     if expr.is_index() {
@@ -163,7 +167,7 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
     }
   }
 
-  fn convert_pointer(&self, ident: Ast, offset: Ast) -> Ast;
+  fn convert_pointer(&self, ident: &Ast, offset: &Ast) -> Ast;
   fn convert_tuple(&mut self, fields: Vec<Ast>, ty: Type) -> Ast;
 
   fn convert_symbol(&mut self, name: NString, ty: Type) -> Ast {
@@ -193,15 +197,15 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
     }
 
     if inner_expr.is_symbol() {
-      let ident = self.convert_object_space(inner_expr);
+      let ident = self.convert_object_space(&inner_expr);
       let offset = self.mk_smt_int(BigInt(false, 0));
-      return self.convert_pointer(ident, offset);
+      return self.convert_pointer(&ident, &offset);
     }
 
     panic!("Do not support address_of {object:?}")
   }
 
-  fn convert_object_space(&mut self, ident: Expr) -> Ast;
+  fn convert_object_space(&mut self, object: &Expr) -> Ast;
 
   fn convert_cast(&mut self, expr: Expr, ty: Type) -> Ast {
     if (expr.ty().is_integer() && ty.is_integer()) ||
@@ -266,6 +270,9 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
   fn mk_int_symbol(&self, name: NString) -> Ast;
   fn mk_array_symbol(&self, name: NString, domain: &Sort, range: &Sort) -> Ast;
   fn mk_tuple_symbol(&self, name: NString, sort: &Sort) -> Ast;
+
+  // pointer
+  fn project(&self, pt: &Ast) -> Ast;
 
   // array
   fn mk_select(&self, array: &Ast, index: &Ast) -> Ast;
