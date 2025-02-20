@@ -123,6 +123,24 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     self.create_object_space(ident)
   }
 
+  fn convert_tuple_load(
+    &mut self,
+    object: Expr,
+    field: Expr)
+    -> z3::ast::Dynamic<'ctx> {
+    let i = field.extract_integer().to_uint() as usize;
+    self.load_tuple_field(object, i)
+  }
+
+  fn convert_tuple_update(
+    &mut self,
+    object: Expr,
+    field: Expr,
+    value: Expr)
+    -> z3::ast::Dynamic<'ctx> {
+    todo!()
+  }
+
   fn mk_bool_sort(&self) -> z3::Sort<'ctx> {
     z3::Sort::bool(&self.z3_ctx)
   }
@@ -147,11 +165,10 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     z3::ast::Dynamic::from(z3::ast::Bool::from_bool(&self.z3_ctx, b))
   }
 
-  fn mk_smt_int(&self, sign: Sign, i: u128) -> z3::ast::Dynamic<'ctx> {
-    let num =
-      if sign { "-" } else { "" }.to_string() + i.to_string().as_str();
+  fn mk_smt_int(&self, i: BigInt) -> z3::ast::Dynamic<'ctx> {
+    let num = i.to_string();
     z3::ast::Dynamic::from(
-      z3::ast::Int::from_str(&self.z3_ctx, &num)
+      z3::ast::Int::from_str(&self.z3_ctx, num.as_str())
       .expect("Wrong integer")
     )
   }
@@ -181,15 +198,14 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_array_symbol(
     &self,
     name: NString,
-    domain: z3::Sort<'ctx>,
-    range: z3::Sort<'ctx>)
+    domain: &z3::Sort<'ctx>,
+    range: &z3::Sort<'ctx>)
     -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       z3::ast::Array::new_const(
         &self.z3_ctx, 
         name.to_string(), 
-        &domain, 
-        &range
+        domain, range
       )
     )
   }
@@ -197,12 +213,28 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_tuple_symbol(
     &self,
     name: NString,
-    sort: z3::Sort<'ctx>)
+    sort: &z3::Sort<'ctx>)
     -> z3::ast::Dynamic<'ctx> {
-    assert!(sort.kind() == z3::SortKind::Datatype);
     z3::ast::Dynamic::from(
-      z3::ast::Datatype::new_const(&self.z3_ctx, name.to_string(), &sort)
+      z3::ast::Datatype::new_const(&self.z3_ctx, name.to_string(), sort)
     )
+  }
+
+  fn mk_select(
+    &self,
+    array: &z3::ast::Dynamic<'ctx>,
+    index: &z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
+    array.as_array().unwrap().select(index)
+  }
+
+  fn mk_store(
+    &self,
+    array: &z3::ast::Dynamic<'ctx>,
+    index: &z3::ast::Dynamic<'ctx>,
+    val: &z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(array.as_array().unwrap().store(index, val))
   }
 
   fn mk_add(
@@ -416,6 +448,22 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     }
     f.apply(args.as_slice())
   }
+
+  fn load_tuple_field(&mut self, object: Expr, field: usize) -> z3::ast::Dynamic<'ctx> {
+    if object.is_constant() {
+    }
+
+    let args = 
+      &[&self.convert_ast(object.clone()) as &dyn Ast];
+    let dtsort =
+      self.tuple_sorts.get(&object.ty())
+      .expect(format!("{object:?} is not struct").as_str());
+    assert!(field < dtsort.variants[0].accessors.len());
+    dtsort
+      .variants[0]
+      .accessors[field]
+      .apply(args)
+  }
 }
 
 impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
@@ -450,12 +498,12 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
     let ident = self.mk_int_symbol(space_ident);
     let base = self.mk_int_symbol(space_base);
-    let len = self.mk_smt_int(false, space_len as u128);
+    let len = self.mk_smt_int(BigInt(false, space_len as u128));
 
     // Ident is greater than 0
-    self.assert(self.mk_gt(&ident, &self.mk_smt_int(false, 0)));
+    self.assert(self.mk_gt(&ident, &self.mk_smt_int(BigInt(false, 0))));
     // base is also greater than 0
-    self.assert(self.mk_gt(&base, &self.mk_smt_int(false, 0)));
+    self.assert(self.mk_gt(&base, &self.mk_smt_int(BigInt(false, 0))));
 
     // TODO: set disjoint relationship
     

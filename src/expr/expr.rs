@@ -33,11 +33,11 @@ impl Expr {
   pub fn is_address_of(&self) -> bool { self.ctx.borrow().is_address_of(self.id) }
   pub fn is_binary(&self) -> bool { self.ctx.borrow().is_binary(self.id) }
   pub fn is_unary(&self) -> bool { self.ctx.borrow().is_unary(self.id) }
+  pub fn is_ite(&self) -> bool { self.ctx.borrow().is_ite(self.id) }
   pub fn is_cast(&self) -> bool { self.ctx.borrow().is_cast(self.id) }
   pub fn is_object(&self) -> bool { self.ctx.borrow().is_object(self.id) }
-  pub fn is_index_of(&self) -> bool { self.ctx.borrow().is_index_of(self.id) }
-  pub fn is_ite(&self) -> bool { self.ctx.borrow().is_ite(self.id) }
   pub fn is_same_object(&self) -> bool { self.ctx.borrow().is_same_object(self.id) }
+  pub fn is_index(&self) -> bool { self.ctx.borrow().is_index(self.id) }
   pub fn is_store(&self) -> bool { self.ctx.borrow().is_store(self.id) }
 
   pub fn extract_symbol(&self) -> Symbol {
@@ -56,6 +56,10 @@ impl Expr {
       .expect("Not constant")
   }
 
+  pub fn extract_integer(&self) -> BigInt {
+    self.extract_constant().to_integer()
+  }
+
   pub fn extract_layout(&self) -> Type {
     self
       .ctx
@@ -65,7 +69,7 @@ impl Expr {
   }
 
   pub fn extract_object(&self) -> Expr {
-    assert!(self.is_address_of() || self.is_index_of());
+    assert!(self.is_address_of() || self.is_index());
     self.sub_exprs().unwrap().remove(0)
   }
 
@@ -95,14 +99,14 @@ impl Expr {
   }
 
   pub fn extract_index(&self) -> Expr {
-    assert!(self.is_index_of());
+    assert!(self.is_index());
     self.sub_exprs().unwrap().remove(1)
   }
 
   pub fn extract_ownership(&self) -> Ownership {
     if self.is_object() {
       self.ctx.borrow().extract_ownership(self.id).unwrap()
-    } else if self.is_index_of() {
+    } else if self.is_index() {
       self.extract_object().extract_ownership()
     } else {
       panic!("Do not have ownership:\n{self:?}")
@@ -209,7 +213,7 @@ impl Debug for Expr {
         return write!(f, "{:?}", sub_exprs[0]);
       }
 
-      if self.is_index_of() {
+      if self.is_index() {
         let object = &sub_exprs[0];
         let index = &sub_exprs[1];
         return write!(f, "{object:?}.{index:?}");
@@ -243,7 +247,7 @@ impl Debug for Expr {
 
 pub trait ExprBuilder {
   fn constant_bool(&self, b: bool) -> Expr;
-  fn constant_integer(&self, sign: bool, value: u128, ty: Type) -> Expr;
+  fn constant_integer(&self, i: BigInt, ty: Type) -> Expr;
   fn constant_array(&self, constant: Constant, elem_ty: Type) -> Expr;
   fn constant_struct(&self, fields: Vec<StructField>, ty: Type) -> Expr;
   fn mk_symbol(&self, symbol: Symbol, ty: Type) -> Expr;
@@ -265,12 +269,11 @@ pub trait ExprBuilder {
   fn or(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn not(&self, operand: Expr) -> Expr;
   fn neg(&self, operand: Expr) -> Expr;
+  fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr;
   fn cast(&self, operand: Expr, target_ty: Expr) -> Expr;
 
   fn object(&self, object: Expr, ownership: Ownership) -> Expr;
-
-  fn index_of(&self, object: Expr, index: usize, ty: Type) -> Expr;
-  fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr;
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr;
-  fn store(&self, object: Expr, index: Expr, value: Expr) -> Expr;
+  fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr;
+  fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
 }

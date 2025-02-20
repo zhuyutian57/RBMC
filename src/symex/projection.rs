@@ -1,6 +1,8 @@
 
 use stable_mir::mir::*;
+use stable_mir::ty::UintTy;
 
+use crate::expr::constant::BigInt;
 use crate::expr::expr::*;
 use crate::expr::predicates::*;
 use crate::expr::ty::Type;
@@ -41,9 +43,14 @@ impl<'a, 'sym> Projector<'a, 'sym> {
                 // `box` performs as a special raw pointer. Use it directly.
                 Some(ret)
               } else {
-                let index = ctx.index_of(ret, *i, Type::from(*ty));
-                let ownership = index.extract_ownership();
-                Some(ctx.object(index, ownership))
+                let index =
+                  ctx.constant_integer(
+                    BigInt(false, *i as u128),
+                    Type::unsigned_type(UintTy::Usize)
+                  );
+                let load = ctx.index(ret, index.clone(), Type::from(*ty));
+                let ownership = load.extract_ownership();
+                Some(ctx.object(load, ownership))
               }
             },
           _ => None,

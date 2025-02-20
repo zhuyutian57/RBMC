@@ -72,14 +72,14 @@ pub(super) enum NodeKind {
   AddressOf(NodeId),
   Binary(BinOp, NodeId, NodeId),
   Unary(UnOp, NodeId),
+  Ite(NodeId, NodeId, NodeId),
   Cast(NodeId, NodeId),
   /// Unified form for object, including stack objects and heap objects.
   Object(Ownership, NodeId),
-  /// `IndexOf` represents a visit for a struct or array in an unified form.
-  IndexOf(NodeId, NodeId),
-  Ite(NodeId, NodeId, NodeId),
   /// A pointer's value is the address of an object...
   SameObject(NodeId, NodeId),
+  /// `IndexOf` represents a load for an array or a struct.
+  Index(NodeId, NodeId),
   /// `Store(obj, i, value)` updates the value of obj
   Store(NodeId, NodeId, NodeId),
 }
@@ -100,6 +100,10 @@ impl NodeKind {
   pub fn is_unary(&self) -> bool {
     matches!(self, NodeKind::Unary(..))
   }
+  
+  pub fn is_ite(&self) -> bool {
+    matches!(self, NodeKind::Ite(..))
+  }
 
   pub fn is_cast(&self) -> bool {
     matches!(self, NodeKind::Cast(..))
@@ -108,17 +112,13 @@ impl NodeKind {
   pub fn is_object(&self) -> bool {
     matches!(self, NodeKind::Object(..))
   }
-
-  pub fn is_index_of(&self) -> bool {
-    matches!(self, NodeKind::IndexOf(..))
-  }
-
-  pub fn is_ite(&self) -> bool {
-    matches!(self, NodeKind::Ite(..))
-  }
-
+  
   pub fn is_same_object(&self) -> bool {
     matches!(self, NodeKind::SameObject(..))
+  }
+
+  pub fn is_index(&self) -> bool {
+    matches!(self, NodeKind::Index(..))
   }
 
   pub fn is_store(&self) -> bool {
@@ -152,10 +152,10 @@ impl Node {
       NodeKind::Unary(_, o) |
       NodeKind::Object(_, o)
         => Some(vec![o]),
-      NodeKind::IndexOf(o, i)
-        => Some(vec![o, i]),
       NodeKind::Ite(c, tv, fv)
         => Some(vec![c, tv, fv]),
+      NodeKind::Index(o, i)
+        => Some(vec![o, i]),
       NodeKind::Store(o, i, v)
         => Some(vec![o, i, v]),
       _ => None,

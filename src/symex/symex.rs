@@ -141,12 +141,12 @@ impl<'sym> Symex<'sym> {
             value_vec.push(Constant::Bool(raw_bytes[0] == 1));
             continue;
           }
-          let (sign, value) =
+          let value =
             read_target_integer(
               raw_bytes.as_slice(),
               fields[i].1.is_signed()
             );
-          value_vec.push(Constant::Integer(sign, value));
+          value_vec.push(Constant::Integer(value));
         }
 
         if ty.is_struct() {
@@ -158,10 +158,10 @@ impl<'sym> Symex<'sym> {
         } else {
           assert!(value_vec.len() == 1);
           if ty.is_bool() {
-            Ok(self.ctx.constant_bool(value_vec[0].bool_value()))
+            Ok(self.ctx.constant_bool(value_vec[0].to_bool()))
           } else if ty.is_integer() {
-            let (s, u) = value_vec[0].integer_value();
-            Ok(self.ctx.constant_integer(s, u, ty))
+            let i = value_vec[0].to_integer();
+            Ok(self.ctx.constant_integer(i, ty))
           } else {
             Err(Error)
           }
@@ -265,6 +265,7 @@ impl<'sym> Symex<'sym> {
   }
 
   fn do_assignment(&mut self, lhs: Expr, rhs: Expr) {
+    println!("{lhs:?} {:?} = {rhs:?} {:?}", lhs.ty(), rhs.ty());
     assert!(lhs.ty().is_layout() || lhs.ty() == rhs.ty());
     // TODO: do more jobs
     self.assign_rec(lhs, rhs, self.ctx.constant_bool(true));
@@ -322,7 +323,7 @@ impl<'sym> Symex<'sym> {
       return;
     }
 
-    if lhs.is_index_of() {
+    if lhs.is_index() {
       let new_lhs = lhs.extract_object();
       let index = lhs.extract_index();
       let new_rhs = self.ctx.store(new_lhs.clone(), index, rhs.clone());

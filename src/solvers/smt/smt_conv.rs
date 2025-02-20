@@ -1,6 +1,6 @@
 
+use crate::expr::constant::BigInt;
 use crate::expr::constant::Constant;
-use crate::expr::constant::Sign;
 use crate::expr::expr::*;
 use crate::expr::op::*;
 use crate::expr::ty::*;
@@ -44,7 +44,7 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
 
     // convert sub exprs firstly
     let mut args: Vec<Ast> = Vec::new();
-    if !expr.is_address_of() {
+    if !expr.is_address_of() && !expr.is_index() {
       if let Some(sub_exrps) = expr.sub_exprs() {
         for e in sub_exrps {
           args.push(self.convert_ast(e));
@@ -95,18 +95,6 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
         });
     }
 
-    if expr.is_cast() {
-
-    }
-
-    if expr.is_object() {
-      a = Some(self.convert_ast(expr.extract_inner_expr()));
-    }
-
-    if expr.is_index_of() {
-
-    }
-
     if expr.is_ite() {
       let cond = &args[0];
       let true_value = &args[1];
@@ -114,8 +102,22 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
       a = Some(self.mk_ite(cond, true_value, false_value));
     }
 
+    if expr.is_cast() {
+
+    }
+
+    if expr.is_object() {
+      a = Some(args[0].clone());
+    }
+
     if expr.is_same_object() {
 
+    }
+
+    if expr.is_index() {
+      let object = expr.extract_object();
+      let index = expr.extract_index();
+      a = Some(self.convert_load(object, index));
     }
 
     if expr.is_store() {
@@ -134,7 +136,7 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
   fn convert_constant(&mut self, constant: &Constant, ty: Type) -> Ast {
     match constant {
       Constant::Bool(b) => self.mk_smt_bool(*b),
-      Constant::Integer(s, i) => self.mk_smt_int(*s, *i),
+      Constant::Integer(i) => self.mk_smt_int(*i),
       Constant::Array(c, t) => {
         let domain = self.convert_sort(ty.array_domain());
         let val = self.convert_constant(&**c,*t);
@@ -158,16 +160,16 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
     if ty.is_integer() { return self.mk_int_symbol(name); }
     if ty.is_any_ptr() {
       let sort = self.mk_pointer_sort();
-      return self.mk_tuple_symbol(name, sort);
+      return self.mk_tuple_symbol(name, &sort);
     }
     if ty.is_array() {
       let domain = self.convert_sort(ty.array_domain());
       let range = self.convert_sort(ty.array_range());
-      return self.mk_array_symbol(name, domain, range);
+      return self.mk_array_symbol(name, &domain, &range);
     }
     if ty.is_struct() {
       let sort = self.convert_tuple_sort(ty);
-      return self.mk_tuple_symbol(name, sort)
+      return self.mk_tuple_symbol(name, &sort)
     }
     panic!("{ty:?} symbol is not support?")
   }
@@ -175,13 +177,13 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
   fn convert_address_of(&mut self, object: Expr) -> Ast {
     assert!(object.is_object());
     let inner_expr = object.extract_inner_expr();
-    if inner_expr.is_index_of() {
+    if inner_expr.is_index() {
       todo!()
     }
 
     if inner_expr.is_symbol() {
       let ident = self.convert_object_space(inner_expr);
-      let offset = self.mk_smt_int(false, 0);
+      let offset = self.mk_smt_int(BigInt(false, 0));
       return self.convert_pointer(ident, offset);
     }
 
@@ -189,6 +191,44 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
   }
 
   fn convert_object_space(&mut self, ident: Expr) -> Ast;
+
+  fn convert_load(&mut self, object: Expr, index: Expr) -> Ast {
+    if object.ty().is_array() {
+      let array = self.convert_ast(object.clone());
+      let i = self.convert_ast(index.clone());
+      return self.mk_select(&array, &i);
+    }
+
+    if object.ty().is_struct() {
+      return self.convert_tuple_load(object.clone(), index.clone());
+    }
+
+    panic!("Do not support load {object:?} with {:?}", object.ty())
+  }
+
+  fn convert_tuple_load(&mut self, object: Expr, field: Expr) -> Ast;
+
+  fn convert_store(&mut self, object: Expr, index: Expr, value: Expr) -> Ast {
+    if object.ty().is_array() {
+      let array = self.convert_ast(object.clone());
+      let i = self.convert_ast(index.clone());
+      let val = self.convert_ast(value.clone());
+      return self.mk_store(&array, &i, &val);
+    }
+
+    if object.ty().is_struct() {
+      return
+        self.convert_tuple_update(
+          object.clone(),
+          index.clone(),
+          value.clone()
+        );
+    }
+
+    panic!("Do not support store {object:?} with {:?}", object.ty())
+  }
+
+  fn convert_tuple_update(&mut self, object: Expr, field: Expr, value: Expr) -> Ast;
 
   // sort
   fn mk_bool_sort(&self) -> Sort;
@@ -198,14 +238,18 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
 
   // constant
   fn mk_smt_bool(&self, b: bool) -> Ast;
-  fn mk_smt_int(&self, sign: Sign, i: u128) -> Ast;
+  fn mk_smt_int(&self, i: BigInt) -> Ast;
   fn mk_smt_const_array(&self, domain: &Sort, val: &Ast) -> Ast;
 
   // symbol
   fn mk_bool_symbol(&self, name: NString) -> Ast;
   fn mk_int_symbol(&self, name: NString) -> Ast;
-  fn mk_array_symbol(&self, name: NString, domain: Sort, range: Sort) -> Ast;
-  fn mk_tuple_symbol(&self, name: NString, sort: Sort) -> Ast;
+  fn mk_array_symbol(&self, name: NString, domain: &Sort, range: &Sort) -> Ast;
+  fn mk_tuple_symbol(&self, name: NString, sort: &Sort) -> Ast;
+
+  // array
+  fn mk_select(&self, array: &Ast, index: &Ast) -> Ast;
+  fn mk_store(&self, array: &Ast, index: &Ast, val: &Ast) -> Ast;
 
   // expr
   fn mk_add(&self, lhs: &Ast, rhs: &Ast) -> Ast;

@@ -126,6 +126,11 @@ impl Context {
     self.nodes[i].kind().is_unary()
   }
 
+  pub fn is_ite(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_ite()
+  }
+
   pub fn is_cast(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     self.nodes[i].kind().is_cast()
@@ -136,19 +141,14 @@ impl Context {
     self.nodes[i].kind().is_object()
   }
 
-  pub fn is_index_of(&self, i: NodeId) -> bool {
-    assert!(i < self.nodes.len());
-    self.nodes[i].kind().is_index_of()
-  }
-
-  pub fn is_ite(&self, i: NodeId) -> bool {
-    assert!(i < self.nodes.len());
-    self.nodes[i].kind().is_ite()
-  }
-
   pub fn is_same_object(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     self.nodes[i].kind().is_same_object()
+  }
+
+  pub fn is_index(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_index()
   }
 
   pub fn is_store(&self, i: NodeId) -> bool {
@@ -243,8 +243,8 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id: if b { 0 } else { 1 } }
   }
 
-  fn constant_integer(&self, sign: bool, value: u128, ty: Type) -> Expr {
-    let terminal = Terminal::Constant(Constant::Integer(sign, value));
+  fn constant_integer(&self, i: BigInt, ty: Type) -> Expr {
+    let terminal = Terminal::Constant(Constant::Integer(i));
     let terminal_id = self.borrow_mut().add_terminal(terminal);
     let kind = NodeKind::Terminal(terminal_id);
     let new_node = Node::new(kind, ty);
@@ -426,6 +426,16 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
+  fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr {
+    assert!(cond.ty().is_bool());
+    assert!(true_value.ty() == false_value.ty());
+    let kind = NodeKind::Ite(cond.id, true_value.id, false_value.id);
+    let ty = true_value.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+
   fn cast(&self, operand: Expr, target_ty: Expr) -> Expr {
     // TODO: check the compatibility
     let kind = NodeKind::Cast(operand.id, target_ty.id);
@@ -443,30 +453,6 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn index_of(&self, object: Expr, index: usize, ty: Type) -> Expr {
-    assert!(object.is_object());
-    let idx =
-      self.constant_integer(
-        false, 
-        index as u128, 
-        Type::unsigned_type(UintTy::Usize)
-      );
-    let kind = NodeKind::IndexOf(object.id, idx.id);
-    let new_node = Node::new(kind, ty);
-    let id = self.borrow_mut().add_node(new_node);
-    Expr { ctx: self.clone(), id }
-  }
-  
-  fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr {
-    assert!(cond.ty().is_bool());
-    assert!(true_value.ty() == false_value.ty());
-    let kind = NodeKind::Ite(cond.id, true_value.id, false_value.id);
-    let ty = true_value.ty();
-    let new_node = Node::new(kind, ty);
-    let id = self.borrow_mut().add_node(new_node);
-    Expr { ctx: self.clone(), id }
-  }
-  
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr {
     let kind = NodeKind::SameObject(lhs.id, rhs.id);
     let ty = Type::bool_type();
@@ -475,8 +461,19 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn store(&self, object: Expr, index: Expr, value: Expr) -> Expr {
-    let kind = NodeKind::Store(object.id, index.id, value.id);
+  fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr {
+    assert!(
+      object.is_object() &&
+      (object.ty().is_array() || object.ty().is_struct())
+    );
+    let kind = NodeKind::Index(object.id, index.id);
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+
+  fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr {
+    let kind = NodeKind::Store(object.id, key.id, value.id);
     let ty = object.ty();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);

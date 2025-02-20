@@ -6,6 +6,7 @@ use stable_mir::*;
 use stable_mir::mir::*;
 use stable_mir::target::*;
 
+use crate::expr::constant::BigInt;
 use crate::expr::ty::*;
 use crate::symbol::nstring::NString;
 
@@ -151,7 +152,7 @@ macro_rules! READ_INT {
           Endian::Little => $ty::from_le_bytes(buf),
           _ => $ty::from_be_bytes(buf),
         } as i128;
-      Ok((i < 0, i.abs() as u128))
+      Ok(BigInt(i < 0, i.abs() as u128))
     }
   };
 }
@@ -161,7 +162,8 @@ macro_rules! READ_UINT {
     {
       let buf = $bytes.try_into().unwrap();
       Ok(
-        (false,
+        BigInt(
+          false,
           match MachineInfo::target().endian {
             Endian::Little => $ty::from_le_bytes(buf),
             _ => $ty::from_be_bytes(buf),
@@ -175,7 +177,7 @@ macro_rules! READ_UINT {
 pub(crate) fn read_target_integer(
   bytes: &[u8],
   is_signed: bool,
-) -> (bool, u128) {
+) -> BigInt {
   match is_signed {
     true => {
       match bytes.len() {

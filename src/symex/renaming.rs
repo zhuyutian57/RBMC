@@ -147,13 +147,10 @@ impl Renaming {
       return;
     }
 
-    if expr.is_index_of() {
+    if expr.is_index() {
       let object = sub_exprs[0].clone();
-      let (sign, value) = sub_exprs[1].extract_constant().integer_value();
-      assert!(!sign);
-      let index = value as usize;
-      let ty = expr.ty();
-      *expr = ctx.index_of(object, index, ty);
+      let index = sub_exprs[1].clone();
+      *expr = ctx.index(object, index, expr.ty());
       return;
     }
 
