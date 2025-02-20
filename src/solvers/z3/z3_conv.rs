@@ -16,7 +16,7 @@ use crate::solvers::smt::smt_array::*;
 use crate::solvers::smt::smt_conv::*;
 use crate::solvers::smt::smt_memspace::*;
 use crate::solvers::smt::smt_tuple::*;
-use crate::solvers::solver::Result;
+use crate::solvers::solver::PResult;
 use crate::NString;
 
 pub struct Z3Conv<'ctx> {
@@ -70,11 +70,11 @@ impl<'ctx> SmtSolver for Z3Conv<'ctx> {
   
   fn reset(&self) { self.z3_solver.reset(); }
 
-  fn dec_check(&self) -> Result {
+  fn check(&self) -> PResult {
     match self.z3_solver.check() {
-      z3::SatResult::Unsat => Result::PUnsat,
-      z3::SatResult::Unknown => Result::PUnknow,
-      z3::SatResult::Sat => Result::PSat,
+      z3::SatResult::Unsat => PResult::PUnsat,
+      z3::SatResult::Unknown => PResult::PUnknow,
+      z3::SatResult::Sat => PResult::PSat,
     }
   }
 }

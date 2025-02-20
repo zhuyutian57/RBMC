@@ -1,6 +1,4 @@
 
-use std::marker::PhantomData;
-
 use crate::expr::expr::Expr;
 use crate::program::program::Program;
 use crate::vc::vc::*;
@@ -9,7 +7,8 @@ use super::config::Config;
 use super::smt::smt_conv::*;
 use super::z3::z3_conv::*;
 
-pub(crate) enum Result {
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum PResult {
   PSat,
   PUnsat,
   PUnknow,
@@ -25,6 +24,10 @@ impl<'ctx> Solver<'ctx> {
     let mut runtime_solver = Box::new(Z3Conv::new(config.to_z3_ctx()));
     runtime_solver.init(program);
     Solver { solver: runtime_solver }
+  }
+
+  pub fn check(&self) -> PResult {
+    self.solver.check()
   }
 
   pub fn assert_assign(&mut self, lhs: Expr, rhs: Expr) {

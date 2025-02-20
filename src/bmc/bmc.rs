@@ -35,6 +35,7 @@ impl<'bmc> Bmc<'bmc> {
 
   fn check_properties(&mut self) {
     self.generate_smt_formula();
+    println!("{:?}", self.runtime_solver.check());
   }
 
   fn generate_smt_formula(&mut self) {

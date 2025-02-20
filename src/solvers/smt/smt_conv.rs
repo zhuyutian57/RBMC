@@ -7,7 +7,7 @@ use crate::expr::expr::*;
 use crate::expr::op::*;
 use crate::expr::ty::*;
 use crate::program::program::Program;
-use crate::solvers::solver::Result;
+use crate::solvers::solver::PResult;
 use crate::NString;
 
 pub(crate) trait SmtSolver {
@@ -15,7 +15,7 @@ pub(crate) trait SmtSolver {
   fn assert_assign(&mut self, lhs: Expr, rhs: Expr);
   fn assert_expr(&mut self, expr: Expr);
   fn reset(&self);
-  fn dec_check(&self) -> Result;
+  fn check(&self) -> PResult;
 }
 
 pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
