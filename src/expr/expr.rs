@@ -276,6 +276,7 @@ pub trait ExprBuilder {
   fn lt(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn and(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn or(&self, lhs: Expr, rhs: Expr) -> Expr;
+  fn implies(&self, cond: Expr, conseq: Expr) -> Expr;
   fn not(&self, operand: Expr) -> Expr;
   fn neg(&self, operand: Expr) -> Expr;
   fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr;

@@ -1,6 +1,7 @@
 
 use std::marker::PhantomData;
 
+use crate::expr::expr::Expr;
 use crate::program::program::Program;
 use crate::vc::vc::*;
 
@@ -26,12 +27,11 @@ impl<'ctx> Solver<'ctx> {
     Solver { solver: runtime_solver }
   }
 
-  pub fn assert(&mut self, vc: &Vc) {
-    match &vc.kind {
-      VcKind::Assign(lhs, rhs)
-        => self.solver.assert_assign(lhs.clone(), rhs.clone()),
-      VcKind::Assert(expr) | VcKind::Assume(expr)
-        => self.solver.assert_expr(expr.clone()),
-    }
+  pub fn assert_assign(&mut self, lhs: Expr, rhs: Expr) {
+    self.solver.assert_assign(lhs, rhs);
+  }
+
+  pub fn assert_expr(&mut self, expr: Expr) {
+    self.solver.assert_expr(expr);
   }
 }

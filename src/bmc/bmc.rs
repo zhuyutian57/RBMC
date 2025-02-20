@@ -2,6 +2,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::expr::expr::ExprBuilder;
 use crate::program::program::*;
 use crate::solvers::solver::*;
 use crate::symex::symex::*;
@@ -33,10 +34,42 @@ impl<'bmc> Bmc<'bmc> {
   }
 
   fn check_properties(&mut self) {
-    println!("{:?}", *self.vc_system.borrow());
+    self.generate_smt_formula();
+  }
+
+  fn generate_smt_formula(&mut self) {
+    let ctx = self.config.expr_ctx();
+
+    let mut cond = ctx.constant_bool(true);
+    let mut assertions = Vec::new();
+    
     for vc in self.vc_system.borrow().iter() {
-      println!("{vc:?}");
-      self.runtime_solver.assert(vc);
+      if vc.is_sliced { continue; }
+      match &vc.kind {
+        VcKind::Assign(lhs, rhs) => {
+          self.runtime_solver.assert_assign(lhs.clone(), rhs.clone());
+        },
+        VcKind::Assert(c) => {
+          assertions.push(ctx.implies(cond.clone(), c.clone()));
+        },
+        VcKind::Assume(c) => {
+          cond = ctx.and(cond, c.clone());
+          cond.simplify();
+        },
+      }
     }
+
+    self.runtime_solver.assert_expr(
+      if assertions.is_empty() { ctx.constant_bool(false) }
+      else {
+        let mut assertion =
+          assertions.into_iter().fold(
+            ctx.constant_bool(true),
+            |acc, b| ctx.and(acc, b)
+          );
+        assertion.simplify();
+        assertion
+      }
+    );
   }
 }

@@ -218,6 +218,7 @@ impl<'sym> Symex<'sym> {
             BinOp::Lt => self.ctx.lt(lhs, rhs),
             BinOp::And => self.ctx.and(lhs, rhs),
             BinOp::Or => self.ctx.or(lhs, rhs),
+            BinOp::Implies => self.ctx.implies(lhs, rhs),
           };
         Ok(expr)
       },

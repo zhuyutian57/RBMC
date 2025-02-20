@@ -407,6 +407,16 @@ impl ExprBuilder for ExprCtx {
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
+  
+  fn implies(&self, cond: Expr, conseq: Expr) -> Expr {
+    assert!(cond.ty() == conseq.ty());
+    assert!(cond.ty().is_bool());
+    let kind = NodeKind::Binary(BinOp::Implies, cond.id, conseq.id);
+    let ty = cond.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
 
   fn not(&self, operand: Expr) -> Expr {
     assert!(operand.ty().is_bool());

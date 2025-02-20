@@ -67,10 +67,6 @@ impl<'ctx> SmtSolver for Z3Conv<'ctx> {
     let e = self.convert_ast(expr);
     self.assert(e);
   }
-
-  fn push(&self) { self.z3_solver.push(); }
-  
-  fn pop(&self, n: u32) { self.z3_solver.pop(n); }
   
   fn reset(&self) { self.z3_solver.reset(); }
 

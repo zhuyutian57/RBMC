@@ -18,23 +18,25 @@ pub enum BinOp {
   Lt,
   And,
   Or,
+  Implies,
 }
 
 impl Debug for BinOp {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      Self::Add => write!(f, "+"),
-      Self::Sub => write!(f, "-"),
-      Self::Mul => write!(f, "*"),
-      Self::Div => write!(f, "/"),
-      Self::Eq => write!(f, "=="),
-      Self::Ne => write!(f, "!="),
-      Self::Ge => write!(f, ">="),
-      Self::Gt => write!(f, ">"),
-      Self::Le => write!(f, "<="),
-      Self::Lt => write!(f, "<"),
-      Self::And => write!(f, "&&"),
-      Self::Or => write!(f, "||"),
+      BinOp::Add => write!(f, "+"),
+      BinOp::Sub => write!(f, "-"),
+      BinOp::Mul => write!(f, "*"),
+      BinOp::Div => write!(f, "/"),
+      BinOp::Eq => write!(f, "=="),
+      BinOp::Ne => write!(f, "!="),
+      BinOp::Ge => write!(f, ">="),
+      BinOp::Gt => write!(f, ">"),
+      BinOp::Le => write!(f, "<="),
+      BinOp::Lt => write!(f, "<"),
+      BinOp::And => write!(f, "&&"),
+      BinOp::Or => write!(f, "||"),
+      BinOp::Implies => write!(f, "=>"),
     }
   }
 }
@@ -68,8 +70,8 @@ pub enum UnOp {
 impl Debug for UnOp {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      Self::Not => write!(f, "!"),
-      Self::Neg => write!(f, "neg"),
+      UnOp::Not => write!(f, "!"),
+      UnOp::Neg => write!(f, "neg"),
     }
   }
 }

@@ -119,6 +119,7 @@ impl Renaming {
           BinOp::Lt => ctx.lt(lhs, rhs),
           BinOp::And => ctx.and(lhs, rhs),
           BinOp::Or => ctx.or(lhs, rhs),
+          BinOp::Implies => ctx.implies(lhs, rhs),
         };
       return;
     }

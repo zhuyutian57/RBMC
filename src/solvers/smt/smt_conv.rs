@@ -14,8 +14,6 @@ pub(crate) trait SmtSolver {
   fn init(&mut self, program: &Program);
   fn assert_assign(&mut self, lhs: Expr, rhs: Expr);
   fn assert_expr(&mut self, expr: Expr);
-  fn push(&self);
-  fn pop(&self, n: u32);
   fn reset(&self);
   fn dec_check(&self) -> Result;
 }
@@ -89,6 +87,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
           BinOp::Lt => self.mk_lt(lhs, rhs),
           BinOp::And => self.mk_and(lhs, rhs),
           BinOp::Or => self.mk_or(lhs, rhs),
+          BinOp::Implies => self.mk_implies(lhs, rhs),
         });
     }
 
