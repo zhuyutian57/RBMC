@@ -44,7 +44,10 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
 
     // convert sub exprs firstly
     let mut args: Vec<Ast> = Vec::new();
-    if !expr.is_address_of() && !expr.is_index() {
+    if !expr.is_address_of() &&
+       !expr.is_index() &&
+       !expr.is_cast() &&
+       !expr.is_store() {
       if let Some(sub_exrps) = expr.sub_exprs() {
         for e in sub_exrps {
           args.push(self.convert_ast(e));
@@ -103,7 +106,12 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
     }
 
     if expr.is_cast() {
-
+      a = Some(
+        self.convert_cast(
+          expr.extract_src(),
+          expr.extract_target_type()
+        )
+      );
     }
 
     if expr.is_object() {
@@ -121,7 +129,10 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
     }
 
     if expr.is_store() {
-
+      let object = expr.extract_object();
+      let index = expr.extract_index();
+      let value = expr.extract_update_value();
+      a = Some(self.convert_store(object, index, value));
     }
 
     match a {
@@ -191,6 +202,15 @@ pub(crate) trait Convert<Sort, Ast: Clone> {
   }
 
   fn convert_object_space(&mut self, ident: Expr) -> Ast;
+
+  fn convert_cast(&mut self, expr: Expr, ty: Type) -> Ast {
+    if (expr.ty().is_integer() && ty.is_integer()) ||
+       (expr.ty().is_any_ptr() && ty.is_any_ptr()) {
+      return self.convert_ast(expr.clone());
+    }
+
+    panic!("Do not support cast {:?} to {ty:?}", expr.ty())
+  }
 
   fn convert_load(&mut self, object: Expr, index: Expr) -> Ast {
     if object.ty().is_array() {

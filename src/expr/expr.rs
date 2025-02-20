@@ -69,7 +69,11 @@ impl Expr {
   }
 
   pub fn extract_object(&self) -> Expr {
-    assert!(self.is_address_of() || self.is_index());
+    assert!(
+      self.is_address_of() ||
+      self.is_index() ||
+      self.is_store()
+    );
     self.sub_exprs().unwrap().remove(0)
   }
 
@@ -99,8 +103,13 @@ impl Expr {
   }
 
   pub fn extract_index(&self) -> Expr {
-    assert!(self.is_index());
+    assert!(self.is_index() || self.is_store());
     self.sub_exprs().unwrap().remove(1)
+  }
+
+  pub fn extract_update_value(&self) -> Expr {
+    assert!(self.is_store());
+    self.sub_exprs().unwrap().remove(2)
   }
 
   pub fn extract_ownership(&self) -> Ownership {

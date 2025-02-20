@@ -138,7 +138,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     field: Expr,
     value: Expr)
     -> z3::ast::Dynamic<'ctx> {
-    todo!()
+    let i = field.extract_constant().to_integer().to_uint() as usize;
+    self.update_tuple_field(object, i, value)
   }
 
   fn mk_bool_sort(&self) -> z3::Sort<'ctx> {
@@ -450,9 +451,6 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   }
 
   fn load_tuple_field(&mut self, object: Expr, field: usize) -> z3::ast::Dynamic<'ctx> {
-    if object.is_constant() {
-    }
-
     let args = 
       &[&self.convert_ast(object.clone()) as &dyn Ast];
     let dtsort =
@@ -463,6 +461,36 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
       .variants[0]
       .accessors[field]
       .apply(args)
+  }
+  
+  fn update_tuple_field(
+    &mut self,
+    object: Expr,
+    field: usize,
+    value: Expr)
+    -> z3::ast::Dynamic<'ctx> {
+    let n = self.tuple_sorts.get(&object.ty()).unwrap().variants[0].accessors.len();
+    let mut fields_values = Vec::with_capacity(n);
+    let update_value = self.convert_ast(value);
+    for i in 0..n {
+      if i != field {
+        fields_values.push(self.load_tuple_field(object.clone(), i));
+      } else {
+        fields_values.push(update_value.clone());
+      }
+    }
+    let args =
+      fields_values
+        .iter()
+        .map(|x| x as &dyn Ast)
+        .collect::<Vec<_>>();
+    self
+      .tuple_sorts
+      .get(&object.ty())
+      .unwrap()
+      .variants[0]
+      .constructor
+      .apply(&args.as_slice())
   }
 }
 
