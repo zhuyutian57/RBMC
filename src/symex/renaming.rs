@@ -178,6 +178,12 @@ impl Renaming {
       return;
     }
 
+    if expr.is_pointer_ident() {
+      let pt = sub_exprs[0].clone();
+      *expr = ctx.pointer_ident(pt);
+      return;
+    }
+
     panic!("Do not support renaming: {expr:?}");
   }
 

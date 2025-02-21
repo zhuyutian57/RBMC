@@ -1,3 +1,5 @@
+
+use std::collections::HashMap;
 use std::fmt::Error;
 
 use stable_mir::CrateDef;
@@ -41,6 +43,7 @@ enum FnKind {
 pub struct Symex<'sym> {
   program : &'sym Program,
   ctx: ExprCtx,
+  ns: HashMap<NString, Expr>,
   pub(super) exec_state: ExecutionState<'sym>,
   pub(super) vc_system: VCSysPtr,
 }
@@ -52,14 +55,30 @@ impl<'sym> Symex<'sym> {
     vc_system: VCSysPtr) -> Self {
     let mut exec_state = ExecutionState::new(program, ctx.clone());
     exec_state.setup();
-    let mut symex = Symex { program, ctx: ctx.clone(), exec_state, vc_system };
-    // Initializing for common values
+
+    let mut symex =
+      Symex {
+        program,
+        ctx: ctx.clone(),
+        ns: HashMap::new(),
+        exec_state, vc_system
+      };
     let ty = Type::const_array_type(Type::bool_type());
-    let mut alloc_sym = symex.exec_state.l0_symbol(NString::from("alloc"), ty);
+    let mut alloc_sym =
+      symex.exec_state.l0_symbol(NString::ALLOC_SYM, ty);
+    symex.ns.insert(NString::ALLOC_SYM, alloc_sym.clone());
     let mut const_array =
       ctx.constant_array(Constant::Bool(false), Type::bool_type());
     symex.assign_symbol(alloc_sym, const_array, ctx.constant_bool(true));
     symex
+  }
+
+  pub fn lookup(&self, ident: NString) -> Expr {
+    self
+      .ns
+      .get(&ident)
+      .expect("Not exists")
+      .clone()
   }
 
   pub fn can_exec(&self) -> bool { self.exec_state.can_exec() }
@@ -266,7 +285,6 @@ impl<'sym> Symex<'sym> {
   }
 
   fn do_assignment(&mut self, lhs: Expr, rhs: Expr) {
-    println!("{lhs:?} {:?} = {rhs:?} {:?}", lhs.ty(), rhs.ty());
     assert!(lhs.ty().is_layout() || lhs.ty() == rhs.ty());
     // TODO: do more jobs
     self.assign_rec(lhs, rhs, self.ctx.constant_bool(true));

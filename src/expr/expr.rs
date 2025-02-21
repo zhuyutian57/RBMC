@@ -39,6 +39,7 @@ impl Expr {
   pub fn is_same_object(&self) -> bool { self.ctx.borrow().is_same_object(self.id) }
   pub fn is_index(&self) -> bool { self.ctx.borrow().is_index(self.id) }
   pub fn is_store(&self) -> bool { self.ctx.borrow().is_store(self.id) }
+  pub fn is_pointer_ident(&self) -> bool { self.ctx.borrow().is_pointer_ident(self.id) }
 
   pub fn extract_symbol(&self) -> Symbol {
     self
@@ -225,7 +226,12 @@ impl Debug for Expr {
       if self.is_index() {
         let object = &sub_exprs[0];
         let index = &sub_exprs[1];
-        return write!(f, "{object:?}.{index:?}");
+        return 
+          if object.ty().is_struct() {
+            write!(f, "{object:?}.{index:?}")
+          } else {
+            write!(f, "{object:?}[{index:?}]")
+          }
       }
 
       if self.is_ite() {
@@ -246,6 +252,11 @@ impl Debug for Expr {
         let index = &sub_exprs[1];
         let value = &sub_exprs[2];
         return write!(f, "store({object:?}, {index:?}, {value:?})");
+      }
+
+      if self.is_pointer_ident() {
+        let pt = &sub_exprs[0];
+        return write!(f, "{pt:?}");
       }
 
       println!("Incomplete Debug for Expr");
@@ -286,4 +297,6 @@ pub trait ExprBuilder {
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr;
   fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
+
+  fn pointer_ident(&self, pt: Expr) -> Expr;
 }

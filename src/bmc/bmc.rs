@@ -50,7 +50,7 @@ impl<'bmc> Bmc<'bmc> {
         VcKind::Assign(lhs, rhs) => {
           self.runtime_solver.assert_assign(lhs.clone(), rhs.clone());
         },
-        VcKind::Assert(c) => {
+        VcKind::Assert(_,c) => {
           assertions.push(ctx.implies(cond.clone(), c.clone()));
         },
         VcKind::Assume(c) => {

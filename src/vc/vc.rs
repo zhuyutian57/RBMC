@@ -6,11 +6,12 @@ use std::slice::{Iter, IterMut};
 
 use crate::expr::context::ExprCtx;
 use crate::expr::expr::*;
+use crate::NString;
 
 #[derive(Clone)]
 pub enum VcKind {
   Assign(Expr, Expr),
-  Assert(Expr),
+  Assert(NString, Expr),
   Assume(Expr),
 }
 
@@ -19,7 +20,7 @@ impl Debug for VcKind {
     match self {
       VcKind::Assign(lhs, rhs)
         => write!(f, "{lhs:?} = {rhs:?}"),
-      VcKind::Assert(cond)  |
+      VcKind::Assert(_, cond)  |
       VcKind::Assume(cond) => write!(f, "{cond:?}"),
     }
   }
@@ -64,12 +65,13 @@ pub struct VCSystem {
 
 impl VCSystem {
   pub fn assign(&mut self, lhs: Expr, mut rhs: Expr) {
-    println!("ASSIGN: {lhs:?} = {rhs:?}");
+    // println!("ASSIGN: {lhs:?} = {rhs:?}");
     self.vconds.push(Vc::new(VcKind::Assign(lhs, rhs)));
   }
 
-  pub fn assert(&mut self, cond: Expr) {
-    self.vconds.push(Vc::new(VcKind::Assert(cond)));
+  pub fn assert(&mut self, property: NString, cond: Expr) {
+    println!("ASSERT: {cond:?}");
+    self.vconds.push(Vc::new(VcKind::Assert(property, cond)));
   }
   
   pub fn assume(&mut self, cond: Expr) {

@@ -82,7 +82,7 @@ impl State {
     }
 
     if expr.is_object() {
-      let inner_object = expr.sub_exprs().unwrap().remove(0);
+      let inner_object = expr.extract_inner_expr();
       self.get_value_set(inner_object, values);
       return;
     }

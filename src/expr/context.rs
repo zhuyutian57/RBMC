@@ -156,6 +156,11 @@ impl Context {
     self.nodes[i].kind().is_store()
   }
 
+  pub fn is_pointer_ident(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_pointer_ident()
+  }
+
   pub(super) fn extract_terminal(&self, i: NodeId) -> Result<Rc<Terminal>, &str> {
     assert!(i < self.nodes.len());
     match self.nodes[i].kind() {
@@ -477,6 +482,7 @@ impl ExprBuilder for ExprCtx {
       object.is_object() &&
       (object.ty().is_array() || object.ty().is_struct())
     );
+    // TODO: match type
     let kind = NodeKind::Index(object.id, index.id);
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
@@ -486,6 +492,15 @@ impl ExprBuilder for ExprCtx {
   fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr {
     let kind = NodeKind::Store(object.id, key.id, value.id);
     let ty = object.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+  
+  fn pointer_ident(&self, pt: Expr) -> Expr {
+    assert!(pt.ty().is_any_ptr());
+    let kind = NodeKind::PointerIdent(pt.id);
+    let ty = Type::unsigned_type(UintTy::Usize);
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }

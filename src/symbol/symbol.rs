@@ -46,6 +46,26 @@ impl Symbol {
   pub fn is_level1(&self) -> bool { self.level == Level::Level1 }
   pub fn is_level2(&self) -> bool { self.level == Level::Level2 }
 
+  pub fn l0_version(&self) -> Self {
+    let mut l0_sym = self.clone();
+    l0_sym.l1_num = 0;
+    l0_sym.l2_num = 0;
+    l0_sym.level = Level::Level0;
+    l0_sym
+  }
+
+  pub fn l1_version(&self) -> Self {
+    assert!(!self.is_level0());
+    let mut l1_sym = self.clone();
+    l1_sym.l2_num = 0;
+    l1_sym.level = Level::Level1;
+    l1_sym
+  }
+
+  pub fn l1_num(&self) -> usize { self.l1_num }
+
+  pub fn l2_num(&self) -> usize { self.l2_num }
+
   pub fn l1_name(&self) -> NString {
     self.ident + "::" + self.l1_num.to_string()
   }

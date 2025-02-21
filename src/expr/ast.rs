@@ -82,6 +82,8 @@ pub(super) enum NodeKind {
   Index(NodeId, NodeId),
   /// `Store(obj, i, value)` updates the value of obj
   Store(NodeId, NodeId, NodeId),
+  /// `PointerIdent(pt)` retrieve the ident of a pointer
+  PointerIdent(NodeId),
 }
 
 impl NodeKind {
@@ -125,6 +127,9 @@ impl NodeKind {
     matches!(self, NodeKind::Store(..))
   }
 
+  pub fn is_pointer_ident(&self) -> bool {
+    matches!(self, NodeKind::PointerIdent(..))
+  }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -158,6 +163,8 @@ impl Node {
         => Some(vec![o, i]),
       NodeKind::Store(o, i, v)
         => Some(vec![o, i, v]),
+      NodeKind::PointerIdent(p)
+        => Some(vec![p]),
       _ => None,
     }
   }

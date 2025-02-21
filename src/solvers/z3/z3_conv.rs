@@ -107,6 +107,20 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     self.mk_pointer(ident, offset)
   }
 
+  fn convert_pointer_ident(
+    &self,
+    pt: &z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
+    self.mk_pointer_ident(pt)
+  }
+
+  fn convert_pointer_offset(
+    &self,
+    pt: &z3::ast::Dynamic<'ctx>)
+    -> z3::ast::Dynamic<'ctx> {
+    self.mk_pointer_offset(pt)
+  }
+
   fn convert_tuple(
     &mut self,
     fields: Vec<z3::ast::Dynamic<'ctx>>,

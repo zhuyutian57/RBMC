@@ -8,6 +8,7 @@ use crate::expr::predicates::*;
 use crate::expr::ty::Type;
 use crate::symbol::symbol::*;
 use crate::vc::vc::VCSystem;
+use crate::NString;
 use super::exec_state::*;
 use super::symex::Symex;
 use super::value_set::*;
@@ -22,58 +23,68 @@ impl<'a, 'sym> Projector<'a, 'sym> {
     Projector { _callback_symex: state }
   }
 
-  /// TODO: add assertion for dereference
   pub fn project(&mut self, place: &Place) -> Expr {
     let mut ret =
       self
         ._callback_symex
         .exec_state
         .current_local(place.local, Level::Level1);
-    let ctx = ret.ctx.clone();
-    ret = ctx.object(ret, Ownership::Own);
+    ret = ret.ctx.clone().object(ret, Ownership::Own);
 
     for elem in place.projection.iter() {
       ret =
         match elem {
           ProjectionElem::Deref
-            => Some(self.project_deref(ret.clone())),
+            => self.project_deref(ret.clone()),
           ProjectionElem::Field(i, ty)
+            => self.project_field(
+              ret.clone(),
+              *i,
+              Type::from(*ty)),
+          ProjectionElem::Index(local)
             => {
-              if ret.ty().is_box() && *i == 0 {
-                // `box` performs as a special raw pointer. Use it directly.
-                Some(ret)
-              } else {
-                let index =
-                  ctx.constant_integer(
-                    BigInt(false, *i as u128),
-                    Type::unsigned_type(UintTy::Usize)
-                  );
-                let load = ctx.index(ret, index.clone(), Type::from(*ty));
-                let ownership = load.extract_ownership();
-                Some(ctx.object(load, ownership))
-              }
+              let index =
+                self
+                  ._callback_symex
+                  .exec_state
+                  .current_local(*local, Level::Level2);
+              self.project_index(ret.clone(), index)
             },
-          _ => None,
-        }.expect(format!("{elem:?}").as_str());
+          _ => panic!("Not support {elem:?} for {ret:?}"),
+        };
     }
 
     ret
   }
 
-  fn project_deref(&mut self, expr: Expr) -> Expr {
+  /// Dereferencing raw pointer/reference/box pointer.
+  /// Return the objects it points to.
+  fn project_deref(&mut self, pt: Expr) -> Expr {
+    assert!(pt.ty().is_any_ptr());
     let mut objects = ObjectSet::new();
     self
       ._callback_symex
       .exec_state
       .cur_state()
-      .get_value_set(expr.clone(), &mut objects);
+      .get_value_set(pt.clone(), &mut objects);
     
-    let ctx = expr.ctx.clone();
+    let ctx = pt.ctx.clone();
+
+    if objects.is_empty() {
+      todo!()
+    }
 
     for object in objects.iter() {
+      // An object is valid if it is owned by some variable
+      // according to the Ownership rule of Rust.
       if object.extract_ownership().is_own() { continue; }
-      // assertion for invalid dereference
-      // use uninterpreted function?
+      
+      let guard =
+        ctx.same_object(
+          pt.clone(),
+          ctx.address_of(object.clone(), pt.ty())
+        );
+      self.valid_check(object.clone(), guard);
     }
 
     let mut ret = None;
@@ -81,14 +92,86 @@ impl<'a, 'sym> Projector<'a, 'sym> {
       ret =
         match ret {
           Some(x) => {
-            let obj_adr = ctx.address_of(object.clone(), expr.ty());
-            let cond = ctx.same_object(expr.clone(), obj_adr);
+            let obj_adr = ctx.address_of(object.clone(), pt.ty());
+            let cond = ctx.same_object(pt.clone(), obj_adr);
             Some(ctx.ite(cond, object.clone(), x))
           },
           None => Some(object),
         }
     }
 
-    ret.expect(format!("*{expr:?}").as_str())
+    ret.expect(format!("*{pt:?}").as_str())
+  }
+
+  /// Visit a field of a struct. Return `Index(object, i)`.
+  /// Note that the special visit for box pointer.
+  fn project_field(&mut self, object: Expr, field: usize, ty: Type) -> Expr {
+    if object.ty().is_box() && field == 0 {
+      // `box` performs as a special raw pointer. Use it directly.
+      return object;
+    }
+
+    assert!(object.ty().is_struct());
+
+    let ctx = object.ctx.clone();
+
+    // TODO: shall we add bound check here?
+
+    let field =
+      ctx.constant_integer(
+        BigInt(false, field as u128),
+        Type::unsigned_type(UintTy::Usize)
+      );
+    
+    let index = ctx.index(object, field, Type::from(ty));
+    let ownership = index.extract_ownership();
+    ctx.object(index, ownership)
+  }
+
+  /// Visit an array/slice. Return `Index(array/slice, i)`.
+  fn project_index(&mut self, object: Expr, index: Expr) -> Expr {
+    todo!()
+  }
+
+  fn valid_check(&mut self, object: Expr, guard: Expr) {
+    assert!(object.is_object());
+
+    let ctx = object.ctx.clone();
+    let inner_expr = object.extract_inner_expr();
+
+    if inner_expr.is_symbol() {
+      let ptr_ty =
+        Type::ptr_type(object.ty(), Mutability::Not);
+      let pt = ctx.address_of(object.clone(), ptr_ty);
+      let ident = ctx.pointer_ident(pt);
+      let alloc_array_symbol =
+        self._callback_symex.lookup(NString::ALLOC_SYM);
+      let alloc_array =
+        ctx.object(alloc_array_symbol, Ownership::Own);
+      let is_not_alloced =
+        ctx.not(ctx.index(alloc_array, ident, Type::bool_type()));
+      self
+        .dereference_failure(
+          NString::from(
+            format!("dereference failure: {object:?} is not alloced")
+          ),
+          ctx.implies(guard.clone(), is_not_alloced)
+        );
+      return;
+    }
+    
+    panic!("Not support: {object:?}");
+  }
+
+  fn dereference_failure(&mut self, property: NString, mut vc: Expr) {
+    self
+      ._callback_symex
+      .exec_state
+      .rename(&mut vc, Level::Level2);
+    self
+      ._callback_symex
+      .vc_system
+      .borrow_mut()
+      .assert(property, vc);
   }
 }

@@ -138,6 +138,10 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
       a = Some(self.convert_store(object, index, value));
     }
 
+    if expr.is_pointer_ident() {
+      a = Some(self.convert_pointer_ident(&args[0]));
+    }
+
     match a {
       Some(ast) => {
         self.cache_ast(expr, ast.clone());
@@ -167,6 +171,8 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
   }
 
   fn convert_pointer(&self, ident: &Ast, offset: &Ast) -> Ast;
+  fn convert_pointer_ident(&self, pt: &Ast) -> Ast;
+  fn convert_pointer_offset(&self, pt: &Ast) -> Ast;
   fn convert_tuple(&mut self, fields: Vec<Ast>, ty: Type) -> Ast;
 
   fn convert_symbol(&mut self, name: NString, ty: Type) -> Ast {
