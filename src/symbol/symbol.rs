@@ -40,7 +40,7 @@ impl Symbol {
     Symbol { ident, l1_num, l2_num, level }
   }
 
-  pub fn ident(&self) -> NString { self.ident.clone() }
+  pub fn ident(&self) -> NString { self.ident }
 
   pub fn is_level0(&self) -> bool { self.level == Level::Level0 }
   pub fn is_level1(&self) -> bool { self.level == Level::Level1 }
