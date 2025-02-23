@@ -69,9 +69,9 @@ impl VCSystem {
     self.vconds.push(Vc::new(VcKind::Assign(lhs, rhs)));
   }
 
-  pub fn assert(&mut self, property: NString, cond: Expr) {
+  pub fn assert(&mut self, msg: NString, cond: Expr) {
     println!("ASSERT: {cond:?}");
-    self.vconds.push(Vc::new(VcKind::Assert(property, cond)));
+    self.vconds.push(Vc::new(VcKind::Assert(msg, cond)));
   }
   
   pub fn assume(&mut self, cond: Expr) {

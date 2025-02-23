@@ -43,6 +43,9 @@ enum FnKind {
 pub struct Symex<'sym> {
   program : &'sym Program,
   ctx: ExprCtx,
+  /// `ns` means namespace, which stores some
+  /// global encoding variable(a.k.a object
+  /// in our ast) such as `alloc`.
   ns: HashMap<NString, Expr>,
   pub(super) exec_state: ExecutionState<'sym>,
   pub(super) vc_system: VCSysPtr,
@@ -63,16 +66,21 @@ impl<'sym> Symex<'sym> {
         ns: HashMap::new(),
         exec_state, vc_system
       };
-    let ty = Type::const_array_type(Type::bool_type());
-    let mut alloc_sym =
-      symex.exec_state.l0_symbol(NString::ALLOC_SYM, ty);
-    symex.ns.insert(NString::ALLOC_SYM, alloc_sym.clone());
+    let mut alloc_array =
+      ctx.object(
+        symex.exec_state.l0_symbol(
+          NString::ALLOC_SYM,
+          Type::const_array_type(Type::bool_type())),
+        Ownership::Own
+      );
+    symex.ns.insert(NString::ALLOC_SYM, alloc_array.clone());
     let mut const_array =
       ctx.constant_array(Constant::Bool(false), Type::bool_type());
-    symex.assign_symbol(alloc_sym, const_array, ctx.constant_bool(true));
+    symex.assign_rec(alloc_array, const_array, ctx.constant_bool(true));
     symex
   }
 
+  /// Return `object`
   pub fn lookup(&self, ident: NString) -> Expr {
     self
       .ns

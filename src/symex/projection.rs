@@ -135,43 +135,45 @@ impl<'a, 'sym> Projector<'a, 'sym> {
 
   fn valid_check(&mut self, object: Expr, guard: Expr) {
     assert!(object.is_object());
-
     let ctx = object.ctx.clone();
-    let inner_expr = object.extract_inner_expr();
-
-    if inner_expr.is_symbol() {
-      let ptr_ty =
-        Type::ptr_type(object.ty(), Mutability::Not);
-      let pt = ctx.address_of(object.clone(), ptr_ty);
-      let ident = ctx.pointer_ident(pt);
-      let alloc_array_symbol =
-        self._callback_symex.lookup(NString::ALLOC_SYM);
-      let alloc_array =
-        ctx.object(alloc_array_symbol, Ownership::Own);
-      let is_not_alloced =
-        ctx.not(ctx.index(alloc_array, ident, Type::bool_type()));
-      self
-        .dereference_failure(
-          NString::from(
-            format!("dereference failure: {object:?} is not alloced")
-          ),
-          ctx.implies(guard.clone(), is_not_alloced)
-        );
-      return;
-    }
-    
-    panic!("Not support: {object:?}");
+    let invalid = ctx.invalid(object.clone());
+    self.dereference_failure(
+      NString::from(format!("dereference failure: {object:?} is not alloced")),
+      invalid,
+      guard
+    );
   }
 
-  fn dereference_failure(&mut self, property: NString, mut vc: Expr) {
-    self
-      ._callback_symex
-      .exec_state
-      .rename(&mut vc, Level::Level2);
-    self
-      ._callback_symex
-      .vc_system
-      .borrow_mut()
-      .assert(property, vc);
+  fn dereference_failure(&mut self, msg: NString, vc: Expr, guard: Expr) {
+    let ctx = vc.ctx.clone();
+
+    if vc.is_invalid() {
+      let object = vc.extract_object();
+      let ptr_indent =
+        ctx
+          .pointer_ident(
+            ctx.address_of(
+              object.clone(),
+              object.extract_address_type()
+            )
+          );
+      let alloc_array = self._callback_symex.lookup(NString::ALLOC_SYM);
+      let is_not_alloced =
+          ctx.not(
+            ctx.index(
+              alloc_array,
+              ptr_indent,
+              Type::bool_type()
+            )
+          );
+      self
+        ._callback_symex
+        .vc_system
+        .borrow_mut()
+        .assert(msg, is_not_alloced);
+      return;
+    }
+
+    panic!("Not support {msg:?}\n{vc:?}");
   }
 }

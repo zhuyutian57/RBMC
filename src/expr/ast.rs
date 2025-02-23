@@ -84,6 +84,8 @@ pub(super) enum NodeKind {
   Store(NodeId, NodeId, NodeId),
   /// `PointerIdent(pt)` retrieve the ident of a pointer
   PointerIdent(NodeId),
+
+  Invalid(NodeId),
 }
 
 impl NodeKind {
@@ -130,6 +132,10 @@ impl NodeKind {
   pub fn is_pointer_ident(&self) -> bool {
     matches!(self, NodeKind::PointerIdent(..))
   }
+
+  pub fn is_invalid(&self) -> bool {
+    matches!(self, NodeKind::Invalid(..))
+  }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -165,6 +171,8 @@ impl Node {
         => Some(vec![o, i, v]),
       NodeKind::PointerIdent(p)
         => Some(vec![p]),
+      NodeKind::Invalid(o)
+        => Some(vec![o]),
       _ => None,
     }
   }

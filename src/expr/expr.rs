@@ -3,6 +3,8 @@ use std::fmt::Debug;
 use std::fmt::Error;
 use std::hash::Hash;
 
+use stable_mir::mir::Mutability;
+
 use crate::symbol::symbol::*;
 
 use super::ast::*;
@@ -40,6 +42,7 @@ impl Expr {
   pub fn is_index(&self) -> bool { self.ctx.borrow().is_index(self.id) }
   pub fn is_store(&self) -> bool { self.ctx.borrow().is_store(self.id) }
   pub fn is_pointer_ident(&self) -> bool { self.ctx.borrow().is_pointer_ident(self.id) }
+  pub fn is_invalid(&self) -> bool { self.ctx.borrow().is_invalid(self.id) }
 
   pub fn extract_symbol(&self) -> Symbol {
     self
@@ -69,11 +72,20 @@ impl Expr {
       .expect("Not layout")
   }
 
+  pub fn extract_address_type(&self) -> Type {
+    assert!(self.is_object());
+    Type::ptr_type(
+      self.ty(),
+      Mutability::Not
+    )
+  }
+
   pub fn extract_object(&self) -> Expr {
     assert!(
       self.is_address_of() ||
       self.is_index() ||
-      self.is_store()
+      self.is_store() ||
+      self.is_invalid()
     );
     self.sub_exprs().unwrap().remove(0)
   }
@@ -299,4 +311,6 @@ pub trait ExprBuilder {
   fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
 
   fn pointer_ident(&self, pt: Expr) -> Expr;
+
+  fn invalid(&self, object: Expr) -> Expr;
 }

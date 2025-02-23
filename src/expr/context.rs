@@ -161,7 +161,13 @@ impl Context {
     self.nodes[i].kind().is_pointer_ident()
   }
 
-  pub(super) fn extract_terminal(&self, i: NodeId) -> Result<Rc<Terminal>, &str> {
+  pub fn is_invalid(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_invalid()
+  }
+
+  pub(super) fn extract_terminal(&self, i: NodeId)
+    -> Result<Rc<Terminal>, &str> {
     assert!(i < self.nodes.len());
     match self.nodes[i].kind() {
       NodeKind::Terminal(t)
@@ -501,6 +507,15 @@ impl ExprBuilder for ExprCtx {
     assert!(pt.ty().is_any_ptr());
     let kind = NodeKind::PointerIdent(pt.id);
     let ty = Type::unsigned_type(UintTy::Usize);
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+
+  fn invalid(&self, object: Expr) -> Expr {
+    assert!(object.is_object());
+    let kind = NodeKind::Invalid(object.id);
+    let ty = Type::bool_type();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
