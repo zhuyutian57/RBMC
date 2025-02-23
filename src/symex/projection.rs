@@ -158,7 +158,7 @@ impl<'a, 'sym> Projector<'a, 'sym> {
             )
           );
       let alloc_array = self._callback_symex.lookup(NString::ALLOC_SYM);
-      let is_not_alloced =
+      let mut is_not_alloced =
           ctx.not(
             ctx.index(
               alloc_array,
@@ -166,6 +166,7 @@ impl<'a, 'sym> Projector<'a, 'sym> {
               Type::bool_type()
             )
           );
+      self._callback_symex.exec_state.rename(&mut is_not_alloced, Level::Level2);
       self
         ._callback_symex
         .vc_system

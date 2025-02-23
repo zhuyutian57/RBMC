@@ -538,7 +538,30 @@ impl<'sym> Symex<'sym> {
       let inner_object = object.sub_exprs().unwrap().remove(0);
       return self.ctx.object(inner_object, Ownership::Own);
     }
+    self.track_new_object(object.clone());
     object
+  }
+
+  fn track_new_object(&mut self, object: Expr) {
+    assert!(object.is_object());
+    let ctx = object.ctx.clone();
+
+    // alloc[&object] = true
+    let alloc_array = self.lookup(NString::ALLOC_SYM);
+    let pt_indent =
+      ctx.pointer_ident(
+        ctx.address_of(
+          object.clone(),
+          object.extract_address_type()
+        )
+      );
+    let store =
+      ctx.store(
+        alloc_array.clone(),
+        pt_indent,
+        ctx.constant_bool(true)
+      );
+    self.do_assignment(alloc_array, store);
   }
 
   fn symex_as_mut(&mut self, place: &Place, operand: &Operand) {
