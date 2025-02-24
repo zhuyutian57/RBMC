@@ -29,6 +29,7 @@ impl<'bmc> Bmc<'bmc> {
   }
 
   pub fn do_bmc(&mut self) {
+    self.program.show();
     while self.symex.can_exec() { self.symex.symex(); }
     self.check_properties();
   }
@@ -41,7 +42,7 @@ impl<'bmc> Bmc<'bmc> {
   fn generate_smt_formula(&mut self) {
     let ctx = self.config.expr_ctx();
 
-    let mut cond = ctx.constant_bool(true);
+    let mut assumetion = ctx.constant_bool(true);
     let mut assertions = Vec::new();
     
     for vc in self.vc_system.borrow().iter() {
@@ -51,12 +52,11 @@ impl<'bmc> Bmc<'bmc> {
           self.runtime_solver.assert_assign(lhs.clone(), rhs.clone());
         },
         VcKind::Assert(_, c) => {
-          cond = ctx.implies(cond.clone(), c.clone());
-          assertions.push(cond.clone());
+          assertions.push(ctx.implies(assumetion.clone(), c.clone()));
         },
         VcKind::Assume(c) => {
-          cond = ctx.and(cond, c.clone());
-          cond.simplify();
+          assumetion = ctx.and(assumetion, c.clone());
+          assumetion.simplify();
         },
       }
     }

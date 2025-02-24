@@ -95,11 +95,11 @@ impl<'sym> Symex<'sym> {
     while let Some(pc) = self.top().cur_pc() {
       // Merge states
       if self.exec_state.merge_states(pc) {
-        // println!(
-        //   "Enter {:?} - bb{pc}\n{:?}",
-        //   self.top().function().name(),
-        //   self.top().cur_state()
-        // );
+        println!(
+          "Enter {:?} - bb{pc}\n{:?}",
+          self.top().function().name(),
+          self.top().cur_state()
+        );
         let bb = self.top().function().basicblock(pc);
         self.symex_basicblock(bb);
       } else {
@@ -136,7 +136,7 @@ impl<'sym> Symex<'sym> {
   }
 
   /// Interface to do projection
-  fn make_project(&mut self, place: &Place) -> Expr {    
+  fn make_project(&mut self, place: &Place) -> Expr {
     Projector::new(self).project(place)
   }
 
@@ -295,6 +295,7 @@ impl<'sym> Symex<'sym> {
   fn assign(&mut self, lhs: Expr, rhs: Expr) {
     assert!(lhs.ty().is_layout() || lhs.ty() == rhs.ty());
     // TODO: do more jobs
+    println!("{lhs:?} = {rhs:?}");
     self.assign_rec(lhs, rhs, self.ctx.constant_bool(true));
   }
 
@@ -404,11 +405,49 @@ impl<'sym> Symex<'sym> {
   }
 
   fn symex_switchint(&mut self, discr: &Operand, targets: &SwitchTargets) {
-    for pc in targets.all_targets() {
-      let state = self.top().cur_state().clone();
-      // TODO - set path condition
-      self.top().add_state(pc, state);
+    let discr_expr = self.make_operand(discr);
+    // handle bool
+    if discr_expr.ty().is_bool() {
+      let mut true_state = self.top().cur_state().clone();
+      true_state.guard =
+        self.ctx.and(true_state.guard(), discr_expr.clone());
+      let true_branch = targets.all_targets()[0];
+      self.top().add_state(true_branch, true_state);
+
+      let mut false_state = self.top().cur_state().clone();
+      false_state.guard =
+        self.ctx.and(
+          false_state.guard.clone(),
+          self.ctx.not(discr_expr.clone())
+        );
+      let false_branch = targets.all_targets()[1];
+      self.top().add_state(false_branch, false_state);
+    } else if discr_expr.ty().is_integer() {
+      let mut state = self.top().cur_state().clone();
+      let state_guard = state.guard();
+      let mut otherwise_guard = state.guard();
+      for (i, bb) in targets.branches() {
+        let branch_guard =
+          self.ctx.eq(
+            discr_expr.clone(),
+            self.ctx.constant_integer(BigInt(false, i), discr_expr.ty())
+          );
+        state.guard =
+          self.ctx.and(state_guard.clone(), branch_guard.clone());
+        self.top().add_state(bb, state.clone());
+        otherwise_guard = 
+          self.ctx.and(
+            otherwise_guard,
+            self.ctx.not(branch_guard)
+          );
+      }
+      // otherwise
+      state.guard = otherwise_guard;
+      self.top().add_state(targets.otherwise(), state);
+    } else {
+      panic!("Not implement {discr:?}");
     }
+
     self.top().inc_pc();
   }
 
