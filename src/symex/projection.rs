@@ -167,11 +167,7 @@ impl<'a, 'sym> Projector<'a, 'sym> {
             )
           );
       self._callback_symex.exec_state.rename(&mut is_not_alloced, Level::Level2);
-      self
-        ._callback_symex
-        .vc_system
-        .borrow_mut()
-        .assert(msg, is_not_alloced);
+      self._callback_symex.claim(msg, is_not_alloced);
       return;
     }
 

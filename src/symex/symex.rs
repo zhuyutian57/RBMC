@@ -282,17 +282,17 @@ impl<'sym> Symex<'sym> {
     // construct lhs expr and rhs expr from MIR
     let lhs = self.make_project(place);
     let rhs = self.make_rvalue(rvalue);
-    self.do_assignment(lhs, rhs);
+    self.assign(lhs, rhs);
   }
 
   fn symex_assign_layout(&mut self, place: &Place, ty: Type) {
     // Use l2 symbol to do assignment
     let l2_var = self.make_project(place);
     let layout = self.ctx.mk_type(ty);
-    self.do_assignment(l2_var, layout);
+    self.assign(l2_var, layout);
   }
 
-  fn do_assignment(&mut self, lhs: Expr, rhs: Expr) {
+  fn assign(&mut self, lhs: Expr, rhs: Expr) {
     assert!(lhs.ty().is_layout() || lhs.ty() == rhs.ty());
     // TODO: do more jobs
     self.assign_rec(lhs, rhs, self.ctx.constant_bool(true));
@@ -481,7 +481,7 @@ impl<'sym> Symex<'sym> {
           let pt = self.make_project(dest);
           let address_of = self.ctx.address_of(object.clone(), pt.ty());
           
-          self.do_assignment(pt, address_of);
+          self.assign(pt, address_of);
           
           // TODO - do assignment for constant
 
@@ -524,7 +524,7 @@ impl<'sym> Symex<'sym> {
       for arg_local in args.iter() {
         let lhs = self.exec_state.l0_local(*arg_local);
         let rhs = arg_exprs[*arg_local - 1].clone();
-        self.do_assignment(lhs, rhs);
+        self.assign(lhs, rhs);
       }
       let state = self.top().cur_state().clone();
       self.top().add_state(0, state);
@@ -561,7 +561,7 @@ impl<'sym> Symex<'sym> {
         pt_indent,
         ctx.constant_bool(true)
       );
-    self.do_assignment(alloc_array, store);
+    self.assign(alloc_array, store);
   }
 
   fn symex_as_mut(&mut self, place: &Place, operand: &Operand) {
@@ -593,6 +593,16 @@ impl<'sym> Symex<'sym> {
     self.top().add_state(n, state);
 
     self.top().inc_pc();
+  }
+
+  /// The common interface for generating assertions
+  pub fn claim(&mut self, msg: NString, expr: Expr) {
+    let mut guard = self.exec_state.cur_state().guard();
+    let cond = self.ctx.implies(guard, expr);
+    self
+      .vc_system
+      .borrow_mut()
+      .assert(msg, cond);
   }
 
 }
