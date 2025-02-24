@@ -90,17 +90,82 @@ impl<'sym> Symex<'sym> {
     self.exec_state.pop_frame();
   }
 
-  pub fn merge_states(&mut self, pc: Pc) -> bool {
+  fn merge_states(&mut self, pc: Pc) -> bool {
     let state_vec = self.top().states_from(pc);
-    
-    let mut new_state = State::new(self.ctx.clone());
-    // TODO: do phi function
+
+    // We have put all states that reach current pc in the
+    // queue. Thus, we first construct an empty state.
+    // That is, make `gurad` of current state be `false`.
+    self.top().cur_state.guard = self.ctx.constant_bool(false);
+
+
     if let Some(states) = state_vec {
-      for state in states { new_state.merge(&state); }
-      self.top().cur_state = new_state;
-      true
-    } else {
-      false
+      
+      for mut state in states {
+        if state.guard.is_false() { continue; }
+
+        // SSA assigment
+        self.phi_function(&mut state);
+
+        self.top().cur_state.merge(&state);
+      }
+    }
+
+    !self.top().cur_state.guard.is_false()
+  }
+
+  fn phi_function(&mut self, nstate: &mut State) {
+    if let None = nstate.renaming { return; }
+
+    println!("do phi function");
+
+    let mut new_guard =
+      self.ctx.and(
+        nstate.guard(),
+        self.ctx.not(self.exec_state.cur_state().guard())
+      );
+    new_guard.simplify();
+
+    let nranming = nstate.renaming.as_deref_mut().unwrap();
+
+    for var in nranming.variables() {
+      let l1_ident =
+        nranming.current_l1_symbol(var).l1_name();
+      
+      let cur_l2_num = self.exec_state.renaming.l2_count(l1_ident);
+      let n_l2_num = nranming.l2_count(l1_ident);
+
+      if cur_l2_num == n_l2_num  || n_l2_num == 0 { continue; }
+      
+      let mut cur_rhs = self.exec_state.ns.lookup(var);
+      let mut new_rhs = self.exec_state.ns.lookup(var);
+
+      // Get l1 number
+      nranming.l1_rename(&mut cur_rhs);
+      nranming.l1_rename(&mut new_rhs);
+
+      // Current assignment
+      self.exec_state.renaming.l2_rename(&mut cur_rhs);
+      // Other assignment
+      nranming.l2_rename(&mut new_rhs);
+
+      let rhs = 
+        if self.exec_state.cur_state().guard.is_false() {
+          new_rhs
+        } else {
+          self.ctx.ite(
+            new_guard.clone(),
+            new_rhs,
+            cur_rhs
+          )
+        };
+        
+      let mut lhs= self.exec_state.ns.lookup(var);
+      lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
+      
+      self.exec_state.assign(lhs.clone(), rhs.clone());
+
+      self.vc_system.borrow_mut().assign(lhs, rhs);
     }
   }
 

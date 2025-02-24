@@ -61,7 +61,8 @@ impl State {
   }
 
   pub fn merge(&mut self, other: &State) {
-    self.guard = self.guard.ctx.or(self.guard.clone(), other.guard.clone());
+    self.guard =
+      self.guard.ctx.or(self.guard.clone(), other.guard.clone());
     self.guard.simplify();
     self.place_states.merge(&other.place_states);
     self.value_set.merge(&other.value_set, true);
@@ -90,6 +91,14 @@ impl State {
     if expr.is_object() {
       let inner_object = expr.extract_inner_expr();
       self.get_value_set(inner_object, values);
+      return;
+    }
+
+    if expr.is_ite() {
+      let true_value = expr.extract_true_value();
+      let false_value = expr.extract_false_value();
+      self.get_value_set(true_value, values);
+      self.get_value_set(false_value, values);
       return;
     }
 

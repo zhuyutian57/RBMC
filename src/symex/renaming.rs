@@ -35,15 +35,23 @@ impl Renaming {
       .or_insert(1)
   }
 
-  pub fn count(&self, ident: NString, level: Level) -> usize {
-    assert!(level == Level::Level1 || level == Level::Level2);
-    let c = 
-      if level == Level::Level1 { 
-        self.l1_renaming.get(&ident)
-      } else {
-        self.l2_renaming.get(&ident)
-      };
-    match c {
+  pub fn variables(&self) -> Vec<NString> {
+    self
+      .l1_renaming
+      .keys()
+      .map(|x| *x)
+      .collect::<Vec<_>>()
+  }
+
+  pub fn l1_count(&self, ident: NString) -> usize {
+    match self.l1_renaming.get(&ident) {
+      Some(n) => *n,
+      None => 0,
+    }
+  }
+
+  pub fn l2_count(&self, ident: NString) -> usize {
+    match self.l2_renaming.get(&ident) {
       Some(n) => *n,
       None => 0,
     }
@@ -191,10 +199,10 @@ impl Renaming {
     if expr.is_terminal() {
       if expr.is_symbol() {
         let mut symbol = expr.extract_symbol();
-        if !symbol.is_level1() {
-          symbol = self.current_l1_symbol(symbol.ident());
-        }
-        
+
+        if symbol.is_level1() { return; }
+
+        symbol = self.current_l1_symbol(symbol.ident());
         *expr = expr.ctx.mk_symbol(symbol, expr.ty());
       }
       return;
@@ -217,10 +225,11 @@ impl Renaming {
     if expr.is_terminal() {
       if expr.is_symbol() {
         let mut symbol = expr.extract_symbol();
-        if !symbol.is_level2() {
-          symbol = self.current_l2_symbol(symbol.ident(), 0);
-        }
 
+        if !symbol.is_level2() { 
+          symbol = self.current_l2_symbol(symbol.ident(), symbol.l1_num());
+        }
+        
         if self.constant_map.contains_key(&symbol) {
           *expr = self.constant_map.get(&symbol).unwrap().clone();
         } else {

@@ -110,6 +110,21 @@ impl Expr {
     self.sub_exprs().unwrap().remove(1).extract_layout()
   }
 
+  pub fn extract_cond(&self) -> Expr {
+    assert!(self.is_ite());
+    self.sub_exprs().unwrap().remove(0)
+  }
+
+  pub fn extract_true_value(&self) -> Expr {
+    assert!(self.is_ite());
+    self.sub_exprs().unwrap().remove(1)
+  }
+
+  pub fn extract_false_value(&self) -> Expr {
+    assert!(self.is_ite());
+    self.sub_exprs().unwrap().remove(2)
+  }
+
   pub fn extract_inner_expr(&self) -> Expr {
     assert!(self.is_object());
     self.sub_exprs().unwrap().remove(0)

@@ -103,6 +103,8 @@ impl<'exec> ExecutionState<'exec> {
         target,
         state
       ));
+    // init namspace
+    for i in 0..self.top().function().locals().len() { self.l0_local(i); }
   }
 
   pub fn pop_frame(&mut self) {
@@ -163,7 +165,7 @@ impl<'exec> ExecutionState<'exec> {
 
   pub fn l1_local_count(&self, local: Local) -> usize {
     let ident = self.top().local_ident(local);
-    self.renaming.count(ident, Level::Level1)
+    self.renaming.l1_count(ident)
   }
 
   pub fn l1_local(&self, local: Local, mut l1_num: usize) -> Expr {
