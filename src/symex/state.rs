@@ -1,9 +1,11 @@
 
+use std::collections::HashMap;
 use std::fmt::Debug;
 
 use crate::expr::context::*;
 use crate::expr::expr::*;
 use super::place_state::*;
+use super::renaming::Renaming;
 use super::value_set::*;
 
 /// Abstract program state for each program point
@@ -12,6 +14,9 @@ pub struct State {
   pub(super) guard: Expr,
   pub(super) place_states: PlaceStates,
   pub(super) value_set: ValueSet,
+  /// Renaming at some program pointer. Used for
+  /// doing phi function while merging states.
+  pub(super) renaming: Option<Box<Renaming>>,
 }
 
 impl State {
@@ -20,6 +25,7 @@ impl State {
       guard: ctx.constant_bool(true),
       place_states: PlaceStates::default(),
       value_set: ValueSet::default(),
+      renaming: None,
     }
   }
 

@@ -157,7 +157,9 @@ impl<'a, 'sym> Projector<'a, 'sym> {
               object.extract_address_type()
             )
           );
-      let alloc_array = self._callback_symex.lookup(NString::ALLOC_SYM);
+      let alloc_array_sym =
+        self._callback_symex.exec_state.ns.lookup(NString::ALLOC_SYM);
+      let alloc_array = ctx.object(alloc_array_sym, Ownership::Own);
       let mut is_not_alloced =
           ctx.not(
             ctx.index(

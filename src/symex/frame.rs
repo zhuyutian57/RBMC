@@ -75,11 +75,7 @@ impl<'func> Frame<'func> {
   pub fn cur_state_mut(&mut self) -> &mut State { &mut self.cur_state }
 
   pub fn add_state(&mut self, pc: Pc, state: State) {
-    self
-    .state_map
-    .entry(pc)
-    .or_default()
-    .push(state);
+    self.state_map.entry(pc).or_default().push(state);
   }
 
   pub fn states_from(&mut self, pc: Pc) -> Option<Vec<State>> {

@@ -24,6 +24,7 @@ use super::exec_state::*;
 use super::frame::*;
 use super::place_state::*;
 use super::projection::*;
+use super::state::State;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum AllocKind {
@@ -43,10 +44,6 @@ enum FnKind {
 pub struct Symex<'sym> {
   program : &'sym Program,
   ctx: ExprCtx,
-  /// `ns` means namespace, which stores some
-  /// global encoding variable(a.k.a object
-  /// in our ast) such as `alloc`.
-  ns: HashMap<NString, Expr>,
   pub(super) exec_state: ExecutionState<'sym>,
   pub(super) vc_system: VCSysPtr,
 }
@@ -60,41 +57,25 @@ impl<'sym> Symex<'sym> {
     exec_state.setup();
 
     let mut symex =
-      Symex {
-        program,
-        ctx: ctx.clone(),
-        ns: HashMap::new(),
-        exec_state, vc_system
-      };
-    let mut alloc_array =
-      ctx.object(
-        symex.exec_state.l0_symbol(
-          NString::ALLOC_SYM,
-          Type::const_array_type(Type::bool_type())),
-        Ownership::Own
-      );
-    symex.ns.insert(NString::ALLOC_SYM, alloc_array.clone());
+      Symex { program, ctx: ctx.clone(), exec_state, vc_system };
+    let alloc_sym = symex.exec_state.ns.lookup(NString::ALLOC_SYM);
+    let mut alloc_array = ctx.object(alloc_sym, Ownership::Own);
     let mut const_array =
       ctx.constant_array(Constant::Bool(false), Type::bool_type());
     symex.assign_rec(alloc_array, const_array, ctx.constant_bool(true));
     symex
   }
 
-  /// Return `object`
-  pub fn lookup(&self, ident: NString) -> Expr {
-    self
-      .ns
-      .get(&ident)
-      .expect("Not exists")
-      .clone()
-  }
-
   pub fn can_exec(&self) -> bool { self.exec_state.can_exec() }
+
+  fn top(&mut self) -> &mut Frame<'sym> {
+    self.exec_state.top_mut()
+  }
 
   pub fn symex(&mut self) {
     while let Some(pc) = self.top().cur_pc() {
       // Merge states
-      if self.exec_state.merge_states(pc) {
+      if self.merge_states(pc) {
         println!(
           "Enter {:?} - bb{pc}\n{:?}",
           self.top().function().name(),
@@ -109,8 +90,18 @@ impl<'sym> Symex<'sym> {
     self.exec_state.pop_frame();
   }
 
-  fn top(&mut self) -> &mut Frame<'sym> {
-    self.exec_state.top_mut()
+  pub fn merge_states(&mut self, pc: Pc) -> bool {
+    let state_vec = self.top().states_from(pc);
+    
+    let mut new_state = State::new(self.ctx.clone());
+    // TODO: do phi function
+    if let Some(states) = state_vec {
+      for state in states { new_state.merge(&state); }
+      self.top().cur_state = new_state;
+      true
+    } else {
+      false
+    }
   }
 
   fn symex_basicblock(&mut self, bb: &BasicBlock) {
@@ -377,6 +368,11 @@ impl<'sym> Symex<'sym> {
     }
   }
 
+  fn register_state(&mut self, pc: Pc, mut state: State) {
+    state.renaming = Some(Box::new(self.exec_state.renaming.clone()));
+    self.top().add_state(pc, state);
+  }
+
   fn symex_terminator(&mut self, terminator: &Terminator) {
     match &terminator.kind {
       TerminatorKind::Goto{ target}
@@ -400,19 +396,18 @@ impl<'sym> Symex<'sym> {
 
   fn symex_goto(&mut self, target: &BasicBlockIdx) {
     let state = self.top().cur_state().clone();
-    self.top().add_state(*target, state);
+    self.register_state(*target, state);
     self.top().inc_pc();
   }
 
   fn symex_switchint(&mut self, discr: &Operand, targets: &SwitchTargets) {
     let discr_expr = self.make_operand(discr);
-    // handle bool
     if discr_expr.ty().is_bool() {
       let mut true_state = self.top().cur_state().clone();
       true_state.guard =
         self.ctx.and(true_state.guard(), discr_expr.clone());
       let true_branch = targets.all_targets()[0];
-      self.top().add_state(true_branch, true_state);
+      self.register_state(true_branch, true_state);
 
       let mut false_state = self.top().cur_state().clone();
       false_state.guard =
@@ -421,11 +416,12 @@ impl<'sym> Symex<'sym> {
           self.ctx.not(discr_expr.clone())
         );
       let false_branch = targets.all_targets()[1];
-      self.top().add_state(false_branch, false_state);
+      self.register_state(false_branch, false_state);
     } else if discr_expr.ty().is_integer() {
       let mut state = self.top().cur_state().clone();
       let state_guard = state.guard();
       let mut otherwise_guard = state.guard();
+      // branches
       for (i, bb) in targets.branches() {
         let branch_guard =
           self.ctx.eq(
@@ -434,7 +430,7 @@ impl<'sym> Symex<'sym> {
           );
         state.guard =
           self.ctx.and(state_guard.clone(), branch_guard.clone());
-        self.top().add_state(bb, state.clone());
+        self.register_state(bb, state.clone());
         otherwise_guard = 
           self.ctx.and(
             otherwise_guard,
@@ -443,7 +439,7 @@ impl<'sym> Symex<'sym> {
       }
       // otherwise
       state.guard = otherwise_guard;
-      self.top().add_state(targets.otherwise(), state);
+      self.register_state(targets.otherwise(), state);
     } else {
       panic!("Not implement {discr:?}");
     }
@@ -454,7 +450,7 @@ impl<'sym> Symex<'sym> {
   fn symex_drop(&mut self, place: &Place, target: &BasicBlockIdx) {
     let state = self.top().cur_state().clone();
     // TODO: exec drop
-    self.top().add_state(*target, state);
+    self.register_state(*target, state);
     self.top().inc_pc();
   }
 
@@ -538,7 +534,7 @@ impl<'sym> Symex<'sym> {
     if matches!(fnkind, FnKind::Unwind(_)) { return; }
     if let Some(t) = target {
       let state = self.top().cur_state().clone();
-      self.top().add_state(*t, state);
+      self.register_state(*t, state);
       self.top().inc_pc();
     }
   }
@@ -555,7 +551,9 @@ impl<'sym> Symex<'sym> {
       arg_exprs.push(self.make_operand(arg));
     }
     // push frame for new name
-    self.exec_state.push_frame(i, dest.clone(), *target);
+    self
+      .exec_state
+      .push_frame(i, Some(dest.clone()), *target);
 
     // Set arguements
     let args = self.top().function().args();
@@ -566,7 +564,7 @@ impl<'sym> Symex<'sym> {
         self.assign(lhs, rhs);
       }
       let state = self.top().cur_state().clone();
-      self.top().add_state(0, state);
+      self.register_state(0, state);
     }
   }
 
@@ -586,7 +584,8 @@ impl<'sym> Symex<'sym> {
     let ctx = object.ctx.clone();
 
     // alloc[&object] = true
-    let alloc_array = self.lookup(NString::ALLOC_SYM);
+    let alloc_array =
+      self.exec_state.ns.lookup(NString::ALLOC_SYM);
     let pt_indent =
       ctx.pointer_ident(
         ctx.address_of(
@@ -613,12 +612,11 @@ impl<'sym> Symex<'sym> {
   }
 
   fn symex_return(&mut self) {
-    // TODO: set return value and register state
-    // to be merged into stack
+    // TODO: set return value
     
     let n = self.top().function().size();
     let mut state = self.top().cur_state().clone();
-    // remove local
+    // TODO: remove local in renaming
     for local in 1..self.top().function().locals().len() {
       let l1_count = self.exec_state.l1_local_count(local);
       for l1_num in 1..l1_count + 1 {
@@ -629,7 +627,7 @@ impl<'sym> Symex<'sym> {
       }
     }
     state.remove_stack_places();
-    self.top().add_state(n, state);
+    self.register_state(n, state);
 
     self.top().inc_pc();
   }

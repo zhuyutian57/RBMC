@@ -10,6 +10,7 @@ use crate::symbol::symbol::*;
 use crate::symbol::nstring::*;
 use crate::symex::place_state::*;
 use super::frame::*;
+use super::namespace::Namespace;
 use super::renaming::*;
 use super::state::*;
 use super::value_set::ObjectSet;
@@ -22,10 +23,11 @@ use super::value_set::ObjectSet;
 pub struct ExecutionState<'exec> {
   program: &'exec Program,
   ctx: ExprCtx,
+  pub(super) ns: Namespace,
   objects: Vec<Expr>,
   func_cnt: Vec<usize>,
   frames: Vec<Frame<'exec>>,
-  renaming: Renaming,
+  pub(super) renaming: Renaming,
 }
 
 impl<'exec> ExecutionState<'exec> {
@@ -33,6 +35,7 @@ impl<'exec> ExecutionState<'exec> {
     ExecutionState {
       program,
       ctx,
+      ns: Namespace::default(),
       objects: Vec::new(),
       func_cnt: vec![0; program.size()],
       frames: Vec::new(),
@@ -41,17 +44,12 @@ impl<'exec> ExecutionState<'exec> {
   }
 
   pub fn setup(&mut self) {
-    self.func_cnt[0] = 1;
-    self.frames.push(
-      Frame::new(
-        self.ctx.clone(),
-        self.func_cnt[0],
-        self.program.entry_fn(),
-        None,
-        None,
-        State::new(self.ctx.clone())
-      )
+    // create global variable
+    self.l0_symbol(
+      NString::ALLOC_SYM,
+      Type::const_array_type(Type::bool_type())
     );
+    self.push_frame(0, None, None);
   }
 
   pub fn can_exec(&self) -> bool { !self.frames.is_empty() }
@@ -61,6 +59,8 @@ impl<'exec> ExecutionState<'exec> {
       NString::from("heap_object_") + self.objects.len().to_string();
     let symbol = Symbol::new(name, 0, 0, Level::Level0);
     let sym_expr = self.ctx.mk_symbol(symbol, ty);
+    // Record the ident
+    self.ns.insert(sym_expr.clone());
     // Create an object not being owned by any variable.
     let object = self.ctx.object(sym_expr, Ownership::Not);
     self.objects.push(object.clone());
@@ -83,34 +83,23 @@ impl<'exec> ExecutionState<'exec> {
     self.frames.last_mut().expect("Empty frame stack")
   }
 
-  pub fn merge_states(&mut self, pc: Pc) -> bool {
-    let state_vec = self.top_mut().states_from(pc);
-    
-    let mut new_state = State::new(self.ctx.clone());
-    // TODO: do phi function
-    if let Some(states) = state_vec {
-      for state in states { new_state.merge(&state); }
-      self.top_mut().cur_state = new_state;
-      true
-    } else {
-      false
-    }
-  }
-
   pub fn push_frame(
     &mut self,
     i: FunctionIdx,
-    destination: Place,
+    destination: Option<Place>,
     target: Option<BasicBlockIdx>
   ) {
-    let mut state = self.top_mut().cur_state().clone();
+    let mut state =
+      if self.frames.is_empty() { State::new(self.ctx.clone()) }
+      else { self.top_mut().cur_state().clone() };
     state.remove_stack_places();
+    self.func_cnt[i] += 1;
     self.frames.push(
       Frame::new(
         self.ctx.clone(),
         self.func_cnt[i],
         self.program.function(i),
-        Some(destination),
+        destination,
         target,
         state
       ));
@@ -131,28 +120,42 @@ impl<'exec> ExecutionState<'exec> {
         }
       }
     }
+
+    // clear namspace
+    for i in 0..frame.function().locals().len() {
+      let ident = frame.local_ident(i);
+      self.ns.remove(ident);
+    }
+
     self.top_mut().inc_pc();
   }
 
-  pub fn l0_symbol(&self, ident: NString, ty: Type) -> Expr {
-    let symbol = Symbol::new(ident,0,0, Level::Level0);
-    self.ctx.mk_symbol(symbol, ty)
+  pub fn l0_symbol(&mut self, ident: NString, ty: Type) -> Expr {
+    if self.ns.containts(ident) {
+      self.ns.lookup(ident)
+    } else {
+      let symbol =
+        Symbol::new(ident,0,0, Level::Level0);
+      let symbol_expr = self.ctx.mk_symbol(symbol, ty);
+      self.ns.insert(symbol_expr.clone());
+      symbol_expr
+    }
   }
 
   pub fn new_symbol(&mut self, symbol: &Expr, level: Level) -> Expr {
-    assert!(symbol.is_symbol());
+    assert!(symbol.is_symbol() && level != Level::Level0);
     let sym = symbol.extract_symbol();
     let ident = sym.ident();
     let new_sym =
       match level {
-        Level::Level1 => Some(self.renaming.new_l1_symbol(ident)),
-        Level::Level2 => Some(self.renaming.new_l2_symbol(ident, 0)),
-        _ => None,
-      }.expect("Wrong symbol exper");
+        Level::Level1 => self.renaming.new_l1_symbol(ident),
+        Level::Level2 => self.renaming.new_l2_symbol(ident, 0),
+        _ => panic!(),
+      };
     self.ctx.mk_symbol(new_sym, symbol.ty())
   }
 
-  pub fn l0_local(&self, local: Local) -> Expr {
+  pub fn l0_local(&mut self, local: Local) -> Expr {
     let ident = self.top().local_ident(local);
     let ty = self.top().function().local_type(local);
     self.l0_symbol(ident, ty)
@@ -174,7 +177,7 @@ impl<'exec> ExecutionState<'exec> {
   }
 
   pub fn current_local(&mut self, local: Local, level: Level) -> Expr {
-    assert!(level == Level::Level1 || level == Level::Level2);
+    assert!(level != Level::Level0);
     let ident = self.top().local_ident(local);
     let symbol =
       if level == Level::Level1 {
@@ -187,7 +190,7 @@ impl<'exec> ExecutionState<'exec> {
   }
 
   pub fn new_local(&mut self, local: Local, level: Level) -> Expr {
-    assert!(level == Level::Level1 || level == Level::Level2);
+    assert!(level != Level::Level0);
     let ident = self.top().local_ident(local);
     let symbol =
       if level == Level::Level1 {

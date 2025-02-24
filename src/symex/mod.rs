@@ -1,6 +1,7 @@
 
 mod exec_state;
 mod frame;
+mod namespace;
 mod place_state;
 mod projection;
 mod renaming;

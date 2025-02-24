@@ -11,7 +11,7 @@ use crate::symbol::nstring::*;
 /// l1_renaming: counting for locals
 /// l2_renaming: counting for l1 symbol
 /// constant_map: constant for l2 symbol
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Renaming {
   l1_renaming: HashMap<NString, usize>,
   l2_renaming: HashMap<NString, usize>,
