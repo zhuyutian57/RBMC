@@ -237,7 +237,7 @@ impl Debug for Expr {
       }
 
       if self.is_unary() {
-        return write!(f, "{:?}{:?}", self.extract_un_op(), sub_exprs[0]);
+        return write!(f, "{:?}({:?})", self.extract_un_op(), sub_exprs[0]);
       }
 
       if self.is_cast() {

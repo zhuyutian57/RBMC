@@ -74,7 +74,10 @@ impl<'ctx> SmtSolver for Z3Conv<'ctx> {
     match self.z3_solver.check() {
       z3::SatResult::Unsat => PResult::PUnsat,
       z3::SatResult::Unknown => PResult::PUnknow,
-      z3::SatResult::Sat => PResult::PSat,
+      z3::SatResult::Sat => {
+        println!("{:?}", self.z3_solver.get_model());
+        PResult::PSat
+      },
     }
   }
 }

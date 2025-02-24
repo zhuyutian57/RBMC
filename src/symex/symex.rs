@@ -98,9 +98,8 @@ impl<'sym> Symex<'sym> {
     // That is, make `gurad` of current state be `false`.
     self.top().cur_state.guard = self.ctx.constant_bool(false);
 
-
     if let Some(states) = state_vec {
-      
+      println!("merge state for bb{pc}: {} states", states.len());
       for mut state in states {
         if state.guard.is_false() { continue; }
 
@@ -117,7 +116,13 @@ impl<'sym> Symex<'sym> {
   fn phi_function(&mut self, nstate: &mut State) {
     if let None = nstate.renaming { return; }
 
-    println!("do phi function");
+    println!("\ncurrent guard\n {:?}\nnew gurad\n {:?}",
+      self.exec_state.cur_state().guard,
+      nstate.guard
+    );
+
+    println!("{:?}", nstate.renaming);
+
 
     let mut new_guard =
       self.ctx.and(
@@ -126,14 +131,14 @@ impl<'sym> Symex<'sym> {
       );
     new_guard.simplify();
 
-    let nranming = nstate.renaming.as_deref_mut().unwrap();
+    let nrenaming = nstate.renaming.as_deref_mut().unwrap();
 
-    for var in nranming.variables() {
+    for var in nrenaming.variables() {
       let l1_ident =
-        nranming.current_l1_symbol(var).l1_name();
+        nrenaming.current_l1_symbol(var).l1_name();
       
       let cur_l2_num = self.exec_state.renaming.l2_count(l1_ident);
-      let n_l2_num = nranming.l2_count(l1_ident);
+      let n_l2_num = nrenaming.l2_count(l1_ident);
 
       if cur_l2_num == n_l2_num  || n_l2_num == 0 { continue; }
       
@@ -141,13 +146,13 @@ impl<'sym> Symex<'sym> {
       let mut new_rhs = self.exec_state.ns.lookup(var);
 
       // Get l1 number
-      nranming.l1_rename(&mut cur_rhs);
-      nranming.l1_rename(&mut new_rhs);
+      nrenaming.l1_rename(&mut cur_rhs);
+      nrenaming.l1_rename(&mut new_rhs);
 
       // Current assignment
       self.exec_state.renaming.l2_rename(&mut cur_rhs);
       // Other assignment
-      nranming.l2_rename(&mut new_rhs);
+      nrenaming.l2_rename(&mut new_rhs);
 
       let rhs = 
         if self.exec_state.cur_state().guard.is_false() {
@@ -162,6 +167,10 @@ impl<'sym> Symex<'sym> {
         
       let mut lhs= self.exec_state.ns.lookup(var);
       lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
+
+      println!("{:?}", self.exec_state.cur_state().guard);
+      println!("{cur_l2_num} - {n_l2_num}");
+      println!("{lhs:?} = {rhs:?}");
       
       self.exec_state.assign(lhs.clone(), rhs.clone());
 
@@ -351,7 +360,6 @@ impl<'sym> Symex<'sym> {
   fn assign(&mut self, lhs: Expr, rhs: Expr) {
     assert!(lhs.ty().is_layout() || lhs.ty() == rhs.ty());
     // TODO: do more jobs
-    println!("{lhs:?} = {rhs:?}");
     self.assign_rec(lhs, rhs, self.ctx.constant_bool(true));
   }
 
@@ -366,6 +374,8 @@ impl<'sym> Symex<'sym> {
     self.exec_state.rename(&mut rhs, Level::Level2);
     // New l2 symbol
     lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
+
+    println!("ASSIGN: {lhs:?} = {rhs:?}");
 
     self.exec_state.assign(lhs.clone(), rhs.clone());
 
@@ -471,6 +481,7 @@ impl<'sym> Symex<'sym> {
       let mut true_state = self.top().cur_state().clone();
       true_state.guard =
         self.ctx.and(true_state.guard(), discr_expr.clone());
+      self.exec_state.rename(&mut true_state.guard, Level::Level2);
       let true_branch = targets.all_targets()[0];
       self.register_state(true_branch, true_state);
 
@@ -480,6 +491,7 @@ impl<'sym> Symex<'sym> {
           false_state.guard.clone(),
           self.ctx.not(discr_expr.clone())
         );
+      self.exec_state.rename(&mut false_state.guard, Level::Level2);
       let false_branch = targets.all_targets()[1];
       self.register_state(false_branch, false_state);
     } else if discr_expr.ty().is_integer() {
@@ -495,6 +507,7 @@ impl<'sym> Symex<'sym> {
           );
         state.guard =
           self.ctx.and(state_guard.clone(), branch_guard.clone());
+        self.exec_state.rename(&mut state.guard, Level::Level2);
         self.register_state(bb, state.clone());
         otherwise_guard = 
           self.ctx.and(
@@ -634,11 +647,11 @@ impl<'sym> Symex<'sym> {
   }
 
   fn symex_alloc(&mut self, ty: Type, kind: AllocKind) -> Expr {
-    let object = self.exec_state.new_object(ty);
+    let mut object = self.exec_state.new_object(ty);
     assert!(object.extract_ownership().is_not());
     if kind == AllocKind::Box {
       let inner_object = object.sub_exprs().unwrap().remove(0);
-      return self.ctx.object(inner_object, Ownership::Own);
+      object = self.ctx.object(inner_object, Ownership::Own);
     }
     self.track_new_object(object.clone());
     object

@@ -11,7 +11,7 @@ use crate::symbol::nstring::*;
 /// l1_renaming: counting for locals
 /// l2_renaming: counting for l1 symbol
 /// constant_map: constant for l2 symbol
-#[derive(Default, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Renaming {
   l1_renaming: HashMap<NString, usize>,
   l2_renaming: HashMap<NString, usize>,
@@ -229,7 +229,7 @@ impl Renaming {
         if !symbol.is_level2() { 
           symbol = self.current_l2_symbol(symbol.ident(), symbol.l1_num());
         }
-        
+
         if self.constant_map.contains_key(&symbol) {
           *expr = self.constant_map.get(&symbol).unwrap().clone();
         } else {
