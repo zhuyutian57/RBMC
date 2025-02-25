@@ -1,0 +1,39 @@
+
+use std::cell::RefCell;
+
+use crate::expr;
+use crate::program::program::Program;
+use crate::solvers::context::SolverCtx;
+use crate::solvers::solver;
+use crate::ExprCtx;
+use crate::solvers;
+use crate::NString;
+
+use super::cli::Cli;
+
+pub(crate) struct Config {
+  pub(crate) program: Program,
+  pub(crate) expr_ctx: ExprCtx,
+  pub(crate) solver_config: solvers::context::SolverCtx,
+}
+
+impl Config {
+  pub fn new(cli: &Cli) -> Self {
+    // Get stable mir
+    let program =
+      Program::new(
+        NString::from(stable_mir::local_crate().name),
+        stable_mir::all_local_items()
+      );
+    
+    // Context for managing Expr
+    let expr_ctx =
+      ExprCtx::new(RefCell::new(expr::context::Context::new()));
+
+    // Initilized solver
+    let solver_config =
+      SolverCtx::new(cli);
+
+    Config { program, expr_ctx, solver_config }
+  }
+}

@@ -10,7 +10,6 @@ use crate::vc::vc::*;
 use crate::Config;
 
 pub struct Bmc<'bmc> {
-  program: &'bmc Program,
   config: &'bmc Config,
   symex: Symex<'bmc>,
   vc_system: VCSysPtr,
@@ -18,18 +17,18 @@ pub struct Bmc<'bmc> {
 }
 
 impl<'bmc> Bmc<'bmc> {
-  pub fn new(program: &'bmc Program, config: &'bmc Config) -> Self {
+  pub fn new(config: &'bmc Config) -> Self {
     let vc_system =
       VCSysPtr::new(RefCell::new(VCSystem::default()));
     let symex =
-      Symex::new(program, config.expr_ctx(), vc_system.clone());
+      Symex::new(&config.program, config.expr_ctx.clone(), vc_system.clone());
     let runtime_solver =
-      Solver::new(program, config.solver_config());
-    Bmc { program, config, symex, vc_system, runtime_solver }
+      Solver::new(&config.solver_config);
+    Bmc { config, symex, vc_system, runtime_solver }
   }
 
   pub fn do_bmc(&mut self) {
-    self.program.show();
+    self.config.program.show();
     while self.symex.can_exec() { self.symex.symex(); }
     self.check_properties();
   }
@@ -40,7 +39,7 @@ impl<'bmc> Bmc<'bmc> {
   }
 
   fn generate_smt_formula(&mut self) {
-    let ctx = self.config.expr_ctx();
+    let ctx = self.config.expr_ctx.clone();
 
     let mut assumetion = ctx.constant_bool(true);
     let mut assertions = Vec::new();

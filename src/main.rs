@@ -9,7 +9,7 @@ extern crate rustc_middle;
 extern crate rustc_smir;
 extern crate stable_mir;
 
-use bmc::bmc::Bmc;
+use clap::Parser;
 use rustc_smir::{run, rustc_internal};
 use std::cell::RefCell;
 use std::ops::ControlFlow;
@@ -25,32 +25,25 @@ mod symbol;
 mod symex;
 mod vc;
 
-use crate::config::Config;
+use crate::bmc::bmc::Bmc;
+use crate::config::cli::*;
+use crate::config::config::Config;
 use crate::expr::context::*;
 use crate::program::program::Program;
 use crate::symbol::nstring::NString;
 
-/// This is a wrapper that can be used to replace rustc.
 fn main() -> ExitCode {
-  let mut rustc_args: Vec<_> = std::env::args().into_iter().collect();
-  rustc_args.push("-Copt-level=1".to_string());
-  rustc_args.push("-Zmir-enable-passes=+ReorderBasicBlocks".to_string());
-  let result = run!(rustc_args, start_demo);
-  match result {
-    Ok(_) | Err(CompilerError::Skipped | CompilerError::Interrupted(_)) => ExitCode::SUCCESS,
+  let cli = Cli::parse();
+  match run!(cli.rustc_args(), || stable_mir_bmc(cli)) {
+    Ok(_) | Err(CompilerError::Skipped | CompilerError::Interrupted(_))
+      => ExitCode::SUCCESS,
     _ => ExitCode::FAILURE,
   }
 }
 
-fn start_demo() -> ControlFlow<()> {
-  // TODO: set config according to args
-  let config = Config::new();
-
-  let _crate = NString::from(stable_mir::local_crate().name);
-  let items = stable_mir::all_local_items();
-  let program = Program::new(_crate, items);
-
-  let mut bmc = Bmc::new(&program, &config);
+fn stable_mir_bmc(cli: Cli) -> ControlFlow<()> {
+  let config = Config::new(&cli);
+  let mut bmc = Bmc::new(&config);
   bmc.do_bmc();
 
   ControlFlow::Break(())

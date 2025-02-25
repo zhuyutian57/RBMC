@@ -54,7 +54,7 @@ impl<'ctx> Z3Conv<'ctx> {
 }
 
 impl<'ctx> SmtSolver for Z3Conv<'ctx> {
-  fn init(&mut self, program: &Program) {
+  fn init(&mut self) {
     self.set_pointer_logic();
   }
 

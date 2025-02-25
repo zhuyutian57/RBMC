@@ -3,7 +3,7 @@ use crate::expr::expr::Expr;
 use crate::program::program::Program;
 use crate::vc::vc::*;
 
-use super::config::Config;
+use super::context::SolverCtx;
 use super::smt::smt_conv::*;
 use super::z3::z3_conv::*;
 
@@ -15,27 +15,30 @@ pub(crate) enum PResult {
 }
 
 pub struct Solver<'ctx> {
-  solver: Box<dyn SmtSolver + 'ctx>,
+  runtime_solver: Box<dyn SmtSolver + 'ctx>,
 }
 
 impl<'ctx> Solver<'ctx> {
-  pub fn new(program: &'ctx Program, config: &'ctx Config) -> Self {
-    // TODO: recieve config from cmd
-    let mut runtime_solver = 
-      Box::new(Z3Conv::new(config.to_z3_ctx()));
-    runtime_solver.init(program);
-    Solver { solver: runtime_solver }
+  pub fn new(solver_ctx: &'ctx SolverCtx) -> Self {
+    
+    let mut runtime_solver =
+      match solver_ctx {
+        SolverCtx::Z3(ctx)
+          => Box::new(Z3Conv::new(ctx)),
+      };
+    runtime_solver.init();
+    Solver { runtime_solver }
   }
 
   pub fn check(&self) -> PResult {
-    self.solver.check()
+    self.runtime_solver.check()
   }
 
   pub fn assert_assign(&mut self, lhs: Expr, rhs: Expr) {
-    self.solver.assert_assign(lhs, rhs);
+    self.runtime_solver.assert_assign(lhs, rhs);
   }
 
   pub fn assert_expr(&mut self, expr: Expr) {
-    self.solver.assert_expr(expr);
+    self.runtime_solver.assert_expr(expr);
   }
 }

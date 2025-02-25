@@ -11,7 +11,7 @@ use crate::solvers::solver::PResult;
 use crate::NString;
 
 pub(crate) trait SmtSolver {
-  fn init(&mut self, program: &Program);
+  fn init(&mut self);
   fn assert_assign(&mut self, lhs: Expr, rhs: Expr);
   fn assert_expr(&mut self, expr: Expr);
   fn reset(&self);
