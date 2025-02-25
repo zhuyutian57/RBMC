@@ -42,7 +42,7 @@ fn main() -> ExitCode {
 }
 
 fn stable_mir_bmc(cli: Cli) -> ControlFlow<()> {
-  let config = Config::new(&cli);
+  let config = Config::new(cli);
   let mut bmc = Bmc::new(&config);
   bmc.do_bmc();
 

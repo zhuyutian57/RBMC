@@ -9,8 +9,20 @@ pub struct Cli {
   /// Source file `.rs`
   pub file: NString,
 
+  /// Show program
+  #[arg(long, default_value_t = false)]
+  pub show_program: bool,
+
+  /// Show program
+  #[arg(long, default_value_t = false)]
+  pub show_vcc: bool,
+
+  /// Show SMT formula
+  #[arg(long, default_value_t = false)]
+  pub show_smt: bool,
+
   /// SMT solver
-  #[arg(short, long, default_value_t = NString::from("z3"))]
+  #[arg(long, default_value_t = NString::from("z3"))]
   pub solver: NString,
 }
 

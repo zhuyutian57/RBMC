@@ -28,13 +28,19 @@ impl<'bmc> Bmc<'bmc> {
   }
 
   pub fn do_bmc(&mut self) {
-    self.config.program.show();
+    if self.config.cli.show_program {
+      self.config.program.show();
+    }
     while self.symex.can_exec() { self.symex.symex(); }
     self.check_properties();
   }
 
   fn check_properties(&mut self) {
+    if self.config.cli.show_vcc {
+      println!("{:?}", self.vc_system);
+    }
     self.generate_smt_formula();
+
     println!("{:?}", self.runtime_solver.check());
   }
 
