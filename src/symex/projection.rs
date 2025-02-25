@@ -79,12 +79,12 @@ impl<'a, 'sym> Projector<'a, 'sym> {
       // according to the Ownership rule of Rust.
       if object.extract_ownership().is_own() { continue; }
       
-      let guard =
+      let pointer_guard =
         ctx.same_object(
           pt.clone(),
           ctx.address_of(object.clone(), pt.ty())
         );
-      self.valid_check(object.clone(), guard);
+      self.valid_check(object.clone(), pointer_guard);
     }
 
     let mut ret = None;
@@ -160,7 +160,7 @@ impl<'a, 'sym> Projector<'a, 'sym> {
       let alloc_array_sym =
         self._callback_symex.exec_state.ns.lookup(NString::ALLOC_SYM);
       let alloc_array = ctx.object(alloc_array_sym, Ownership::Own);
-      let mut is_not_alloced =
+      let not_alloced =
           ctx.not(
             ctx.index(
               alloc_array,
@@ -168,8 +168,9 @@ impl<'a, 'sym> Projector<'a, 'sym> {
               Type::bool_type()
             )
           );
-      self._callback_symex.exec_state.rename(&mut is_not_alloced, Level::Level2);
-      self._callback_symex.claim(msg, is_not_alloced);
+      let mut deref_failure = ctx.and(guard, not_alloced);
+      self._callback_symex.exec_state.rename(&mut deref_failure, Level::Level2);
+      self._callback_symex.claim(msg, deref_failure);
       return;
     }
 

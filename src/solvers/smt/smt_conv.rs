@@ -21,6 +21,7 @@ pub(crate) trait SmtSolver {
 pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
   fn cache_ast(&mut self, expr: Expr, ast: Ast);
   fn get_cache_ast(&self, expr: &Expr) -> Option<Ast>;
+  fn cache_alloc_ast(&mut self, ast: Ast);
 
   fn convert_sort(&mut self, ty: Type) -> Sort {
     if ty.is_bool() { return self.mk_bool_sort(); }
@@ -56,13 +57,8 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     }
 
     let mut a = None;
-    if expr.is_constant() {
-      a = Some(self.convert_constant(&expr.extract_constant(), expr.ty()));
-    }
-    
-    if expr.is_symbol() {
-      let name = expr.extract_symbol().name();
-      a = Some(self.convert_symbol(name, expr.ty()));
+    if expr.is_terminal() {
+      a = self.convert_terminal(expr.clone());
     }
 
     if expr.is_address_of() {
@@ -149,6 +145,26 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
       },
       None => panic!("Not implememt: {expr:?}"),
     }
+  }
+
+  fn convert_terminal(&mut self, expr: Expr) -> Option<Ast> {
+    let mut a = None;
+    if expr.is_constant() {
+      a = Some(self.convert_constant(&expr.extract_constant(), expr.ty()));
+    }
+    
+    if expr.is_symbol() {
+      let name = expr.extract_symbol().name();
+      let s =self.convert_symbol(name, expr.ty());
+
+      if name.contains(NString::ALLOC_SYM) {
+        self.cache_alloc_ast(s.clone());
+      }
+
+      a = Some(s);
+    }
+
+    a
   }
 
   fn convert_constant(&mut self, constant: &Constant, ty: Type) -> Ast {

@@ -21,7 +21,8 @@ pub struct Solver<'ctx> {
 impl<'ctx> Solver<'ctx> {
   pub fn new(program: &'ctx Program, config: &'ctx Config) -> Self {
     // TODO: recieve config from cmd
-    let mut runtime_solver = Box::new(Z3Conv::new(config.to_z3_ctx()));
+    let mut runtime_solver = 
+      Box::new(Z3Conv::new(config.to_z3_ctx()));
     runtime_solver.init(program);
     Solver { solver: runtime_solver }
   }

@@ -10,16 +10,16 @@ pub type ObjectSpace<Ast> = (Ast, (Ast, Ast));
 /// `(base, len)` is used to model the size of the space.
 /// Moreover, it's not neccessary th make `ident = base`.
 pub struct PointerLogic<Ast: Clone> {
-  object_spaces: HashMap<Expr, ObjectSpace<Ast>>,
+  _object_spaces: HashMap<Expr, ObjectSpace<Ast>>,
 }
 
 impl<Ast: Clone> PointerLogic<Ast> {
   pub fn new() -> Self {
-    PointerLogic { object_spaces: HashMap::new() }
+    PointerLogic { _object_spaces: HashMap::new() }
   }
 
   pub fn contains(&self, object: &Expr) -> bool {
-    self.object_spaces.contains_key(object)
+    self._object_spaces.contains_key(object)
   }
 
   pub fn set_object_space(
@@ -27,12 +27,16 @@ impl<Ast: Clone> PointerLogic<Ast> {
     object: Expr,
     space: ObjectSpace<Ast>) {
     assert!(!self.contains(&object));
-    self.object_spaces.insert(object, space);
+    self._object_spaces.insert(object, space);
+  }
+
+  pub fn object_spaces(&self) -> &HashMap<Expr, ObjectSpace<Ast>> {
+    &self._object_spaces
   }
 
   pub fn get_object_space_ident(&self, object: &Expr) -> Ast {
     self
-      .object_spaces
+      ._object_spaces
       .get(object)
       .expect(format!("Object space dose not have {object:?}").as_str())
       .0
@@ -41,7 +45,7 @@ impl<Ast: Clone> PointerLogic<Ast> {
 
   pub fn get_object_space_base(&self, object: &Expr) -> Ast {
     self
-      .object_spaces
+      ._object_spaces
       .get(object)
       .expect(format!("Object space dose not have {object:?}").as_str())
       .1
@@ -51,7 +55,7 @@ impl<Ast: Clone> PointerLogic<Ast> {
 
   pub fn get_object_space_len(&self, object: &Expr) -> Ast {
     self
-      .object_spaces
+      ._object_spaces
       .get(object)
       .expect(format!("Object space dose not have {object:?}").as_str())
       .1

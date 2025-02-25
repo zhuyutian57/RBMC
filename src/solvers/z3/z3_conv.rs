@@ -9,6 +9,7 @@ use z3::SortKind;
 use z3::ast::Ast;
 
 use crate::expr::constant::*;
+use crate::expr::context::*;
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
 use crate::program::program::Program;
@@ -28,6 +29,8 @@ pub struct Z3Conv<'ctx> {
   pointer_logic: PointerLogic<z3::ast::Dynamic<'ctx>>,
   /// Cache Ast
   cache: HashMap<Expr, z3::ast::Dynamic<'ctx>>,
+  /// Cache current alloc.
+  cur_alloc_expr: Option<z3::ast::Dynamic<'ctx>>,
 }
 
 impl<'ctx> Z3Conv<'ctx> {
@@ -40,6 +43,7 @@ impl<'ctx> Z3Conv<'ctx> {
       pointer_type: Type::ptr_type(Type::unit_type(), Mutability::Not),
       pointer_logic: PointerLogic::new(),
       cache: HashMap::new(),
+      cur_alloc_expr: None,
     }
   }
 
@@ -87,15 +91,16 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     self
       .cache
       .entry(expr.clone())
-      .and_modify(
-        |x|
-        panic!("Exists: {expr:?} = {x:?}")
-      )
+      .and_modify(|x| *x = ast.clone())
       .or_insert(ast);
   }
 
   fn get_cache_ast(&self, expr: &Expr) -> Option<z3::ast::Dynamic<'ctx>> {
     self.cache.get(expr).cloned()
+  }
+
+  fn cache_alloc_ast(&mut self, ast: z3::ast::Dynamic<'ctx>) {
+    self.cur_alloc_expr = Some(ast);
   }
 
   fn convert_tuple_sort(&mut self, ty: Type) -> z3::Sort<'ctx> {
@@ -565,8 +570,34 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     self.assert(self.mk_gt(&ident, &self.mk_smt_int(BigInt(false, 0))));
     // base is also greater than 0
     self.assert(self.mk_gt(&base, &self.mk_smt_int(BigInt(false, 0))));
-
-    // TODO: set disjoint relationship
+    // disjoint relationship
+    for (i, (b, l))
+      in self.pointer_logic.object_spaces().values() {
+      if space_ident == NString::from(i.to_string()) { continue; }
+      
+      assert!(self.cur_alloc_expr != None);
+      let alloc_array_ast = self.cur_alloc_expr.as_ref().unwrap();
+      let alive = alloc_array_ast.as_array().unwrap().select(i);
+      
+      let not_eq = self.mk_ne(&ident, i);
+      let l1 = base.clone();
+      let r1 = self.mk_add(&l1, &len);
+      let l2 = b.clone();
+      let r2 = self.mk_add(&l2, &l);
+      let no_overlap =
+        self.mk_or(
+          &self.mk_le(&r1, &l2),
+          &self.mk_le(&l2, &r2)
+        );
+      
+      let disj =
+        self.mk_implies(
+          &alive, 
+          &self.mk_and(&not_eq, &no_overlap),
+          );
+      
+      self.assert(disj);
+    }
     
     self.pointer_logic.set_object_space(object.clone(), (ident, (base, len)));
   }

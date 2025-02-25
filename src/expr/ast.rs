@@ -84,7 +84,7 @@ pub(super) enum NodeKind {
   Store(NodeId, NodeId, NodeId),
   /// `PointerIdent(pt)` retrieve the ident of a pointer
   PointerIdent(NodeId),
-
+  /// `Invalid(object)`
   Invalid(NodeId),
 }
 

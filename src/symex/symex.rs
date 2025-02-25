@@ -99,7 +99,6 @@ impl<'sym> Symex<'sym> {
     self.top().cur_state.guard = self.ctx.constant_bool(false);
 
     if let Some(states) = state_vec {
-      println!("merge state for bb{pc}: {} states", states.len());
       for mut state in states {
         if state.guard.is_false() { continue; }
 
@@ -115,14 +114,6 @@ impl<'sym> Symex<'sym> {
 
   fn phi_function(&mut self, nstate: &mut State) {
     if let None = nstate.renaming { return; }
-
-    println!("\ncurrent guard\n {:?}\nnew gurad\n {:?}",
-      self.exec_state.cur_state().guard,
-      nstate.guard
-    );
-
-    println!("{:?}", nstate.renaming);
-
 
     let mut new_guard =
       self.ctx.and(
@@ -167,10 +158,6 @@ impl<'sym> Symex<'sym> {
         
       let mut lhs= self.exec_state.ns.lookup(var);
       lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
-
-      println!("{:?}", self.exec_state.cur_state().guard);
-      println!("{cur_l2_num} - {n_l2_num}");
-      println!("{lhs:?} = {rhs:?}");
       
       self.exec_state.assign(lhs.clone(), rhs.clone());
 
