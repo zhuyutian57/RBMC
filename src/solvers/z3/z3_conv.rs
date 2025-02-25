@@ -587,7 +587,7 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
       let no_overlap =
         self.mk_or(
           &self.mk_le(&r1, &l2),
-          &self.mk_le(&l2, &r2)
+          &self.mk_le(&r2, &l1)
         );
       
       let disj =
