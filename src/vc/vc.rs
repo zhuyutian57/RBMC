@@ -70,7 +70,7 @@ impl VCSystem {
   }
 
   pub fn assert(&mut self, msg: NString, cond: Expr) {
-    println!("ASSERT: {cond:?}");
+    // println!("ASSERT: {cond:?}");
     self.vconds.push(Vc::new(VcKind::Assert(msg, cond)));
   }
   

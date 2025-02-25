@@ -25,7 +25,7 @@ impl Function {
   pub fn new(item: CrateItem) -> Self {
     assert!(item.kind() == ItemKind::Fn);
     Function {
-      name: NString::from(item.name()),
+      name: NString::from(item.trimmed_name()),
       args: (1..item.body().arg_locals().len() + 1).collect(),
       body: item.body(),
     }
@@ -84,13 +84,13 @@ impl Program {
     let mut functions = Vec::new();
     let mut idx = HashMap::new();
     for item in items.iter() {
-      if item.name() == "main" {
+      if item.trimmed_name() == "main" {
         functions.push(Function::new(item.clone()));
       }
     }
     assert!(!functions.is_empty());
     for item in items {
-      if item.name() == "main" { continue; }
+      if item.trimmed_name() == "main" { continue; }
       if !matches!(item.kind(), ItemKind::Fn) { continue; }
       functions.push(Function::new(item));
     }

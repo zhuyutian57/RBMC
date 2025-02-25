@@ -76,11 +76,11 @@ impl<'sym> Symex<'sym> {
     while let Some(pc) = self.top().cur_pc() {
       // Merge states
       if self.merge_states(pc) {
-        println!(
-          "Enter {:?} - bb{pc}\n{:?}",
-          self.top().function().name(),
-          self.top().cur_state()
-        );
+        // println!(
+        //   "Enter {:?} - bb{pc}\n{:?}",
+        //   self.top().function().name(),
+        //   self.top().cur_state()
+        // );
         let bb = self.top().function().basicblock(pc);
         self.symex_basicblock(bb);
       } else {
@@ -362,8 +362,6 @@ impl<'sym> Symex<'sym> {
     // New l2 symbol
     lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
 
-    println!("ASSIGN: {lhs:?} = {rhs:?}");
-
     self.exec_state.assign(lhs.clone(), rhs.clone());
 
     if rhs.is_type() { return; }
@@ -514,9 +512,28 @@ impl<'sym> Symex<'sym> {
 
   fn symex_drop(&mut self, place: &Place, target: &BasicBlockIdx) {
     let state = self.top().cur_state().clone();
-    // TODO: exec drop
+
+    // Drop recursively
+    let object = self.make_project(place);
+    // self.symex_drop_rec(object);
+
     self.register_state(*target, state);
     self.top().inc_pc();
+  }
+
+  fn symex_drop_rec(&mut self, object: Expr) {
+    
+    if object.is_index() {
+      todo!()
+    }
+
+    if object.is_object() {
+      todo!();
+
+      return;
+    }
+
+    panic!("Not implement drop {:?}", object.ty());
   }
 
   fn make_layout(&mut self, arg: &Operand) -> Type {
@@ -706,5 +723,4 @@ impl<'sym> Symex<'sym> {
       .borrow_mut()
       .assert(msg, cond);
   }
-
 }
