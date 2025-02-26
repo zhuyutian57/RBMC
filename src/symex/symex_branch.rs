@@ -20,7 +20,7 @@ impl<'cfg> Symex<'cfg> {
       let mut true_state = self.top().cur_state().clone();
       true_state.guard =
         self.ctx.and(true_state.guard(), discr_expr.clone());
-      self.exec_state.rename(&mut true_state.guard, Level::Level2);
+      self.rename(&mut true_state.guard);
       let true_branch = targets.all_targets()[0];
       self.register_state(true_branch, true_state);
 
@@ -30,7 +30,7 @@ impl<'cfg> Symex<'cfg> {
           false_state.guard.clone(),
           self.ctx.not(discr_expr.clone())
         );
-      self.exec_state.rename(&mut false_state.guard, Level::Level2);
+      self.rename(&mut false_state.guard);
       let false_branch = targets.all_targets()[1];
       self.register_state(false_branch, false_state);
     } else if discr_expr.ty().is_integer() {
@@ -46,7 +46,7 @@ impl<'cfg> Symex<'cfg> {
           );
         state.guard =
           self.ctx.and(state_guard.clone(), branch_guard.clone());
-        self.exec_state.rename(&mut state.guard, Level::Level2);
+        self.rename(&mut state.guard);
         self.register_state(bb, state.clone());
         otherwise_guard = 
           self.ctx.and(

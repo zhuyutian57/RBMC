@@ -11,23 +11,23 @@ impl<'cfg> Symex<'cfg> {
     // construct lhs expr and rhs expr from MIR
     let lhs = self.make_project(place);
     let rhs = self.make_rvalue(rvalue);
-    self.assign(lhs, rhs);
+    self.assign(lhs, rhs, self.ctx.constant_bool(true));
   }
 
   pub(super) fn symex_assign_layout(&mut self, place: &Place, ty: Type) {
     // Use l2 symbol to do assignment
     let l2_var = self.make_project(place);
     let layout = self.ctx.mk_type(ty);
-    self.assign(l2_var, layout);
+    self.assign(l2_var, layout, self.ctx.constant_bool(true));
   }
 
-  pub(super) fn assign(&mut self, lhs: Expr, rhs: Expr) {
+  pub(super) fn assign(&mut self, lhs: Expr, rhs: Expr, guard: Expr) {
     assert!(lhs.ty().is_layout() || lhs.ty() == rhs.ty());
     // TODO: do more jobs
-    self.assign_rec(lhs, rhs, self.ctx.constant_bool(true));
+    self.assign_rec(lhs, rhs, guard);
   }
 
-  pub(super) fn assign_symbol(&mut self, mut lhs: Expr, mut rhs: Expr, guard: Expr) {
+  fn assign_symbol(&mut self, mut lhs: Expr, mut rhs: Expr, guard: Expr) {
     assert!(lhs.is_symbol());
     
     if !guard.is_true() {
@@ -35,7 +35,7 @@ impl<'cfg> Symex<'cfg> {
     }
 
     // Rename to l2 rhs
-    self.exec_state.rename(&mut rhs, Level::Level2);
+    self.rename(&mut rhs);
     // New l2 symbol
     lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
 
@@ -47,7 +47,7 @@ impl<'cfg> Symex<'cfg> {
     self.vc_system.borrow_mut().assign(lhs, rhs);
   }
 
-  pub(super) fn assign_rec(&mut self, lhs: Expr, rhs: Expr, guard: Expr) {
+  fn assign_rec(&mut self, lhs: Expr, rhs: Expr, guard: Expr) {
     if lhs.is_symbol() {
       self.assign_symbol(lhs, rhs, guard);
       return;

@@ -101,100 +101,6 @@ impl Renaming {
       .or_insert(constant);
   }
 
-  fn rename_replace(&self, expr: &mut Expr, sub_exprs: Vec<Expr>) {
-    let ctx = expr.ctx.clone();
-
-    if expr.is_address_of() {
-      let object = sub_exprs[0].clone();
-      *expr = ctx.address_of(object, expr.ty());
-      return;
-    }
-
-    if expr.is_binary() {
-      let lhs = sub_exprs[0].clone();
-      let rhs = sub_exprs[1].clone();
-      *expr =
-        match expr.extract_bin_op() {
-          BinOp::Add => ctx.add(lhs, rhs),
-          BinOp::Sub => ctx.sub(lhs, rhs),
-          BinOp::Mul => ctx.mul(lhs, rhs),
-          BinOp::Div => ctx.div(lhs, rhs),
-          BinOp::Eq => ctx.eq(lhs, rhs),
-          BinOp::Ne => ctx.ne(lhs, rhs),
-          BinOp::Ge => ctx.ge(lhs, rhs),
-          BinOp::Gt => ctx.gt(lhs, rhs),
-          BinOp::Le => ctx.le(lhs, rhs),
-          BinOp::Lt => ctx.lt(lhs, rhs),
-          BinOp::And => ctx.and(lhs, rhs),
-          BinOp::Or => ctx.or(lhs, rhs),
-          BinOp::Implies => ctx.implies(lhs, rhs),
-        };
-      return;
-    }
-
-    if expr.is_unary() {
-      let operand = sub_exprs[0].clone();
-      *expr =
-        match expr.extract_un_op() {
-          UnOp::Not => ctx.not(operand),
-          UnOp::Neg => ctx.neg(operand),
-        };
-      return;
-    }
-
-    if expr.is_cast() {
-      let operand = sub_exprs[0].clone();
-      let target_ty = sub_exprs[1].clone();
-      *expr = ctx.cast(operand, target_ty);
-      return;
-    }
-
-    if expr.is_object() {
-      let ownership = expr.extract_ownership();
-      let object = sub_exprs[0].clone();
-      *expr = ctx.object(object, ownership);
-      return;
-    }
-
-    if expr.is_index() {
-      let object = sub_exprs[0].clone();
-      let index = sub_exprs[1].clone();
-      *expr = ctx.index(object, index, expr.ty());
-      return;
-    }
-
-    if expr.is_ite() {
-      let cond = sub_exprs[0].clone();
-      let true_value = sub_exprs[1].clone();
-      let false_value = sub_exprs[2].clone();
-      *expr = ctx.ite(cond, true_value, false_value);
-      return;
-    }
-
-    if expr.is_same_object() {
-      let lhs = sub_exprs[0].clone();
-      let rhs = sub_exprs[1].clone();
-      *expr = ctx.same_object(lhs, rhs);
-      return;
-    }
-
-    if expr.is_store() {
-      let object = sub_exprs[0].clone();
-      let index = sub_exprs[1].clone();
-      let value = sub_exprs[2].clone();
-      *expr = ctx.store(object, index, value);
-      return;
-    }
-
-    if expr.is_pointer_ident() {
-      let pt = sub_exprs[0].clone();
-      *expr = ctx.pointer_ident(pt);
-      return;
-    }
-
-    panic!("Do not support renaming: {expr:?}");
-  }
-
   pub fn l1_rename(&mut self, expr: &mut Expr) {
     if expr.is_terminal() {
       if expr.is_symbol() {
@@ -212,7 +118,7 @@ impl Renaming {
     let mut sub_exprs = expr.sub_exprs().unwrap();
     for sub_expr in sub_exprs.iter_mut() { self.l1_rename(sub_expr); }
 
-    self.rename_replace(expr, sub_exprs);
+    expr.replace_sub_exprs(sub_exprs);
   }
 
   pub fn l2_rename(&mut self, expr: &mut Expr) {
@@ -242,8 +148,7 @@ impl Renaming {
     // Expr is not a leaf. There must be some sub-nodes in AST
     let mut sub_exprs = expr.sub_exprs().unwrap();
     for sub_expr in sub_exprs.iter_mut() { self.l2_rename(sub_expr); }
-
-    self.rename_replace(expr, sub_exprs);
+    expr.replace_sub_exprs(sub_exprs);
   }
 }
 

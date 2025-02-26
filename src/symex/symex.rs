@@ -61,7 +61,7 @@ impl<'cfg> Symex<'cfg> {
     let mut alloc_array = ctx.object(alloc_sym, Ownership::Own);
     let mut const_array =
       ctx.constant_array(Constant::Bool(false), Type::bool_type());
-    symex.assign_rec(alloc_array, const_array, ctx.constant_bool(true));
+    symex.assign(alloc_array, const_array, ctx.constant_bool(true));
     symex
   }
 

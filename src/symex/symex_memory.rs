@@ -37,6 +37,6 @@ impl<'cfg> Symex<'cfg> {
         pt_indent,
         ctx.constant_bool(true)
       );
-    self.assign(alloc_array, store);
+    self.assign(alloc_array, store, self.ctx.constant_bool(true));
   }
 }

@@ -11,6 +11,7 @@ use stable_mir::CrateDef;
 use crate::expr::expr::*;
 use crate::expr::constant::*;
 use crate::expr::op::*;
+use crate::expr::predicates::*;
 use crate::expr::ty::*;
 use crate::program::program::*;
 use crate::symbol::symbol::*;
@@ -22,10 +23,6 @@ use super::symex::*;
 impl<'cfg> Symex<'cfg> {
   pub(super) fn make_project(&mut self, place: &Place) -> Expr {
     Projector::new(self).project(place)
-  }
-
-  pub(super) fn make_deref(&mut self, pt: Expr, mode: Mode) -> Expr {
-    Projector::new(self).project_deref(pt, mode)
   }
 
   pub(super) fn make_mirconst(&mut self, mirconst: &MirConst) -> Expr {
@@ -172,7 +169,7 @@ impl<'cfg> Symex<'cfg> {
         assert!(p.projection.is_empty());
         let mut ty =
           self.exec_state.current_local(p.local, Level::Level2);
-        self.exec_state.rename(&mut ty, Level::Level2);
+        self.rename(&mut ty);
         assert!(ty.is_type());
         Ok(ty.extract_layout())
       },
@@ -208,5 +205,56 @@ impl<'cfg> Symex<'cfg> {
     } else {
       Err(Error)
     }.expect(format!("Do not support {name:?}").as_str())
+  }
+
+  /// Interface for `l2` reaming.
+  pub(super) fn rename(&mut self, expr: &mut Expr) {
+    self.exec_state.rename(expr, Level::Level2);
+  }
+
+  pub(super) fn replace_predicates(&mut self, expr: &mut Expr) {
+    match expr.sub_exprs() {
+      Some(mut sub_exprs) => {
+        let mut has_changed = false;
+        for sub_expr in sub_exprs.iter_mut() {
+          if sub_expr.has_predicates() {
+            has_changed |= true;
+            self.replace_predicates(sub_expr);
+          }
+        }
+        if has_changed { expr.replace_sub_exprs(sub_exprs); }
+      }
+      None => {},
+    }
+
+    if expr.is_invalid() {
+      let object = expr.extract_object();
+      let ptr_indent =
+        self
+          .ctx
+          .pointer_ident(
+            if object.ty().is_box() { object.extract_inner_expr() }
+            else { 
+              self.ctx.address_of(
+                object.clone(),
+                object.extract_address_type()
+              )
+            }
+          );
+      let alloc_array_sym =
+        self.exec_state.ns.lookup(NString::ALLOC_SYM);
+      let alloc_array =
+        self.ctx.object(alloc_array_sym, Ownership::Own);
+      let not_alloced =
+        self.ctx.not(
+          self.ctx.index(
+            alloc_array,
+            ptr_indent,
+            Type::bool_type()
+          )
+        );
+      *expr = not_alloced;
+      return;
+    }
   }
 }

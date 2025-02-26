@@ -25,7 +25,7 @@ impl <'cfg> Symex<'cfg> {
           let pt = self.make_project(dest);
           let address_of = self.ctx.address_of(object.clone(), pt.ty());
           
-          self.assign(pt, address_of);
+          self.assign(pt, address_of, self.ctx.constant_bool(true));
           
           // TODO - do assignment for constant
 
@@ -69,7 +69,7 @@ impl <'cfg> Symex<'cfg> {
       for arg_local in args.iter() {
         let lhs = self.exec_state.l0_local(*arg_local);
         let rhs = arg_exprs[*arg_local - 1].clone();
-        self.assign(lhs, rhs);
+        self.assign(lhs, rhs, self.ctx.constant_bool(true));
       }
       let state = self.top().cur_state().clone();
       self.register_state(0, state);

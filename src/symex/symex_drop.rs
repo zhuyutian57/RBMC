@@ -8,10 +8,9 @@ use crate::NString;
 use super::symex::*;
 
 impl<'cfg> Symex<'cfg> {
-  
   pub(super) fn symex_drop(&mut self, place: &Place, target: &BasicBlockIdx) {
     let state = self.top().cur_state().clone();
-
+    
     // Drop recursively
     let object = self.make_project(place);
     self.symex_drop_rec(object, self.ctx.constant_bool(true));
@@ -20,17 +19,12 @@ impl<'cfg> Symex<'cfg> {
     self.top().inc_pc();
   }
 
-  pub(super) fn symex_drop_rec(&mut self, expr: Expr, guard: Expr) {
+  fn symex_drop_rec(&mut self, expr: Expr, guard: Expr) {
     if expr.is_object() {
       if expr.ty().is_box() {
-        // TODO: do dereference and add assertion
-
-        let pointer_ident = self.ctx.pointer_ident(expr.extract_inner_expr());      
-        let alloc_array_sym = self.exec_state.ns.lookup(NString::ALLOC_SYM);
-        let alloc_array = self.ctx.object(alloc_array_sym, Ownership::Own);
-        let index =
-          self.ctx.index(alloc_array, pointer_ident, Type::bool_type());
-        self.assign_rec(index, self.ctx.constant_bool(false), guard.clone());
+        self.drop_box(expr.clone(), guard.clone());
+      } else if expr.ty().is_struct() {
+        self.drop_struct(expr.clone(), guard.clone());
       } else {
         panic!("drop {:?} should be implemented", expr.ty());
       }
@@ -53,5 +47,28 @@ impl<'cfg> Symex<'cfg> {
     }
 
     panic!("Not implement drop {:?}", expr.ty());
+  }
+
+  /// Drop a box will free the memory it points to
+  fn drop_box(&mut self, _box: Expr, guard: Expr) {
+    assert!(_box.is_object() && _box.ty().is_box());
+    // Check whethe the box is uninitilized
+    let invalid = self.ctx.invalid(_box.clone());
+    self.claim(
+      NString::from("drop failure: box is not uninitilized"),
+      invalid
+    );
+
+    let pointer_ident = self.ctx.pointer_ident(_box);      
+    let alloc_array_sym = self.exec_state.ns.lookup(NString::ALLOC_SYM);
+    let alloc_array = self.ctx.object(alloc_array_sym, Ownership::Own);
+    let index =
+      self.ctx.index(alloc_array, pointer_ident, Type::bool_type());
+    self.assign(index, self.ctx.constant_bool(false), guard.clone());
+  }
+
+  /// Drop a struct may drop the inner box pointer
+  fn drop_struct(&mut self, st: Expr, guard: Expr) {
+    todo!()
   }
 }

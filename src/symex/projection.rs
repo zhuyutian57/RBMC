@@ -13,12 +13,6 @@ use super::exec_state::*;
 use super::symex::Symex;
 use super::value_set::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Hash)]
-pub(super) enum Mode {
-  Read,
-  Free,
-}
-
 /// Dereferencing a place
 pub(super) struct Projector<'a, 'cfg> {
   _callback_symex: &'a mut Symex<'cfg>,
@@ -41,7 +35,7 @@ impl<'a, 'cfg> Projector<'a, 'cfg> {
       ret =
         match elem {
           ProjectionElem::Deref
-            => self.project_deref(ret.clone(), Mode::Read),
+            => self.project_deref(ret.clone()),
           ProjectionElem::Field(i, ty)
             => self.project_field(
               ret.clone(),
@@ -65,8 +59,10 @@ impl<'a, 'cfg> Projector<'a, 'cfg> {
 
   /// Dereferencing raw pointer/reference/box pointer.
   /// Return the objects it points to.
-  pub(super) fn project_deref(&mut self, pt: Expr, mode: Mode) -> Expr {
+  pub(super) fn project_deref(&mut self, pt: Expr) -> Expr {
     assert!(pt.ty().is_any_ptr());
+    // TODO: deref null pointer
+
     let mut objects = ObjectSet::new();
     self
       ._callback_symex
@@ -143,43 +139,10 @@ impl<'a, 'cfg> Projector<'a, 'cfg> {
     assert!(object.is_object());
     let ctx = object.ctx.clone();
     let invalid = ctx.invalid(object.clone());
-    self.dereference_failure(
-      NString::from(format!("dereference failure: {object:?} is not alloced")),
-      invalid,
-      guard
-    );
-  }
-
-  fn dereference_failure(&mut self, msg: NString, vc: Expr, guard: Expr) {
-    let ctx = vc.ctx.clone();
-
-    if vc.is_invalid() {
-      let object = vc.extract_object();
-      let ptr_indent =
-        ctx
-          .pointer_ident(
-            ctx.address_of(
-              object.clone(),
-              object.extract_address_type()
-            )
-          );
-      let alloc_array_sym =
-        self._callback_symex.exec_state.ns.lookup(NString::ALLOC_SYM);
-      let alloc_array = ctx.object(alloc_array_sym, Ownership::Own);
-      let not_alloced =
-          ctx.not(
-            ctx.index(
-              alloc_array,
-              ptr_indent,
-              Type::bool_type()
-            )
-          );
-      let mut deref_failure = ctx.and(guard, not_alloced);
-      self._callback_symex.exec_state.rename(&mut deref_failure, Level::Level2);
-      self._callback_symex.claim(msg, deref_failure);
-      return;
-    }
-
-    panic!("Not support {msg:?}\n{vc:?}");
+    let msg =
+      NString::from(format!("dereference failure: {object:?} is not alloced"));
+    self
+      ._callback_symex
+      .claim(msg, ctx.and(guard, invalid));
   }
 }

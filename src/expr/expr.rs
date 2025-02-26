@@ -199,6 +199,114 @@ impl Expr {
       None => None,
     }
   }
+
+  pub fn has_predicates(&self) -> bool {
+    if self.is_invalid() { return true; }
+    match self.sub_exprs() {
+      Some(sub_exprs) => {
+        sub_exprs
+          .iter()
+          .fold(
+            false,
+            |res, x| res | x.has_predicates())
+      },
+      None => false,
+    }
+  }
+
+  pub fn replace_sub_exprs(&mut self, sub_exprs: Vec<Expr>) {
+    if self.is_terminal() { return; }
+
+    if self.is_address_of() {
+      let object = sub_exprs[0].clone();
+      *self = self.ctx.address_of(object, self.ty());
+      return;
+    }
+
+    if self.is_binary() {
+      let lhs = sub_exprs[0].clone();
+      let rhs = sub_exprs[1].clone();
+      *self =
+        match self.extract_bin_op() {
+          BinOp::Add => self.ctx.add(lhs, rhs),
+          BinOp::Sub => self.ctx.sub(lhs, rhs),
+          BinOp::Mul => self.ctx.mul(lhs, rhs),
+          BinOp::Div => self.ctx.div(lhs, rhs),
+          BinOp::Eq => self.ctx.eq(lhs, rhs),
+          BinOp::Ne => self.ctx.ne(lhs, rhs),
+          BinOp::Ge => self.ctx.ge(lhs, rhs),
+          BinOp::Gt => self.ctx.gt(lhs, rhs),
+          BinOp::Le => self.ctx.le(lhs, rhs),
+          BinOp::Lt => self.ctx.lt(lhs, rhs),
+          BinOp::And => self.ctx.and(lhs, rhs),
+          BinOp::Or => self.ctx.or(lhs, rhs),
+          BinOp::Implies => self.ctx.implies(lhs, rhs),
+        };
+      return;
+    }
+
+    if self.is_unary() {
+      let operand = sub_exprs[0].clone();
+      *self =
+        match self.extract_un_op() {
+          UnOp::Not => self.ctx.not(operand),
+          UnOp::Neg => self.ctx.neg(operand),
+        };
+      return;
+    }
+
+    if self.is_cast() {
+      let operand = sub_exprs[0].clone();
+      let target_ty = sub_exprs[1].clone();
+      *self = self.ctx.cast(operand, target_ty);
+      return;
+    }
+
+    if self.is_object() {
+      let ownership = self.extract_ownership();
+      let object = sub_exprs[0].clone();
+      *self = self.ctx.object(object, ownership);
+      return;
+    }
+
+    if self.is_index() {
+      let object = sub_exprs[0].clone();
+      let index = sub_exprs[1].clone();
+      *self = self.ctx.index(object, index, self.ty());
+      return;
+    }
+
+    if self.is_ite() {
+      let cond = sub_exprs[0].clone();
+      let true_value = sub_exprs[1].clone();
+      let false_value = sub_exprs[2].clone();
+      *self = self.ctx.ite(cond, true_value, false_value);
+      return;
+    }
+
+    if self.is_same_object() {
+      let lhs = sub_exprs[0].clone();
+      let rhs = sub_exprs[1].clone();
+      *self = self.ctx.same_object(lhs, rhs);
+      return;
+    }
+
+    if self.is_store() {
+      let object = sub_exprs[0].clone();
+      let index = sub_exprs[1].clone();
+      let value = sub_exprs[2].clone();
+      *self = self.ctx.store(object, index, value);
+      return;
+    }
+
+    if self.is_pointer_ident() {
+      let pt = sub_exprs[0].clone();
+      *self = self.ctx.pointer_ident(pt);
+      return;
+    }
+
+    panic!("Need implementing for {self:?}");
+  }
 }
 
 impl PartialEq for Expr {
