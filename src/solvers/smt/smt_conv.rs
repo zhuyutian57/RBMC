@@ -10,12 +10,15 @@ use crate::program::program::Program;
 use crate::solvers::solver::PResult;
 use crate::NString;
 
-pub(crate) trait SmtSolver {
+use super::smt_model::SmtModel;
+
+pub(crate) trait SmtSolver<'ctx> {
   fn init(&mut self);
   fn assert_assign(&mut self, lhs: Expr, rhs: Expr);
   fn assert_expr(&mut self, expr: Expr);
   fn reset(&self);
   fn check(&self) -> PResult;
+  fn get_model(&self) -> Option<SmtModel<'ctx>>;
 }
 
 pub(crate) trait Convert<Sort, Ast: Clone + Debug> {

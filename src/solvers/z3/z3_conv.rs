@@ -16,6 +16,7 @@ use crate::program::program::Program;
 use crate::solvers::smt::smt_array::*;
 use crate::solvers::smt::smt_conv::*;
 use crate::solvers::smt::smt_memspace::*;
+use crate::solvers::smt::smt_model::SmtModel;
 use crate::solvers::smt::smt_tuple::*;
 use crate::solvers::solver::PResult;
 use crate::NString;
@@ -48,12 +49,11 @@ impl<'ctx> Z3Conv<'ctx> {
   }
 
   fn assert(&self, e: z3::ast::Dynamic<'ctx>) {
-    println!("{e:?}");
     self.z3_solver.assert(&e.as_bool().expect("the assertion is not bool"));
   }
 }
 
-impl<'ctx> SmtSolver for Z3Conv<'ctx> {
+impl<'ctx> SmtSolver<'ctx> for Z3Conv<'ctx> {
   fn init(&mut self) {
     self.set_pointer_logic();
   }
@@ -78,10 +78,14 @@ impl<'ctx> SmtSolver for Z3Conv<'ctx> {
     match self.z3_solver.check() {
       z3::SatResult::Unsat => PResult::PUnsat,
       z3::SatResult::Unknown => PResult::PUnknow,
-      z3::SatResult::Sat => {
-        println!("{:?}", self.z3_solver.get_model());
-        PResult::PSat
-      },
+      z3::SatResult::Sat => PResult::PSat,
+    }
+  }
+
+  fn get_model(&self) -> Option<SmtModel<'ctx>> {
+    match self.z3_solver.get_model() {
+      Some(m) => Some(SmtModel::Z3Model(m)),
+      None => None,
     }
   }
 }

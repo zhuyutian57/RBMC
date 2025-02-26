@@ -37,11 +37,19 @@ impl<'cfg> Bmc<'cfg> {
 
   fn check_properties(&mut self) {
     if self.config.cli.show_vcc {
-      println!("{:?}", self.vc_system);
+      println!("{:?}", self.vc_system.borrow());
     }
     self.generate_smt_formula();
 
-    println!("{:?}", self.runtime_solver.check());
+    let presult = self.runtime_solver.check();
+    if presult == PResult::PSat {
+      println!("Model:\n{}",
+        match self.runtime_solver.get_model() {
+          Some(m) => format!("{m:?}"),
+          None => format!("None"),
+        }
+      );
+    }
   }
 
   fn generate_smt_formula(&mut self) {

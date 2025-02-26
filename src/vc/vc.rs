@@ -20,8 +20,10 @@ impl Debug for VcKind {
     match self {
       VcKind::Assign(lhs, rhs)
         => write!(f, "{lhs:?} = {rhs:?}"),
-      VcKind::Assert(_, cond)  |
-      VcKind::Assume(cond) => write!(f, "{cond:?}"),
+      VcKind::Assert(msg, cond)
+        => write!(f, "{msg:?}\n    ASSERT: {cond:?}"),
+      VcKind::Assume(cond)
+        => write!(f, "{cond:?}"),
     }
   }
 }
