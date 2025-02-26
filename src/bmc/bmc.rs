@@ -42,13 +42,31 @@ impl<'cfg> Bmc<'cfg> {
     self.generate_smt_formula();
 
     let presult = self.runtime_solver.check();
-    if presult == PResult::PSat {
-      println!("Model:\n{}",
-        match self.runtime_solver.get_model() {
-          Some(m) => format!("{m:?}"),
-          None => format!("None"),
+    match presult {
+      PResult::PSat => {
+          println!("Verification Fail\n");
+          self.show_issue();
+          if self.config.cli.show_smt_model {
+            self.runtime_solver.show_model();
+          }
         }
-      );
+      PResult::PUnsat => println!("Verification Success"),
+      PResult::PUnknow => println!("Unknow"),
+    }
+  }
+
+  /// TODO: maybe trace
+  fn show_issue(&mut self) {
+    for vc in self.vc_system.borrow().iter() {
+      if vc.is_sliced { continue; }
+      match &vc.kind {
+        VcKind::Assert(msg, c) => {
+          if self.runtime_solver.eval_bool(c.clone()) {
+            println!("{msg:?}");
+          }
+        },
+        _ => {},
+      }
     }
   }
 
@@ -79,8 +97,8 @@ impl<'cfg> Bmc<'cfg> {
       else {
         let mut assertion =
           assertions.into_iter().fold(
-            ctx.constant_bool(true),
-            |acc, b| ctx.and(acc, b)
+            ctx.constant_bool(false),
+            |acc, b| ctx.or(acc, b)
           );
         assertion.simplify();
         assertion

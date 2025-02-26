@@ -233,13 +233,10 @@ impl<'cfg> Symex<'cfg> {
         self
           .ctx
           .pointer_ident(
-            if object.ty().is_box() { object.extract_inner_expr() }
-            else { 
               self.ctx.address_of(
                 object.clone(),
                 object.extract_address_type()
               )
-            }
           );
       let alloc_array_sym =
         self.exec_state.ns.lookup(NString::ALLOC_SYM);
@@ -256,5 +253,13 @@ impl<'cfg> Symex<'cfg> {
       *expr = not_alloced;
       return;
     }
+  }
+
+  pub(super) fn claim(&mut self, msg: NString, mut expr: Expr) {
+    self.replace_predicates(&mut expr);
+    self.rename(&mut expr);
+    let mut guard = self.exec_state.cur_state().guard();
+    let cond = self.ctx.implies(guard, expr);
+    self.vc_system.borrow_mut().assert(msg, cond);
   }
 }

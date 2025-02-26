@@ -16,7 +16,6 @@ use crate::program::program::Program;
 use crate::solvers::smt::smt_array::*;
 use crate::solvers::smt::smt_conv::*;
 use crate::solvers::smt::smt_memspace::*;
-use crate::solvers::smt::smt_model::SmtModel;
 use crate::solvers::smt::smt_tuple::*;
 use crate::solvers::solver::PResult;
 use crate::NString;
@@ -82,11 +81,26 @@ impl<'ctx> SmtSolver<'ctx> for Z3Conv<'ctx> {
     }
   }
 
-  fn get_model(&self) -> Option<SmtModel<'ctx>> {
+  fn eval_bool(&self, expr: Expr) -> bool {
+    let ast =
+      self.get_cache_ast(&expr).expect("Not put into solver");
+    self
+      .z3_solver
+      .get_model()
+      .expect("No model")
+      .eval(&ast, true)
+      .expect("Model does not interprete this expr")
+      .as_bool()
+      .unwrap()
+      .as_bool()
+      .expect("Wrong result")
+  }
+
+  fn show_model(&self) {
     match self.z3_solver.get_model() {
-      Some(m) => Some(SmtModel::Z3Model(m)),
-      None => None,
-    }
+      Some(m) => println!("{m:?}"),
+      None => println!("None"),
+    };
   }
 }
 

@@ -21,6 +21,10 @@ pub struct Cli {
   #[arg(long, default_value_t = false)]
   pub show_smt: bool,
 
+  /// Show SMT model
+  #[arg(long, default_value_t = false)]
+  pub show_smt_model: bool,
+
   /// SMT solver
   #[arg(long, default_value_t = NString::from("z3"))]
   pub solver: NString,
