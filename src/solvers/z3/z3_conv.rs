@@ -125,6 +125,13 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     self.create_tuple_sort(ty)
   }
 
+  fn convert_null(&self) -> z3::ast::Dynamic<'ctx> {
+    self.mk_pointer(
+      &self.mk_smt_int(BigInt::zero()),
+      &self.mk_smt_int(BigInt::zero())
+    )
+  }
+
   fn convert_pointer(
     &self,
     ident: &z3::ast::Dynamic<'ctx>,

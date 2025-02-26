@@ -173,6 +173,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     match constant {
       Constant::Bool(b) => self.mk_smt_bool(*b),
       Constant::Integer(i) => self.mk_smt_int(*i),
+      Constant::Null => self.convert_null(),
       Constant::Array(c, t) => {
         let domain = self.convert_sort(ty.array_domain());
         let val = self.convert_constant(&**c,*t);
@@ -188,6 +189,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     }
   }
 
+  fn convert_null(&self) -> Ast;
   fn convert_pointer(&self, ident: &Ast, offset: &Ast) -> Ast;
   fn convert_pointer_ident(&self, pt: &Ast) -> Ast;
   fn convert_pointer_offset(&self, pt: &Ast) -> Ast;

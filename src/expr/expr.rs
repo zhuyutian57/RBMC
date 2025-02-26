@@ -30,8 +30,10 @@ impl Expr {
   pub fn is_true(&self) -> bool { self.ctx.borrow().is_true(self.id) }
   pub fn is_false(&self) -> bool { self.ctx.borrow().is_false(self.id) }
   pub fn is_constant(&self) -> bool { self.ctx.borrow().is_constant(self.id) }
-  pub fn is_symbol(&self) -> bool { self.ctx.borrow().is_symbol(self.id) }
+  pub fn is_null(&self) -> bool { self.ctx.borrow().is_null(self.id) }
   pub fn is_type(&self) -> bool { self.ctx.borrow().is_type(self.id) }
+  pub fn is_symbol(&self) -> bool { self.ctx.borrow().is_symbol(self.id) }
+
   pub fn is_address_of(&self) -> bool { self.ctx.borrow().is_address_of(self.id) }
   pub fn is_binary(&self) -> bool { self.ctx.borrow().is_binary(self.id) }
   pub fn is_unary(&self) -> bool { self.ctx.borrow().is_unary(self.id) }

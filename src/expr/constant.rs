@@ -6,6 +6,8 @@ use super::ty::Type;
 pub struct BigInt(pub bool, pub u128);
 
 impl BigInt {
+  pub fn zero() -> Self { BigInt(false, 0) }
+
   pub fn is_negative(&self) -> bool { self.0 }
   pub fn is_positive(&self) -> bool { !self.0 }
   
@@ -35,11 +37,32 @@ pub type StructField = (Constant, Type);
 pub enum Constant {
   Bool(bool),
   Integer(BigInt),
+  Null,
   Array(Box<Constant>, Type),
   Struct(Vec<StructField>),
 }
 
 impl Constant {
+  pub fn is_bool(&self) -> bool {
+    matches!(self, Constant::Bool(..))
+  }
+  
+  pub fn is_integer(&self) -> bool {
+    matches!(self, Constant::Integer(..))
+  }
+  
+  pub fn is_null(&self) -> bool {
+    matches!(self, Constant::Null)
+  }
+  
+  pub fn is_array(&self) -> bool {
+    matches!(self, Constant::Array(..))
+  }
+  
+  pub fn is_struct(&self) -> bool {
+    matches!(self, Constant::Struct(..))
+  }
+
   pub fn to_bool(&self) -> bool {
     match self {
       Constant::Bool(b) => *b,
@@ -58,14 +81,16 @@ impl Constant {
 impl Debug for Constant {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      Constant::Bool(b) =>
-        f.write_fmt(format_args!("{b}")),
-      Constant::Integer(i) =>
-        f.write_fmt(format_args!("{i:?}")),
-        Constant::Array(v, _) =>
-        f.write_fmt(format_args!("as-const {:?}", *v)),
-      Constant::Struct(v) =>
-        write!(f, "{v:?}"),
+      Constant::Bool(b)
+        => write!(f, "{b}"),
+      Constant::Integer(i)
+        => write!(f, "{i:?}"),
+      Constant::Null
+        => write!(f, "null"),
+      Constant::Array(v, _)
+        => write!(f, "as-const {:?}", *v),
+      Constant::Struct(v)
+        => write!(f, "{v:?}"),
     }
   }
 }

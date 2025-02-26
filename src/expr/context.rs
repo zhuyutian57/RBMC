@@ -95,6 +95,31 @@ impl Context {
     )
   }
 
+  pub fn is_constant_bool(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    matches!(self.extract_constant(i), Ok(t) if t.is_bool())
+  }
+
+  pub fn is_constant_integer(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    matches!(self.extract_constant(i), Ok(t) if t.is_integer())
+  }
+
+  pub fn is_null(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    matches!(self.extract_constant(i), Ok(t) if t.is_null())
+  }
+
+  pub fn is_constant_array(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    matches!(self.extract_constant(i), Ok(t) if t.is_array())
+  }
+
+  pub fn is_constant_struct(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    matches!(self.extract_constant(i), Ok(t) if t.is_struct())
+  }
+
   pub fn is_type(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     matches!(

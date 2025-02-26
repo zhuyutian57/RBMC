@@ -15,7 +15,7 @@ impl StringManager {
     let strings =
       vec![
         "".to_string(),
-        "alloc".to_string(),  
+        "alloc".to_string(),
       ];
     let mut map = HashMap::new();
     map.insert("".to_string(), 0);
@@ -58,6 +58,7 @@ pub(crate) struct NString(usize);
 impl NString {
   pub const EMPTY: NString = NString(0);
   pub const ALLOC_SYM: NString = NString(1);
+  pub const NULL_PTR: NString = NString(2);
 
   pub fn contains(&self, str: NString) -> bool {
     let string = string_m().get_string(self.0);
