@@ -13,13 +13,19 @@ use super::exec_state::*;
 use super::symex::Symex;
 use super::value_set::*;
 
-/// Dereferencing a place
-pub(super) struct Projector<'a, 'sym> {
-  _callback_symex: &'a mut Symex<'sym>,
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Hash)]
+pub(super) enum Mode {
+  Read,
+  Free,
 }
 
-impl<'a, 'sym> Projector<'a, 'sym> {
-  pub fn new(state: &'a mut Symex<'sym>) -> Self {
+/// Dereferencing a place
+pub(super) struct Projector<'a, 'cfg> {
+  _callback_symex: &'a mut Symex<'cfg>,
+}
+
+impl<'a, 'cfg> Projector<'a, 'cfg> {
+  pub fn new(state: &'a mut Symex<'cfg>) -> Self {
     Projector { _callback_symex: state }
   }
 
@@ -35,7 +41,7 @@ impl<'a, 'sym> Projector<'a, 'sym> {
       ret =
         match elem {
           ProjectionElem::Deref
-            => self.project_deref(ret.clone()),
+            => self.project_deref(ret.clone(), Mode::Read),
           ProjectionElem::Field(i, ty)
             => self.project_field(
               ret.clone(),
@@ -59,7 +65,7 @@ impl<'a, 'sym> Projector<'a, 'sym> {
 
   /// Dereferencing raw pointer/reference/box pointer.
   /// Return the objects it points to.
-  fn project_deref(&mut self, pt: Expr) -> Expr {
+  pub(super) fn project_deref(&mut self, pt: Expr, mode: Mode) -> Expr {
     assert!(pt.ty().is_any_ptr());
     let mut objects = ObjectSet::new();
     self

@@ -9,15 +9,15 @@ use crate::symex::symex::*;
 use crate::vc::vc::*;
 use crate::Config;
 
-pub struct Bmc<'bmc> {
-  config: &'bmc Config,
-  symex: Symex<'bmc>,
+pub struct Bmc<'cfg> {
+  config: &'cfg Config,
+  symex: Symex<'cfg>,
   vc_system: VCSysPtr,
-  runtime_solver: Solver<'bmc>,
+  runtime_solver: Solver<'cfg>,
 }
 
-impl<'bmc> Bmc<'bmc> {
-  pub fn new(config: &'bmc Config) -> Self {
+impl<'cfg> Bmc<'cfg> {
+  pub fn new(config: &'cfg Config) -> Self {
     let vc_system =
       VCSysPtr::new(RefCell::new(VCSystem::default()));
     let symex =

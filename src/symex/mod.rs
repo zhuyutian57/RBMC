@@ -9,3 +9,11 @@ mod state;
 mod value_set;
 
 pub mod symex;
+pub(super) mod symex_assert;
+pub(super) mod symex_assign;
+pub(super) mod symex_branch;
+pub(super) mod symex_drop;
+pub(super) mod symex_function;
+pub(super) mod symex_util;
+pub(super) mod symex_memory;
+pub(super) mod symex_return;

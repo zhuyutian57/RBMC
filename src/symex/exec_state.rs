@@ -20,18 +20,18 @@ use super::value_set::ObjectSet;
 /// 
 /// Moreover, `func_cnt` is used for identifying each function. It
 /// is used for naming variables later. 
-pub struct ExecutionState<'exec> {
-  program: &'exec Program,
+pub struct ExecutionState<'cfg> {
+  program: &'cfg Program,
   ctx: ExprCtx,
   pub(super) ns: Namespace,
   objects: Vec<Expr>,
   func_cnt: Vec<usize>,
-  frames: Vec<Frame<'exec>>,
+  frames: Vec<Frame<'cfg>>,
   pub(super) renaming: Renaming,
 }
 
-impl<'exec> ExecutionState<'exec> {
-  pub fn new(program: &'exec Program, ctx: ExprCtx) -> Self {
+impl<'cfg> ExecutionState<'cfg> {
+  pub fn new(program: &'cfg Program, ctx: ExprCtx) -> Self {
     ExecutionState {
       program,
       ctx,
@@ -75,11 +75,11 @@ impl<'exec> ExecutionState<'exec> {
     self.top_mut().cur_state_mut()
   }
 
-  pub fn top(&self) -> &Frame<'exec> {
+  pub fn top(&self) -> &Frame<'cfg> {
     self.frames.last().expect("Empty frame stack")
   }
 
-  pub fn top_mut(&mut self) -> &mut Frame<'exec> {
+  pub fn top_mut(&mut self) -> &mut Frame<'cfg> {
     self.frames.last_mut().expect("Empty frame stack")
   }
 
