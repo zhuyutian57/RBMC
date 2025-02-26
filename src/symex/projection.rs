@@ -81,6 +81,12 @@ impl<'a, 'cfg> Projector<'a, 'cfg> {
       // according to the Ownership rule of Rust.
       if object.extract_ownership().is_own() { continue; }
       
+      if object.is_null_object() {
+        // pt is null
+        self.dereference_null(pt.clone());
+        continue;
+      }
+
       let pointer_guard =
         ctx.same_object(
           pt.clone(),
@@ -144,5 +150,16 @@ impl<'a, 'cfg> Projector<'a, 'cfg> {
     self
       ._callback_symex
       .claim(msg, ctx.and(guard, invalid));
+  }
+
+  fn dereference_null(&mut self, pt: Expr) {
+    assert!(pt.ty().is_any_ptr());
+    let ctx = pt.ctx.clone();
+    let null = ctx.null(pt.ty().pointee_ty());
+    let msg = 
+      NString::from(format!("dereference failure: null pointer dereference"));
+    self
+      ._callback_symex
+      .claim(msg, ctx.eq(pt, null));
   }
 }

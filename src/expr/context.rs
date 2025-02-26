@@ -166,6 +166,14 @@ impl Context {
     self.nodes[i].kind().is_object()
   }
 
+  pub fn is_null_object(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    match self.extract_symbol(i) {
+      Ok(s) => s.ident() == NString::NULL_OBJECT,
+      _ => false,
+    }
+  }
+
   pub fn is_same_object(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     self.nodes[i].kind().is_same_object()
@@ -515,6 +523,13 @@ impl ExprBuilder for ExprCtx {
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
+  }
+
+  fn null_object(&self, ty: Type) -> Expr {
+    let symbol =
+      Symbol::new(NString::NULL_OBJECT, 0, 0, Level::Level0);
+    let symbol_expr = self.mk_symbol(symbol, ty);
+    self.object(symbol_expr, Ownership::Not)
   }
 
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr {

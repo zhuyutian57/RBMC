@@ -106,6 +106,28 @@ impl Type {
     self.is_ref() || self.is_ptr() || self.is_box()
   }
 
+  pub fn pointee_ty(&self) -> Self {
+    assert!(self.is_any_ptr());
+    match self.0.kind() {
+        TyKind::RigidTy(r) => {
+          match r {
+            RigidTy::Adt(def, args) => {
+              assert!(def.is_box());
+              // TODO: handle args more carefully
+              match &args.0[0] {
+                GenericArgKind::Type(ty) => Type::from(ty.clone()),
+                _ => panic!(),
+              }
+            },
+            RigidTy::RawPtr(ty, ..) |
+            RigidTy::Ref(_, ty, ..) => Type::from(ty),
+            _ => panic!()
+          }
+        },
+        _ => panic!(),
+    }
+  }
+
   pub fn array_size(&self) -> Option<u64> {
     assert!(self.is_array());
     let size = 

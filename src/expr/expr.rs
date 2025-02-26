@@ -40,6 +40,7 @@ impl Expr {
   pub fn is_ite(&self) -> bool { self.ctx.borrow().is_ite(self.id) }
   pub fn is_cast(&self) -> bool { self.ctx.borrow().is_cast(self.id) }
   pub fn is_object(&self) -> bool { self.ctx.borrow().is_object(self.id) }
+  pub fn is_null_object(&self) -> bool { self.ctx.borrow().is_null_object(self.id) }
   pub fn is_same_object(&self) -> bool { self.ctx.borrow().is_same_object(self.id) }
   pub fn is_index(&self) -> bool { self.ctx.borrow().is_index(self.id) }
   pub fn is_store(&self) -> bool { self.ctx.borrow().is_store(self.id) }
@@ -433,6 +434,7 @@ pub trait ExprBuilder {
   fn cast(&self, operand: Expr, target_ty: Expr) -> Expr;
 
   fn object(&self, object: Expr, ownership: Ownership) -> Expr;
+  fn null_object(&self, ty: Type) -> Expr;
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr;
   fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
