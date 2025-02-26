@@ -70,6 +70,8 @@ impl State {
 
   pub fn get_value_set(&self, expr: Expr, values: &mut ObjectSet) {
     assert!(expr.ty().is_any_ptr());
+    
+    if expr.is_null() { return; }
 
     if expr.is_symbol() {
       let pt = expr.extract_symbol().name();

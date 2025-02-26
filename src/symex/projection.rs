@@ -59,9 +59,8 @@ impl<'a, 'cfg> Projector<'a, 'cfg> {
 
   /// Dereferencing raw pointer/reference/box pointer.
   /// Return the objects it points to.
-  pub(super) fn project_deref(&mut self, pt: Expr) -> Expr {
+  fn project_deref(&mut self, pt: Expr) -> Expr {
     assert!(pt.ty().is_any_ptr());
-    // TODO: deref null pointer
 
     let mut objects = ObjectSet::new();
     self
@@ -72,6 +71,7 @@ impl<'a, 'cfg> Projector<'a, 'cfg> {
     
     let ctx = pt.ctx.clone();
 
+    // The pointer is uninitilized
     if objects.is_empty() {
       todo!()
     }

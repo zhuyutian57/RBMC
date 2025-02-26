@@ -30,6 +30,18 @@ impl Terminal {
     }
   }
 
+  pub fn is_constant(&self) -> bool {
+    matches!(self, Terminal::Constant(..))
+  }
+  
+  pub fn is_type(&self) -> bool {
+    matches!(self, Terminal::Type(..))
+  }
+  
+  pub fn is_symbol(&self) -> bool {
+    matches!(self, Terminal::Symbol(..))
+  }
+
   pub fn to_constant(&self) -> Constant {
     match self {
       Terminal::Constant(c) => Some(c.clone()),

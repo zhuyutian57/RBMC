@@ -405,6 +405,8 @@ impl Debug for Expr {
 pub trait ExprBuilder {
   fn constant_bool(&self, b: bool) -> Expr;
   fn constant_integer(&self, i: BigInt, ty: Type) -> Expr;
+  fn null(&self, ty: Type) -> Expr;
+  fn null_mut(&self, ty: Type) -> Expr;
   fn constant_array(&self, constant: Constant, elem_ty: Type) -> Expr;
   fn constant_struct(&self, fields: Vec<StructField>, ty: Type) -> Expr;
   fn mk_symbol(&self, symbol: Symbol, ty: Type) -> Expr;

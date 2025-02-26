@@ -97,27 +97,27 @@ impl Context {
 
   pub fn is_constant_bool(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(self.extract_constant(i), Ok(t) if t.is_bool())
+    matches!(self.extract_constant(i), Ok(Constant::Bool(..)))
   }
 
   pub fn is_constant_integer(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(self.extract_constant(i), Ok(t) if t.is_integer())
+    matches!(self.extract_constant(i), Ok(Constant::Integer(..)))
   }
 
   pub fn is_null(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(self.extract_constant(i), Ok(t) if t.is_null())
+    matches!(self.extract_constant(i), Ok(Constant::Null))
   }
 
   pub fn is_constant_array(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(self.extract_constant(i), Ok(t) if t.is_array())
+    matches!(self.extract_constant(i), Ok(Constant::Array(..)))
   }
 
   pub fn is_constant_struct(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(self.extract_constant(i), Ok(t) if t.is_struct())
+    matches!(self.extract_constant(i), Ok(Constant::Struct(..)))
   }
 
   pub fn is_type(&self, i: NodeId) -> bool {
@@ -202,24 +202,24 @@ impl Context {
   }
   
   pub fn extract_constant(&self, i: NodeId) -> Result<Constant, &str> {
-    Ok(self
-      .extract_terminal(i)
-      .expect("Not terminal")
-      .to_constant())
+    match self.is_constant(i) {
+      true => Ok(self.extract_terminal(i).unwrap().to_constant()),
+      false => Err("Not constant"),
+    }
   }
 
   pub fn extract_type(&self, i: NodeId) -> Result<Type, &str> {
-    Ok(self
-      .extract_terminal(i)
-      .expect("Not terminal")
-      .to_type())
+    match self.is_type(i) {
+      true => Ok(self.extract_terminal(i).unwrap().to_type()),
+      false => Err("Not type"),
+    }
   }
 
   pub fn extract_symbol(&self, i: NodeId) -> Result<Symbol, &str> {
-    Ok(self
-      .extract_terminal(i)
-      .expect("Not terminal")
-      .to_symbol())
+    match self.is_symbol(i) {
+      true => Ok(self.extract_terminal(i).unwrap().to_symbol()),
+      false => Err("Not symbol"),
+    }
   }
 
   pub fn extract_bin_op(&self, i: NodeId) -> Result<BinOp, &str> {
@@ -284,6 +284,24 @@ impl ExprBuilder for ExprCtx {
     let terminal_id = self.borrow_mut().add_terminal(terminal);
     let kind = NodeKind::Terminal(terminal_id);
     let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+
+  fn null(&self, ty: Type) -> Expr {
+    let terminal = Terminal::Constant(Constant::Null);
+    let terminal_id = self.borrow_mut().add_terminal(terminal);
+    let kind = NodeKind::Terminal(terminal_id);
+    let new_node = Node::new(kind, Type::null_type(ty));
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+
+  fn null_mut(&self, ty: Type) -> Expr {
+    let terminal = Terminal::Constant(Constant::Null);
+    let terminal_id = self.borrow_mut().add_terminal(terminal);
+    let kind = NodeKind::Terminal(terminal_id);
+    let new_node = Node::new(kind, Type::null_mut_type(ty));
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
