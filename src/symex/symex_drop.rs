@@ -4,6 +4,7 @@ use stable_mir::mir::*;
 use crate::expr::expr::*;
 use crate::expr::predicates::*;
 use crate::expr::ty::*;
+use crate::symex::projection::Mode;
 use crate::NString;
 use super::symex::*;
 
@@ -52,16 +53,13 @@ impl<'cfg> Symex<'cfg> {
   /// Drop a box will free the memory it points to
   fn drop_box(&mut self, _box: Expr, guard: Expr) {
     assert!(_box.is_object() && _box.ty().is_box());
-    // Check whethe the box is uninitilized
-    let invalid = self.ctx.invalid(_box.clone());
-    self.claim(
-      NString::from("drop failure: box is not uninitilized"),
-      invalid
-    );
 
-    let pointer_ident = self.ctx.pointer_ident(_box);      
-    let alloc_array_sym = self.exec_state.ns.lookup(NString::ALLOC_SYM);
-    let alloc_array = self.ctx.object(alloc_array_sym, Ownership::Own);
+    // Check whethe the box is uninitilized
+    self.make_deref(_box.clone(), Mode::Drop, guard.clone());
+
+    let pointer_ident = self.ctx.pointer_ident(_box);
+    let alloc_array =
+      self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
     let index =
       self.ctx.index(alloc_array, pointer_ident, Type::bool_type());
     self.assign(index, self.ctx.constant_bool(false), guard.clone());

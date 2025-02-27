@@ -45,10 +45,10 @@ impl<'cfg> ExecutionState<'cfg> {
 
   pub fn setup(&mut self) {
     // create global variable
-    self.l0_symbol(
-      NString::ALLOC_SYM,
-      Type::const_array_type(Type::bool_type())
-    );
+    let ty = Type::const_array_type(Type::bool_type());
+    let alloc_array_symbol = self.l0_symbol(NString::ALLOC_SYM, ty);
+    let alloc_array = self.ctx.object(alloc_array_symbol, Ownership::Own);
+    self.ns.insert_object(alloc_array);
     self.push_frame(0, None, None);
   }
 
@@ -60,7 +60,7 @@ impl<'cfg> ExecutionState<'cfg> {
     let symbol = Symbol::new(name, 0, 0, Level::Level0);
     let sym_expr = self.ctx.mk_symbol(symbol, ty);
     // Record the ident
-    self.ns.insert(sym_expr.clone());
+    self.ns.insert_symbol(sym_expr.clone());
     // Create an object not being owned by any variable.
     let object = self.ctx.object(sym_expr, Ownership::Not);
     self.objects.push(object.clone());
@@ -126,20 +126,20 @@ impl<'cfg> ExecutionState<'cfg> {
     // clear namspace
     for i in 0..frame.function().locals().len() {
       let ident = frame.local_ident(i);
-      self.ns.remove(ident);
+      self.ns.remove_symbol(ident);
     }
 
     self.top_mut().inc_pc();
   }
 
   pub fn l0_symbol(&mut self, ident: NString, ty: Type) -> Expr {
-    if self.ns.containts(ident) {
-      self.ns.lookup(ident)
+    if self.ns.containts_symbol(ident) {
+      self.ns.lookup_symbol(ident)
     } else {
       let symbol =
         Symbol::new(ident,0,0, Level::Level0);
       let symbol_expr = self.ctx.mk_symbol(symbol, ty);
-      self.ns.insert(symbol_expr.clone());
+      self.ns.insert_symbol(symbol_expr.clone());
       symbol_expr
     }
   }
@@ -148,10 +148,11 @@ impl<'cfg> ExecutionState<'cfg> {
     assert!(symbol.is_symbol() && level != Level::Level0);
     let sym = symbol.extract_symbol();
     let ident = sym.ident();
+    let l1_num = sym.l1_num();
     let new_sym =
       match level {
         Level::Level1 => self.renaming.new_l1_symbol(ident),
-        Level::Level2 => self.renaming.new_l2_symbol(ident, 0),
+        Level::Level2 => self.renaming.new_l2_symbol(ident, l1_num),
         _ => panic!(),
       };
     self.ctx.mk_symbol(new_sym, symbol.ty())

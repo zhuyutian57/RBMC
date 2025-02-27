@@ -23,7 +23,7 @@ impl<'cfg> Symex<'cfg> {
 
     // alloc[&object] = true
     let alloc_array =
-      self.exec_state.ns.lookup(NString::ALLOC_SYM);
+      self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
     let pt_indent =
       ctx.pointer_ident(
         ctx.address_of(

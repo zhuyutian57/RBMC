@@ -166,14 +166,6 @@ impl Context {
     self.nodes[i].kind().is_object()
   }
 
-  pub fn is_null_object(&self, i: NodeId) -> bool {
-    assert!(i < self.nodes.len());
-    match self.extract_symbol(i) {
-      Ok(s) => s.ident() == NString::NULL_OBJECT,
-      _ => false,
-    }
-  }
-
   pub fn is_same_object(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     self.nodes[i].kind().is_same_object()
@@ -199,8 +191,18 @@ impl Context {
     self.nodes[i].kind().is_invalid()
   }
 
-  pub(super) fn extract_terminal(&self, i: NodeId)
-    -> Result<Rc<Terminal>, &str> {
+  pub fn is_null_object(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_null_object()
+  }
+
+  pub fn is_unknown(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_unknown()
+  }
+
+  pub(super) fn extract_terminal(&self, i: NodeId
+  ) -> Result<Rc<Terminal>, &str> {
     assert!(i < self.nodes.len());
     match self.nodes[i].kind() {
       NodeKind::Terminal(t)
@@ -217,9 +219,12 @@ impl Context {
   }
 
   pub fn extract_type(&self, i: NodeId) -> Result<Type, &str> {
-    match self.is_type(i) {
-      true => Ok(self.extract_terminal(i).unwrap().to_type()),
-      false => Err("Not type"),
+    if self.is_type(i) {
+      Ok(self.extract_terminal(i).unwrap().to_type())
+    } else if let NodeKind::Unknown(ty) = self.nodes[i].kind() {
+      Ok(ty)
+    } else {
+      Err("Not contains type")
     }
   }
 
@@ -296,20 +301,12 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
+  // `ty` indicates the pointer type
   fn null(&self, ty: Type) -> Expr {
     let terminal = Terminal::Constant(Constant::Null);
     let terminal_id = self.borrow_mut().add_terminal(terminal);
     let kind = NodeKind::Terminal(terminal_id);
-    let new_node = Node::new(kind, Type::null_type(ty));
-    let id = self.borrow_mut().add_node(new_node);
-    Expr { ctx: self.clone(), id }
-  }
-
-  fn null_mut(&self, ty: Type) -> Expr {
-    let terminal = Terminal::Constant(Constant::Null);
-    let terminal_id = self.borrow_mut().add_terminal(terminal);
-    let kind = NodeKind::Terminal(terminal_id);
-    let new_node = Node::new(kind, Type::null_mut_type(ty));
+    let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
@@ -525,13 +522,6 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn null_object(&self, ty: Type) -> Expr {
-    let symbol =
-      Symbol::new(NString::NULL_OBJECT, 0, 0, Level::Level0);
-    let symbol_expr = self.mk_symbol(symbol, ty);
-    self.object(symbol_expr, Ownership::Not)
-  }
-
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr {
     assert!(lhs.ty().is_any_ptr() && rhs.ty().is_any_ptr());
     let kind = NodeKind::SameObject(lhs.id, rhs.id);
@@ -554,6 +544,7 @@ impl ExprBuilder for ExprCtx {
   }
 
   fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr {
+    assert!(object.is_object());
     let kind = NodeKind::Store(object.id, key.id, value.id);
     let ty = object.ty();
     let new_node = Node::new(kind, ty);
@@ -574,6 +565,20 @@ impl ExprBuilder for ExprCtx {
     assert!(object.is_object());
     let kind = NodeKind::Invalid(object.id);
     let ty = Type::bool_type();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+
+  fn null_object(&self, ty: Type) -> Expr {
+    let kind = NodeKind::NullObject;
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+
+  fn unknown(&self, ty: Type) -> Expr {
+    let kind = NodeKind::Unknown(ty);
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }

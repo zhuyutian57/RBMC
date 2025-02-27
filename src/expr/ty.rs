@@ -48,14 +48,6 @@ impl Type {
     Type::from(Ty::new_ptr(pointee_type.0, m))
   }
 
-  pub fn null_type(pointee_type: Type) -> Self {
-    Type::from(Ty::new_ptr(pointee_type.0, Mutability::Not))
-  }
-
-  pub fn null_mut_type(pointee_type: Type) -> Self {
-    Type::from(Ty::new_ptr(pointee_type.0, Mutability::Mut))
-  }
-
   pub fn ref_type(reg: Region, pointee_type: Type, mutability: Mutability) -> Self {
     Type::from(Ty::new_ref(reg, pointee_type.0, mutability))
   }

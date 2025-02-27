@@ -57,8 +57,8 @@ impl<'cfg> Symex<'cfg> {
 
     let mut symex =
       Symex { program, ctx: ctx.clone(), exec_state, vc_system };
-    let alloc_sym = symex.exec_state.ns.lookup(NString::ALLOC_SYM);
-    let mut alloc_array = ctx.object(alloc_sym, Ownership::Own);
+    let mut alloc_array =
+      symex.exec_state.ns.lookup_object(NString::ALLOC_SYM);
     let mut const_array =
       ctx.constant_array(Constant::Bool(false), Type::bool_type());
     symex.assign(alloc_array, const_array, ctx.constant_bool(true));
@@ -137,8 +137,8 @@ impl<'cfg> Symex<'cfg> {
 
       if cur_l2_num == n_l2_num  || n_l2_num == 0 { continue; }
       
-      let mut cur_rhs = self.exec_state.ns.lookup(var);
-      let mut new_rhs = self.exec_state.ns.lookup(var);
+      let mut cur_rhs = self.exec_state.ns.lookup_symbol(var);
+      let mut new_rhs = self.exec_state.ns.lookup_symbol(var);
 
       // Get l1 number
       nrenaming.l1_rename(&mut cur_rhs);
@@ -160,7 +160,7 @@ impl<'cfg> Symex<'cfg> {
           )
         };
         
-      let mut lhs= self.exec_state.ns.lookup(var);
+      let mut lhs= self.exec_state.ns.lookup_symbol(var);
       lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
       
       self.exec_state.assign(lhs.clone(), rhs.clone());

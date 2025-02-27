@@ -22,7 +22,16 @@ use super::symex::*;
 
 impl<'cfg> Symex<'cfg> {
   pub(super) fn make_project(&mut self, place: &Place) -> Expr {
-    Projector::new(self).project(place)
+    Projection::new(self).project(place)
+  }
+
+  pub(super) fn make_deref(
+    &mut self,
+    pt: Expr,
+    mode: Mode,
+    guard: Expr
+  ) -> Option<Expr> {
+    Projection::new(self).project_deref(pt, mode, guard)
   }
 
   pub(super) fn make_mirconst(&mut self, mirconst: &MirConst) -> Expr {
@@ -238,10 +247,8 @@ impl<'cfg> Symex<'cfg> {
                 object.extract_address_type()
               )
           );
-      let alloc_array_sym =
-        self.exec_state.ns.lookup(NString::ALLOC_SYM);
       let alloc_array =
-        self.ctx.object(alloc_array_sym, Ownership::Own);
+        self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
       let not_alloced =
         self.ctx.not(
           self.ctx.index(
@@ -258,6 +265,7 @@ impl<'cfg> Symex<'cfg> {
   pub(super) fn claim(&mut self, msg: NString, mut expr: Expr) {
     self.replace_predicates(&mut expr);
     self.rename(&mut expr);
+    expr.simplify();
     let mut guard = self.exec_state.cur_state().guard();
     let cond = self.ctx.implies(guard, expr);
     self.vc_system.borrow_mut().assert(msg, cond);

@@ -40,12 +40,13 @@ impl Expr {
   pub fn is_ite(&self) -> bool { self.ctx.borrow().is_ite(self.id) }
   pub fn is_cast(&self) -> bool { self.ctx.borrow().is_cast(self.id) }
   pub fn is_object(&self) -> bool { self.ctx.borrow().is_object(self.id) }
-  pub fn is_null_object(&self) -> bool { self.ctx.borrow().is_null_object(self.id) }
   pub fn is_same_object(&self) -> bool { self.ctx.borrow().is_same_object(self.id) }
   pub fn is_index(&self) -> bool { self.ctx.borrow().is_index(self.id) }
   pub fn is_store(&self) -> bool { self.ctx.borrow().is_store(self.id) }
   pub fn is_pointer_ident(&self) -> bool { self.ctx.borrow().is_pointer_ident(self.id) }
   pub fn is_invalid(&self) -> bool { self.ctx.borrow().is_invalid(self.id) }
+  pub fn is_null_object(&self) -> bool { self.ctx.borrow().is_null_object(self.id) }
+  pub fn is_unknown(&self) -> bool { self.ctx.borrow().is_unknown(self.id) }
 
   pub fn extract_symbol(&self) -> Symbol {
     self
@@ -67,12 +68,12 @@ impl Expr {
     self.extract_constant().to_integer()
   }
 
+  pub fn extract_type(&self) -> Type {
+    self.ctx.borrow().extract_type(self.id).unwrap()
+  }
+
   pub fn extract_layout(&self) -> Type {
-    self
-      .ctx
-      .borrow()
-      .extract_type(self.id)
-      .expect("Not layout")
+    self.extract_type()
   }
 
   pub fn extract_address_type(&self) -> Type {
@@ -407,7 +408,6 @@ pub trait ExprBuilder {
   fn constant_bool(&self, b: bool) -> Expr;
   fn constant_integer(&self, i: BigInt, ty: Type) -> Expr;
   fn null(&self, ty: Type) -> Expr;
-  fn null_mut(&self, ty: Type) -> Expr;
   fn constant_array(&self, constant: Constant, elem_ty: Type) -> Expr;
   fn constant_struct(&self, fields: Vec<StructField>, ty: Type) -> Expr;
   fn mk_symbol(&self, symbol: Symbol, ty: Type) -> Expr;
@@ -434,7 +434,6 @@ pub trait ExprBuilder {
   fn cast(&self, operand: Expr, target_ty: Expr) -> Expr;
 
   fn object(&self, object: Expr, ownership: Ownership) -> Expr;
-  fn null_object(&self, ty: Type) -> Expr;
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr;
   fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
@@ -442,4 +441,6 @@ pub trait ExprBuilder {
   fn pointer_ident(&self, pt: Expr) -> Expr;
 
   fn invalid(&self, object: Expr) -> Expr;
+  fn null_object(&self, ty: Type) -> Expr;
+  fn unknown(&self, ty: Type) -> Expr;
 }

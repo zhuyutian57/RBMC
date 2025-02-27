@@ -4,32 +4,51 @@ use std::collections::HashMap;
 use crate::NString;
 use crate::expr::expr::*;
 
-/// Use for record `l0` symbol expr
+/// Use for record `l0` symbol and `l0` global objects
 #[derive(Debug, Default)]
 pub(crate) struct Namespace {
-  table: HashMap<NString, Expr>,
+  objects: HashMap<NString, Expr>,
+  symbols: HashMap<NString, Expr>,
 }
 
 impl Namespace {
-  pub fn containts(&mut self, ident: NString) -> bool {
-    self.table.contains_key(&ident)
+  pub fn containts_symbol(&mut self, ident: NString) -> bool {
+    self.symbols.contains_key(&ident)
   }
 
-  pub fn insert(&mut self, ident: Expr) {
-    assert!(ident.is_symbol());
-    let symbol = ident.extract_symbol();
+  pub fn insert_object(&mut self, expr: Expr) {
+    assert!(expr.is_object());
+    let inner = expr.extract_inner_expr();
+    assert!(inner.is_symbol());
+    let symbol = inner.extract_symbol();
     assert!(symbol.is_level0());
-    assert!(!self.table.contains_key(&symbol.ident()));
-    self.table.insert(symbol.ident(), ident);
+    assert!(!self.objects.contains_key(&symbol.ident()));
+    self.objects.insert(symbol.ident(), expr);
   }
 
-  pub fn remove(&mut self, name: NString) {
-    self.table.remove(&name);
+  pub fn insert_symbol(&mut self, expr: Expr) {
+    assert!(expr.is_symbol());
+    let symbol = expr.extract_symbol();
+    assert!(symbol.is_level0());
+    assert!(!self.symbols.contains_key(&symbol.ident()));
+    self.symbols.insert(symbol.ident(), expr);
   }
 
-  pub fn lookup(&self, ident: NString) -> Expr {
+  pub fn remove_symbol(&mut self, name: NString) {
+    self.symbols.remove(&name);
+  }
+
+  pub fn lookup_symbol(&self, ident: NString) -> Expr {
     self
-      .table
+      .symbols
+      .get(&ident)
+      .expect("Not exists")
+      .clone()
+  }
+
+  pub fn lookup_object(&self, ident: NString) -> Expr {
+    self
+      .objects
       .get(&ident)
       .expect("Not exists")
       .clone()

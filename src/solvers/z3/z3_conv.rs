@@ -135,30 +135,30 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn convert_pointer(
     &self,
     ident: &z3::ast::Dynamic<'ctx>,
-    offset: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    offset: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     self.mk_pointer(ident, offset)
   }
 
   fn convert_pointer_ident(
     &self,
-    pt: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    pt: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     self.mk_pointer_ident(pt)
   }
 
   fn convert_pointer_offset(
     &self,
-    pt: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    pt: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     self.mk_pointer_offset(pt)
   }
 
   fn convert_tuple(
     &mut self,
     fields: Vec<z3::ast::Dynamic<'ctx>>,
-    ty: Type)
-    -> z3::ast::Dynamic<'ctx> {
+    ty: Type
+  ) -> z3::ast::Dynamic<'ctx> {
     self.create_tuple(fields, ty)
   }
 
@@ -169,8 +169,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn convert_tuple_load(
     &mut self,
     object: Expr,
-    field: Expr)
-    -> z3::ast::Dynamic<'ctx> {
+    field: Expr
+  ) -> z3::ast::Dynamic<'ctx> {
     let i = field.extract_integer().to_uint() as usize;
     self.mk_tuple_select(object, i)
   }
@@ -179,8 +179,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     &mut self,
     object: Expr,
     field: Expr,
-    value: Expr)
-    -> z3::ast::Dynamic<'ctx> {
+    value: Expr
+  ) -> z3::ast::Dynamic<'ctx> {
     let i = field.extract_constant().to_integer().to_uint() as usize;
     self.mk_tuple_store(object, i, value)
   }
@@ -198,8 +198,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_array_sort(
     &mut self,
     domain: &z3::Sort<'ctx>,
-    range: &z3::Sort<'ctx>)
-    -> z3::Sort<'ctx> {
+    range: &z3::Sort<'ctx>
+  ) -> z3::Sort<'ctx> {
     z3::Sort::array(&self.z3_ctx, domain, range)
   }
 
@@ -218,8 +218,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_smt_const_array(
     &self,
     domain: &z3::Sort<'ctx>,
-    val: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    val: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       z3::ast::Array::const_array(&self.z3_ctx, domain, val)
     )
@@ -241,8 +241,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     &self,
     name: NString,
     domain: &z3::Sort<'ctx>,
-    range: &z3::Sort<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    range: &z3::Sort<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       z3::ast::Array::new_const(
         &self.z3_ctx, 
@@ -255,8 +255,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_tuple_symbol(
     &self,
     name: NString,
-    sort: &z3::Sort<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    sort: &z3::Sort<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       z3::ast::Datatype::new_const(&self.z3_ctx, name.to_string(), sort)
     )
@@ -269,8 +269,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_select(
     &self,
     array: &z3::ast::Dynamic<'ctx>,
-    index: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    index: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     array.as_array().unwrap().select(index)
   }
 
@@ -278,16 +278,16 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     &self,
     array: &z3::ast::Dynamic<'ctx>,
     index: &z3::ast::Dynamic<'ctx>,
-    val: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    val: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(array.as_array().unwrap().store(index, val))
   }
 
   fn mk_add(
     &self,
     lhs: &z3::ast::Dynamic<'ctx>,
-    rhs: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    rhs: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer") +
       rhs.as_int().expect("rhs is not integer")
@@ -297,8 +297,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_sub(
     &self,
     lhs: &z3::ast::Dynamic<'ctx>,
-    rhs: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    rhs: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer") -
       rhs.as_int().expect("rhs is not integer")
@@ -308,8 +308,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_mul(
     &self,
     lhs: &z3::ast::Dynamic<'ctx>,
-    rhs: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    rhs: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer") *
       rhs.as_int().expect("rhs is not integer")
@@ -319,8 +319,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_div(
     &self,
     lhs: &z3::ast::Dynamic<'ctx>,
-    rhs: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    rhs: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer") /
       rhs.as_int().expect("rhs is not integer")
@@ -330,27 +330,24 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_eq(
     &self,
     lhs: &z3::ast::Dynamic<'ctx>,
-    rhs: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
-    z3::ast::Dynamic::from(
-      lhs.as_int().expect("lhs is not integer")
-        ._eq(&rhs.as_int().expect("rhs is not integer"))
-    )
+    rhs: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(lhs._eq(rhs))
   }
 
   fn mk_ne(
     &self,
     lhs: &z3::ast::Dynamic<'ctx>,
-    rhs: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
-    z3::ast::Dynamic::from(z3::ast::Bool::not(&self.mk_eq(lhs, rhs).as_bool().unwrap()))
+    rhs: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
+    z3::ast::Dynamic::from(&self.mk_eq(lhs, rhs).as_bool().unwrap().not())
   }
 
   fn mk_ge(
     &self,
     lhs: &z3::ast::Dynamic<'ctx>,
-    rhs: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    rhs: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer")
         .ge(&rhs.as_int().expect("rhs is not integer"))
@@ -360,8 +357,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_gt(
     &self,
     lhs: &z3::ast::Dynamic<'ctx>,
-    rhs: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    rhs: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer")
         .gt(&rhs.as_int().expect("rhs is not integer"))
@@ -371,8 +368,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_le(
     &self,
     lhs: &z3::ast::Dynamic<'ctx>,
-    rhs: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    rhs: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer")
         .le(&rhs.as_int().expect("rhs is not integer"))
@@ -382,8 +379,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_lt(
     &self,
     lhs: &z3::ast::Dynamic<'ctx>,
-    rhs: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    rhs: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       lhs.as_int().expect("lhs is not integer")
         .lt(&rhs.as_int().expect("rhs is not integer"))
@@ -393,8 +390,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_and(
     &self,
     lhs: &z3::ast::Dynamic<'ctx>,
-    rhs: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    rhs: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       z3::ast::Bool::and(
         &self.z3_ctx, 
@@ -407,8 +404,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_or(
     &self,
     lhs: &z3::ast::Dynamic<'ctx>,
-    rhs: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    rhs: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       z3::ast::Bool::or(
         &self.z3_ctx, 
@@ -420,16 +417,16 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
   fn mk_not(
     &self,
-    operand: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    operand: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(operand.as_bool().expect("operand is no bool").not())
   }
 
   fn mk_implies(
     &self,
     cond: &z3::ast::Dynamic<'ctx>,
-    conseq: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    conseq: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     z3::ast::Dynamic::from(
       cond
         .as_bool()
@@ -442,8 +439,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     &self,
     cond: &z3::ast::Dynamic<'ctx>,
     true_value: &z3::ast::Dynamic<'ctx>,
-    false_value: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    false_value: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     cond
       .as_bool()
       .expect("condition must be bool")
@@ -483,8 +480,8 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn create_tuple(
     &mut self,
     fields: Vec<z3::ast::Dynamic<'ctx>>,
-    ty: Type)
-    -> z3::ast::Dynamic<'ctx> {
+    ty: Type
+  ) -> z3::ast::Dynamic<'ctx> {
     if !self.tuple_sorts.contains_key(&ty) { self.create_tuple_sort(ty); }
     let dtsort = self.tuple_sorts.get(&ty).unwrap();
     let f = &dtsort.variants[0].constructor;
@@ -512,8 +509,8 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     &mut self,
     object: Expr,
     field: usize,
-    value: Expr)
-    -> z3::ast::Dynamic<'ctx> {
+    value: Expr
+  ) -> z3::ast::Dynamic<'ctx> {
     let n = self.tuple_sorts.get(&object.ty()).unwrap().variants[0].accessors.len();
     let mut fields_values = Vec::with_capacity(n);
     let update_value = self.convert_ast(value);
@@ -630,8 +627,8 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_pointer(
     &self,
     base: &z3::ast::Dynamic<'ctx>,
-    offset: &z3::ast::Dynamic<'ctx>)
-    -> z3::ast::Dynamic<'ctx> {
+    offset: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
     self
       .tuple_sorts
       .get(&self.pointer_type)

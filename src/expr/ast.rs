@@ -96,8 +96,15 @@ pub(super) enum NodeKind {
   Store(NodeId, NodeId, NodeId),
   /// `PointerIdent(pt)` retrieve the ident of a pointer
   PointerIdent(NodeId),
-  /// `Invalid(object)`
+
+  // Predicates for symbolic execution. Not used in vcc.
+
+  /// `Invalid(object)`: `object` is not alloced
   Invalid(NodeId),
+  /// Representing dereference of null
+  NullObject,
+  /// `Unknown(type)` an unknown object with type
+  Unknown(Type),
 }
 
 impl NodeKind {
@@ -147,6 +154,14 @@ impl NodeKind {
 
   pub fn is_invalid(&self) -> bool {
     matches!(self, NodeKind::Invalid(..))
+  }
+
+  pub fn is_null_object(&self) -> bool {
+    matches!(self, NodeKind::NullObject)
+  }
+
+  pub fn is_unknown(&self) -> bool {
+    matches!(self, NodeKind::Unknown(..))
   }
 }
 

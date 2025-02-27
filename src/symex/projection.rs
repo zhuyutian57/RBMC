@@ -13,29 +13,39 @@ use super::exec_state::*;
 use super::symex::Symex;
 use super::value_set::*;
 
-/// Dereferencing a place
-pub(super) struct Projector<'a, 'cfg> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Mode {
+  Read,
+  Drop,
+}
+
+pub(super) struct Projection<'a, 'cfg> {
   _callback_symex: &'a mut Symex<'cfg>,
 }
 
-impl<'a, 'cfg> Projector<'a, 'cfg> {
-  pub fn new(state: &'a mut Symex<'cfg>) -> Self {
-    Projector { _callback_symex: state }
+impl<'a, 'cfg> Projection<'a, 'cfg> {
+  pub(super) fn new(state: &'a mut Symex<'cfg>) -> Self {
+    Projection { _callback_symex: state }
   }
 
-  pub fn project(&mut self, place: &Place) -> Expr {
+  pub(super) fn project(&mut self, place: &Place) -> Expr {
+    let ctx = self._callback_symex.ctx.clone();
+
     let mut ret =
       self
         ._callback_symex
         .exec_state
         .current_local(place.local, Level::Level1);
-    ret = ret.ctx.clone().object(ret, Ownership::Own);
+    ret = ctx.object(ret, Ownership::Own);
 
     for elem in place.projection.iter() {
       ret =
         match elem {
           ProjectionElem::Deref
-            => self.project_deref(ret.clone()),
+            => self
+                .project_deref(
+                  ret.clone(), Mode::Read,
+                  ctx.constant_bool(true)).unwrap(),
           ProjectionElem::Field(i, ty)
             => self.project_field(
               ret.clone(),
@@ -59,7 +69,12 @@ impl<'a, 'cfg> Projector<'a, 'cfg> {
 
   /// Dereferencing raw pointer/reference/box pointer.
   /// Return the objects it points to.
-  fn project_deref(&mut self, pt: Expr) -> Expr {
+  pub(super) fn project_deref(
+    &mut self,
+    pt: Expr,
+    mode: Mode,
+    guard: Expr,
+    )-> Option<Expr> {
     assert!(pt.ty().is_any_ptr());
 
     let mut objects = ObjectSet::new();
@@ -70,22 +85,37 @@ impl<'a, 'cfg> Projector<'a, 'cfg> {
       .get_value_set(pt.clone(), &mut objects);
     
     let ctx = pt.ctx.clone();
+    
+    let mut ret = None;
 
-    // The pointer is uninitilized
-    if objects.is_empty() {
-      todo!()
+    // Dereferencing a null pointer
+    if objects.contains(&ctx.null_object(pt.ty().pointee_ty())) {
+      // box(smart) pointer is not null
+      assert!(mode == Mode::Read);
+      self.dereference_null(pt.clone(), guard.clone());
+    }
+    
+    // The pointer contains nothing. Returning invalid object
+    if objects.is_empty() ||
+       objects
+        .iter()
+        .fold(false, |acc, x| acc | x.is_unknown()) {
+      self.dereference_invalid_ptr(pt.clone(), mode, guard.clone());
+      ret = 
+        match mode {
+          Mode::Read => Some(self.make_invalid_object(pt.ty().pointee_ty())),
+          Mode::Drop => None,
+        };
     }
 
-    for object in objects.iter() {
+    if mode == Mode::Drop { return ret; }
+    
+    for object in objects{
       // An object is valid if it is owned by some variable
       // according to the Ownership rule of Rust.
-      if object.extract_ownership().is_own() { continue; }
-      
-      if object.is_null_object() {
-        // pt is null
-        self.dereference_null(pt.clone());
-        continue;
-      }
+      if object.extract_ownership().is_own() ||
+         object.is_null_object() ||
+         object.is_unknown() { continue; }
 
       let pointer_guard =
         ctx.same_object(
@@ -93,10 +123,7 @@ impl<'a, 'cfg> Projector<'a, 'cfg> {
           ctx.address_of(object.clone(), pt.ty())
         );
       self.valid_check(object.clone(), pointer_guard);
-    }
-
-    let mut ret = None;
-    for object in objects {
+   
       ret =
         match ret {
           Some(x) => {
@@ -108,7 +135,10 @@ impl<'a, 'cfg> Projector<'a, 'cfg> {
         }
     }
 
-    ret.expect(format!("*{pt:?}").as_str())
+    match ret {
+      Some(_) => ret,
+      None => Some(self.make_invalid_object(pt.ty().pointee_ty())),
+    }
   }
 
   /// Visit a field of a struct. Return `Index(object, i)`.
@@ -141,25 +171,61 @@ impl<'a, 'cfg> Projector<'a, 'cfg> {
     todo!()
   }
 
+  fn make_invalid_object(&mut self, ty: Type) -> Expr {
+    let ctx = self._callback_symex.ctx.clone();
+    let mut l0_symbol =
+      self
+        ._callback_symex
+        .exec_state
+        .l0_symbol(NString::INVALID_OBJECT, ty);
+    let l1_symbol =
+      self
+        ._callback_symex
+        .exec_state
+        .new_symbol(&l0_symbol, Level::Level1);
+    ctx.object(l1_symbol, Ownership::Not)
+  }
+
   fn valid_check(&mut self, object: Expr, guard: Expr) {
     assert!(object.is_object());
     let ctx = object.ctx.clone();
     let invalid = ctx.invalid(object.clone());
     let msg =
       NString::from(format!("dereference failure: {object:?} is not alloced"));
-    self
-      ._callback_symex
-      .claim(msg, ctx.and(guard, invalid));
+    self._callback_symex.claim(msg, ctx.and(guard, invalid));
   }
 
-  fn dereference_null(&mut self, pt: Expr) {
+  fn dereference_null(&mut self, pt: Expr, guard: Expr) {
     assert!(pt.ty().is_any_ptr());
     let ctx = pt.ctx.clone();
-    let null = ctx.null(pt.ty().pointee_ty());
-    let msg = 
+    let null = ctx.null(pt.ty());
+    let msg =
       NString::from(format!("dereference failure: null pointer dereference"));
-    self
-      ._callback_symex
-      .claim(msg, ctx.eq(pt, null));
+    let is_deref_null = ctx.and(guard, ctx.eq(pt, null));
+    self._callback_symex.claim(msg, is_deref_null);
   }
+
+  fn dereference_invalid_ptr(&mut self, pt: Expr, mode: Mode, guard: Expr) {
+    // Check the pointer is invalid
+    let ctx = pt.ctx.clone();
+    let pointer_ident = ctx.pointer_ident(pt.clone());
+    let ne = ctx.ne(pt.clone(), ctx.null(pt.ty()));
+    let alloc_array =
+      self
+        ._callback_symex
+        .exec_state
+        .ns
+        .lookup_object(NString::ALLOC_SYM);
+    let index =
+      ctx.index(alloc_array, pointer_ident, Type::bool_type());
+    let msg =
+      match mode {
+        Mode::Read => NString::from("dereference failure: invalid pointer"),
+        Mode::Drop => NString::from("drop failure: uninitilized box(smart) pointer"),
+      };
+    let fail =
+      ctx.and(ctx.and(guard, ne), ctx.not(index));
+    self._callback_symex.claim(msg, fail);
+  }
+
 }

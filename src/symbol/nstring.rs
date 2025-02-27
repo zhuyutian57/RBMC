@@ -16,12 +16,12 @@ impl StringManager {
       vec![
         "".to_string(),
         "alloc".to_string(),
-        "NULL-Object".to_string(),
+        "INVALID-OBJECT".to_string(),
       ];
     let mut map = HashMap::new();
     map.insert("".to_string(), 0);
     map.insert("alloc".to_string(), 1);
-    map.insert("NULL-Object".to_string(), 2);
+    map.insert("INVALID-OBJECT".to_string(), 2);
     StringManager { strings, map }
   }
 
@@ -60,7 +60,7 @@ pub(crate) struct NString(usize);
 impl NString {
   pub const EMPTY: NString = NString(0);
   pub const ALLOC_SYM: NString = NString(1);
-  pub const NULL_OBJECT: NString = NString(2);
+  pub const INVALID_OBJECT: NString = NString(2);
 
   pub fn contains(&self, str: NString) -> bool {
     let string = string_m().get_string(self.0);
