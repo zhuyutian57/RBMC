@@ -74,9 +74,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     pt: Expr,
     mode: Mode,
     guard: Expr,
-    )-> Option<Expr> {
+  ) -> Option<Expr> {
     assert!(pt.ty().is_any_ptr());
-
     let mut objects = ObjectSet::new();
     self
       ._callback_symex
@@ -84,6 +83,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
       .cur_state()
       .get_value_set(pt.clone(), &mut objects);
     
+    println!("{pt:?} - {objects:?}");
+
     let ctx = pt.ctx.clone();
     
     let mut ret = None;
@@ -113,17 +114,18 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     for object in objects{
       // An object is valid if it is owned by some variable
       // according to the Ownership rule of Rust.
-      if object.extract_ownership().is_own() ||
-         object.is_null_object() ||
+      if object.is_null_object() ||
          object.is_unknown() { continue; }
 
-      let pointer_guard =
-        ctx.same_object(
-          pt.clone(),
-          ctx.address_of(object.clone(), pt.ty())
-        );
-      self.valid_check(object.clone(), pointer_guard);
-   
+      if object.extract_ownership().is_not() {
+        let pointer_guard =
+          ctx.same_object(
+            pt.clone(),
+            ctx.address_of(object.clone(), pt.ty())
+          );
+        self.valid_check(object.clone(), pointer_guard);
+      }
+
       ret =
         match ret {
           Some(x) => {

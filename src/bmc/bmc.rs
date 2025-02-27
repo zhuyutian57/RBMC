@@ -57,12 +57,14 @@ impl<'cfg> Bmc<'cfg> {
 
   /// TODO: maybe trace
   fn show_issue(&mut self) {
+    let mut i = -1;
     for vc in self.vc_system.borrow().iter() {
+      i += 1;
       if vc.is_sliced { continue; }
       match &vc.kind {
         VcKind::Assert(msg, c) => {
           if self.runtime_solver.eval_bool(c.clone()) {
-            println!("{msg:?}");
+            println!("#{i} {msg:?}");
           }
         },
         _ => {},

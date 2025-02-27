@@ -80,11 +80,11 @@ impl<'cfg> Symex<'cfg> {
     while let Some(pc) = self.top().cur_pc() {
       // Merge states
       if self.merge_states(pc) {
-        // println!(
-        //   "Enter {:?} - bb{pc}\n{:?}",
-        //   self.top().function().name(),
-        //   self.top().cur_state()
-        // );
+        println!(
+          "Enter {:?} - bb{pc}\n{:?}",
+          self.top().function().name(),
+          self.top().cur_state()
+        );
         let bb = self.top().function().basicblock(pc);
         self.symex_basicblock(bb);
       } else {
@@ -193,9 +193,7 @@ impl<'cfg> Symex<'cfg> {
 
   fn symex_storagelive(&mut self, local: Local) {
     let var = self.exec_state.new_local(local, Level::Level1);
-    if var.ty().is_any_ptr() {
-      self.exec_state.cur_state_mut().add_pointer(var);
-    }
+    // TODO: maybe do something will pointers
   }
 
   fn symex_storagedead(&mut self, local: Local) {
