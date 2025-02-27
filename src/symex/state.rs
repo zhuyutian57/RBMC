@@ -63,32 +63,37 @@ impl State {
   }
 
   pub fn merge(&mut self, other: &State) {
-    self.guard =
-      self.guard.ctx.or(self.guard.clone(), other.guard.clone());
-    self.guard.simplify();
-    self.place_states.merge(&other.place_states);
-
-    // Merge value set
     let ctx = self.guard.ctx.clone();
-    let mut pointers =
-      self
-        .value_set
-        .pointers()
-        .union(&other.value_set.pointers())
-        .map(|x| *x)
-        .collect::<HashSet<_>>();
-    for pt in pointers {
-      let mut new_objects = HashSet::new();
-      self.value_set.get(pt, &mut new_objects);
-      other.value_set.get(pt, &mut new_objects);
-      // If any of state does not contain the pointer,
-      // the pointer is uninitialized.
-      if !self.value_set.contains(pt) || !other.value_set.contains(pt) {
-        let ty = new_objects.iter().next().unwrap().ty();
-        new_objects.insert(ctx.unknown(ty));
+    if self.guard.is_false() {
+      self.place_states = other.place_states.clone();
+      self.value_set = other.value_set.clone();
+    } else {
+      // Merge place states
+      self.place_states.merge(&other.place_states);
+
+      // Merge value set
+      let mut pointers =
+        self
+          .value_set
+          .pointers()
+          .union(&other.value_set.pointers())
+          .map(|x| *x)
+          .collect::<HashSet<_>>();
+      for pt in pointers {
+        let mut new_objects = HashSet::new();
+        self.value_set.get(pt, &mut new_objects);
+        other.value_set.get(pt, &mut new_objects);
+        // If any of state does not contain the pointer,
+        // the pointer is uninitialized.
+        if !self.value_set.contains(pt) || !other.value_set.contains(pt) {
+          let ty = new_objects.iter().next().unwrap().ty();
+          new_objects.insert(ctx.unknown(ty));
+        }
+        self.value_set.insert(pt, new_objects);
       }
-      self.value_set.insert(pt, new_objects);
     }
+    self.guard = ctx.or(self.guard.clone(), other.guard.clone());
+    self.guard.simplify();
   }
 
   pub fn get_value_set(&self, expr: Expr, values: &mut ObjectSet) {

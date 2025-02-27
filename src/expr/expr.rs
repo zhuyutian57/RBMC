@@ -398,6 +398,14 @@ impl Debug for Expr {
         return write!(f, "{pt:?}");
       }
 
+      if self.is_null_object() {
+        return write!(f, "NULL_OBJECT");
+      }
+
+      if self.is_unknown() {
+        return write!(f, "Unknown");
+      }
+
       println!("Incomplete Debug for Expr");
       Err(Error)
     }

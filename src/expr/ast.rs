@@ -200,6 +200,8 @@ impl Node {
         => Some(vec![p]),
       NodeKind::Invalid(o)
         => Some(vec![o]),
+      NodeKind::NullObject | NodeKind::Unknown(_)
+        => Some(vec![]),
       _ => None,
     }
   }
