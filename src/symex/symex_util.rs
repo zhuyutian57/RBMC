@@ -16,11 +16,88 @@ use crate::expr::ty::*;
 use crate::program::program::*;
 use crate::symbol::symbol::*;
 use crate::symbol::nstring::*;
+use super::frame::Pc;
 use super::place_state::*;
 use super::projection::*;
+use super::state::State;
 use super::symex::*;
 
 impl<'cfg> Symex<'cfg> {
+  pub(super) fn merge_states(&mut self, pc: Pc) -> bool {
+    let state_vec = self.top().states_from(pc);
+
+    // We have put all states that reach current pc in the
+    // queue. Thus, we first construct an empty state.
+    // That is, make `gurad` of current state be `false`.
+    self.top().cur_state.guard = self.ctx.constant_bool(false);
+
+    if let Some(states) = state_vec {
+      for mut state in states {
+        if state.guard.is_false() { continue; }
+
+        // SSA assigment
+        self.phi_function(&mut state);
+
+        self.top().cur_state.merge(&state);
+      }
+    }
+
+    !self.top().cur_state.guard.is_false()
+  }
+
+  fn phi_function(&mut self, nstate: &mut State) {
+    if let None = nstate.renaming { return; }
+
+    let mut new_guard =
+      self.ctx.and(
+        nstate.guard(),
+        self.ctx.not(self.exec_state.cur_state().guard())
+      );
+    new_guard.simplify();
+
+    let nrenaming = nstate.renaming.as_deref_mut().unwrap();
+
+    for var in nrenaming.variables() {
+      let l1_ident =
+        nrenaming.current_l1_symbol(var).l1_name();
+      
+      let cur_l2_num = self.exec_state.renaming.l2_count(l1_ident);
+      let n_l2_num = nrenaming.l2_count(l1_ident);
+
+      if cur_l2_num == n_l2_num  || n_l2_num == 0 { continue; }
+      
+      let mut cur_rhs = self.exec_state.ns.lookup_symbol(var);
+      let mut new_rhs = self.exec_state.ns.lookup_symbol(var);
+
+      // Get l1 number
+      nrenaming.l1_rename(&mut cur_rhs);
+      nrenaming.l1_rename(&mut new_rhs);
+
+      // Current assignment
+      self.exec_state.renaming.l2_rename(&mut cur_rhs);
+      // Other assignment
+      nrenaming.l2_rename(&mut new_rhs);
+
+      let rhs = 
+        if self.exec_state.cur_state().guard.is_false() {
+          new_rhs
+        } else {
+          self.ctx.ite(
+            new_guard.clone(),
+            new_rhs,
+            cur_rhs
+          )
+        };
+        
+      let mut lhs= self.exec_state.ns.lookup_symbol(var);
+      lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
+      
+      self.exec_state.assign(lhs.clone(), rhs.clone());
+
+      self.vc_system.borrow_mut().assign(lhs, rhs);
+    }
+  }
+
   pub(super) fn make_project(&mut self, place: &Place) -> Expr {
     Projection::new(self).project(place)
   }

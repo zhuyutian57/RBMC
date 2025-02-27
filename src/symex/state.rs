@@ -1,9 +1,11 @@
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fmt::Debug;
 
 use crate::expr::context::*;
 use crate::expr::expr::*;
+use crate::NString;
 use super::place_state::*;
 use super::renaming::Renaming;
 use super::value_set::*;
@@ -65,7 +67,28 @@ impl State {
       self.guard.ctx.or(self.guard.clone(), other.guard.clone());
     self.guard.simplify();
     self.place_states.merge(&other.place_states);
-    self.value_set.merge(&other.value_set, true);
+
+    // Merge value set
+    let ctx = self.guard.ctx.clone();
+    let mut pointers =
+      self
+        .value_set
+        .pointers()
+        .union(&other.value_set.pointers())
+        .map(|x| *x)
+        .collect::<HashSet<_>>();
+    for pt in pointers {
+      let mut new_objects = HashSet::new();
+      self.value_set.get(pt, &mut new_objects);
+      other.value_set.get(pt, &mut new_objects);
+      // If any of state does not contain the pointer,
+      // the pointer is uninitialized.
+      if !self.value_set.contains(pt) || !other.value_set.contains(pt) {
+        let ty = new_objects.iter().next().unwrap().ty();
+        new_objects.insert(ctx.unknown(ty));
+      }
+      self.value_set.insert(pt, new_objects);
+    }
   }
 
   pub fn get_value_set(&self, expr: Expr, values: &mut ObjectSet) {

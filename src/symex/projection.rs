@@ -82,8 +82,6 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
       .exec_state
       .cur_state()
       .get_value_set(pt.clone(), &mut objects);
-    
-    println!("{pt:?} - {objects:?}");
 
     let ctx = pt.ctx.clone();
     

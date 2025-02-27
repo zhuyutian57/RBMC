@@ -30,6 +30,12 @@ impl ValueSet {
     self._points_to_map.contains_key(&pt)
   }
 
+  pub fn pointers(&self) -> HashSet<NString> {
+    self._points_to_map.keys()
+      .map(|x| *x)
+      .collect::<HashSet<NString>>()
+  }
+
   pub fn get(&self, pt: NString, objects: &mut ObjectSet) {
     if let Some(s) = self._points_to_map.get(&pt) {
       for object in s { objects.insert(object.clone()); }
@@ -47,16 +53,6 @@ impl ValueSet {
         .entry(pt)
         .or_default();
     for object in objects { s.insert(object); }    
-  }
-
-  pub fn merge(&mut self, value_set: &ValueSet, is_union: bool) {
-    for (pt, objects) in value_set._points_to_map.iter() {
-      if is_union {
-        self.union(*pt, objects.clone());
-      } else {
-        self.insert(*pt, objects.clone());
-      }
-    }
   }
 }
 
