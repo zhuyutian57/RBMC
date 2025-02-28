@@ -62,7 +62,6 @@ impl <'cfg> Symex<'cfg> {
     self
       .exec_state
       .push_frame(i, Some(dest.clone()), *target);
-
     // Set arguements
     let args = self.top().function().args();
     if !args.is_empty() {
@@ -71,8 +70,8 @@ impl <'cfg> Symex<'cfg> {
         let rhs = arg_exprs[*arg_local - 1].clone();
         self.assign(lhs, rhs, self.ctx.constant_bool(true));
       }
-      let state = self.top().cur_state().clone();
-      self.register_state(0, state);
     }
+    let state = self.top().cur_state().clone();
+    self.register_state(0, state);
   }
 }

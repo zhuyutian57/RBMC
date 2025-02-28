@@ -64,6 +64,7 @@ impl State {
   }
 
   pub fn merge(&mut self, other: &State) {
+    println!("{self:?}\n{other:?}");
     let ctx = self.guard.ctx.clone();
     if self.guard.is_false() {
       self.place_states = other.place_states.clone();
@@ -71,7 +72,6 @@ impl State {
     } else {
       // Merge place states
       self.place_states.merge(&other.place_states);
-
       // Merge value set
       let mut pointers =
         self
@@ -108,6 +108,10 @@ impl State {
     if expr.is_symbol() {
       let pt = expr.extract_symbol().name();
       self.value_set.get(pt, values);
+      if values.is_empty() {
+        // The pointer points to nothing
+        values.insert(expr.ctx.unknown(expr.ty().pointee_ty()));
+      }
       return;
     }
 

@@ -95,8 +95,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     }
     
     // The pointer contains nothing. Returning invalid object
-    if objects.is_empty() ||
-       objects
+    if objects
         .iter()
         .fold(false, |acc, x| acc | x.is_unknown()) {
       self.dereference_invalid_ptr(pt.clone(), mode, guard.clone());

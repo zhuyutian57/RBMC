@@ -51,7 +51,10 @@ impl<'cfg> ExecutionState<'cfg> {
     let alloc_array_symbol = self.l0_symbol(NString::ALLOC_SYM, ty);
     let alloc_array = self.ctx.object(alloc_array_symbol, Ownership::Own);
     self.ns.insert_object(alloc_array);
+    // Initialized stack
     self.push_frame(0, None, None);
+    let ctx = self.ctx.clone();
+    self.top_mut().add_state(0, State::new(ctx));
   }
 
   pub fn can_exec(&self) -> bool { !self.frames.is_empty() }
@@ -91,20 +94,19 @@ impl<'cfg> ExecutionState<'cfg> {
     destination: Option<Place>,
     target: Option<BasicBlockIdx>
   ) {
-    let mut state =
-      if self.frames.is_empty() { State::new(self.ctx.clone()) }
-      else { self.top_mut().cur_state().clone() };
-    state.remove_stack_places();
     self.func_cnt[i] += 1;
-    self.frames.push(
+    let mut frame = 
       Frame::new(
         self.ctx.clone(),
         self.func_cnt[i],
         self.program.function(i),
         destination,
-        target,
-        state
-      ));
+        target
+      );
+    if !self.frames.is_empty() {
+      frame.cur_state = self.cur_state().clone();
+    }
+    self.frames.push(frame);
     // init namspace
     for i in 0..self.top().function().locals().len() { self.l0_local(i); }
   }

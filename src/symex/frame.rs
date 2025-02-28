@@ -32,18 +32,16 @@ impl<'func> Frame<'func> {
     id: usize,
     function: &'func Function,
     destination: Option<Place>,
-    target: Option<BasicBlockIdx>,
-    state: State,
+    target: Option<BasicBlockIdx>
   ) -> Self {
     let mut state_map = HashMap::new();
-    state_map.insert(0, vec![state.clone()]);
     Frame {
       ctx: ctx.clone(),
       id, function,
       destination,
       target,
       pc: 0,
-      cur_state: State::new(ctx),
+      cur_state: State::new(ctx.clone()),
       state_map,
     }
   }
