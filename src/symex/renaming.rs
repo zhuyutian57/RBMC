@@ -116,7 +116,9 @@ impl Renaming {
 
     // Expr is not a leaf. There must be some sub-nodes in AST
     let mut sub_exprs = expr.sub_exprs().unwrap();
-    for sub_expr in sub_exprs.iter_mut() { self.l1_rename(sub_expr); }
+    for sub_expr in sub_exprs.iter_mut() {
+      self.l1_rename(sub_expr);
+    }
 
     expr.replace_sub_exprs(sub_exprs);
   }

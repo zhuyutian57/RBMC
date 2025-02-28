@@ -1,4 +1,5 @@
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
@@ -18,7 +19,7 @@ pub struct State {
   pub(super) value_set: ValueSet,
   /// Renaming at some program pointer. Used for
   /// doing phi function while merging states.
-  pub(super) renaming: Option<Box<Renaming>>,
+  pub(super) renaming: Option<RefCell<Renaming>>,
 }
 
 impl State {

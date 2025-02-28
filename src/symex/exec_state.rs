@@ -1,4 +1,6 @@
 
+use std::cell::RefCell;
+
 use stable_mir::mir::*;
 
 use crate::expr::context::*;
@@ -24,10 +26,10 @@ pub struct ExecutionState<'cfg> {
   program: &'cfg Program,
   ctx: ExprCtx,
   pub(super) ns: Namespace,
-  objects: Vec<Expr>,
+  pub(super) objects: Vec<Expr>,
   func_cnt: Vec<usize>,
   frames: Vec<Frame<'cfg>>,
-  pub(super) renaming: Renaming,
+  pub(super) renaming: RefCell<Renaming>,
 }
 
 impl<'cfg> ExecutionState<'cfg> {
@@ -39,7 +41,7 @@ impl<'cfg> ExecutionState<'cfg> {
       objects: Vec::new(),
       func_cnt: vec![0; program.size()],
       frames: Vec::new(),
-      renaming: Renaming::default(),
+      renaming: RefCell::new(Renaming::default()),
     }
   }
 
@@ -151,8 +153,10 @@ impl<'cfg> ExecutionState<'cfg> {
     let l1_num = sym.l1_num();
     let new_sym =
       match level {
-        Level::Level1 => self.renaming.new_l1_symbol(ident),
-        Level::Level2 => self.renaming.new_l2_symbol(ident, l1_num),
+        Level::Level1
+          => self.renaming.borrow_mut().new_l1_symbol(ident),
+        Level::Level2
+          => self.renaming.borrow_mut().new_l2_symbol(ident, l1_num),
         _ => panic!(),
       };
     self.ctx.mk_symbol(new_sym, symbol.ty())
@@ -166,7 +170,7 @@ impl<'cfg> ExecutionState<'cfg> {
 
   pub fn l1_local_count(&self, local: Local) -> usize {
     let ident = self.top().local_ident(local);
-    self.renaming.l1_count(ident)
+    self.renaming.borrow_mut().l1_count(ident)
   }
 
   pub fn l1_local(&self, local: Local, mut l1_num: usize) -> Expr {
@@ -184,9 +188,9 @@ impl<'cfg> ExecutionState<'cfg> {
     let ident = self.top().local_ident(local);
     let symbol =
       if level == Level::Level1 {
-        self.renaming.current_l1_symbol(ident)
+        self.renaming.borrow_mut().current_l1_symbol(ident)
       } else {
-        self.renaming.current_l2_symbol(ident, 0)
+        self.renaming.borrow_mut().current_l2_symbol(ident, 0)
       };
     let ty = self.top().function().local_type(local);
     self.ctx.mk_symbol(symbol, ty)
@@ -197,26 +201,26 @@ impl<'cfg> ExecutionState<'cfg> {
     let ident = self.top().local_ident(local);
     let symbol =
       if level == Level::Level1 {
-        self.renaming.new_l1_symbol(ident)
+        self.renaming.borrow_mut().new_l1_symbol(ident)
       } else {
-        self.renaming.new_l2_symbol(ident, 0)
+        self.renaming.borrow_mut().new_l2_symbol(ident, 0)
       };
     let ty = self.top().function().local_type(local);
     self.ctx.mk_symbol(symbol, ty)
   }
 
-  pub fn rename(&mut self, expr: &mut Expr, level: Level) {
+  pub fn rename(&self, expr: &mut Expr, level: Level) {
     match level {
       Level::Level0 => return,
-      Level::Level1 => self.renaming.l1_rename(expr),
-      Level::Level2 => self.renaming.l2_rename(expr),
+      Level::Level1 => self.renaming.borrow_mut().l1_rename(expr),
+      Level::Level2 => self.renaming.borrow_mut().l2_rename(expr),
     };
   }
 
   fn constant_propagate(&mut self, lhs: Expr, rhs: Expr) {
     if !rhs.is_constant() && !rhs.is_type() { return; }
     assert!(lhs.is_symbol());
-    self.renaming.constant_propagate(lhs, rhs);
+    self.renaming.borrow_mut().constant_propagate(lhs, rhs);
   }
 
   pub fn update_place_state(&mut self, place: Expr, state: PlaceState) {

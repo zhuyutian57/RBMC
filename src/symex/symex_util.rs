@@ -55,14 +55,17 @@ impl<'cfg> Symex<'cfg> {
       );
     new_guard.simplify();
 
-    let nrenaming = nstate.renaming.as_deref_mut().unwrap();
+    let mut nrenaming =
+      nstate.renaming.as_ref().unwrap().borrow_mut();
 
     for var in nrenaming.variables() {
       let l1_ident =
         nrenaming.current_l1_symbol(var).l1_name();
       
-      let cur_l2_num = self.exec_state.renaming.l2_count(l1_ident);
-      let n_l2_num = nrenaming.l2_count(l1_ident);
+      let cur_l2_num =
+        self.exec_state.renaming.borrow().l2_count(l1_ident);
+      let n_l2_num =
+        nrenaming.l2_count(l1_ident);
 
       if cur_l2_num == n_l2_num  || n_l2_num == 0 { continue; }
       
@@ -74,7 +77,7 @@ impl<'cfg> Symex<'cfg> {
       nrenaming.l1_rename(&mut new_rhs);
 
       // Current assignment
-      self.exec_state.renaming.l2_rename(&mut cur_rhs);
+      self.exec_state.renaming.borrow_mut().l2_rename(&mut cur_rhs);
       // Other assignment
       nrenaming.l2_rename(&mut new_rhs);
 
@@ -95,6 +98,26 @@ impl<'cfg> Symex<'cfg> {
       self.exec_state.assign(lhs.clone(), rhs.clone());
 
       self.vc_system.borrow_mut().assign(lhs, rhs);
+    }
+  }
+
+  fn memory_leak_check(&self) {
+    for object in &self.exec_state.objects {
+      if object.extract_ownership().is_own() { continue; }
+
+      let msg = 
+        NString::from(format!("memory leak: {object:?} is not dealloced"));
+      let alloac_array =
+        self.exec_state.ns.lookup_symbol(NString::ALLOC_SYM);
+      let address_of =
+        self.ctx.address_of(object.clone(), object.extract_address_type());
+      let is_leak = 
+        self.ctx.index(
+          alloac_array,
+          address_of,
+          Type::bool_type()
+        );
+      self.claim(msg, is_leak);
     }
   }
 
@@ -294,11 +317,11 @@ impl<'cfg> Symex<'cfg> {
   }
 
   /// Interface for `l2` reaming.
-  pub(super) fn rename(&mut self, expr: &mut Expr) {
+  pub(super) fn rename(&self, expr: &mut Expr) {
     self.exec_state.rename(expr, Level::Level2);
   }
 
-  pub(super) fn replace_predicates(&mut self, expr: &mut Expr) {
+  pub(super) fn replace_predicates(&self, expr: &mut Expr) {
     match expr.sub_exprs() {
       Some(mut sub_exprs) => {
         let mut has_changed = false;
@@ -339,7 +362,7 @@ impl<'cfg> Symex<'cfg> {
     }
   }
 
-  pub(super) fn claim(&mut self, msg: NString, mut expr: Expr) {
+  pub(super) fn claim(&self, msg: NString, mut expr: Expr) {
     self.replace_predicates(&mut expr);
     self.rename(&mut expr);
     expr.simplify();

@@ -72,7 +72,7 @@ impl<'cfg> Symex<'cfg> {
   }
 
   pub(super) fn register_state(&mut self, pc: Pc, mut state: State) {
-    state.renaming = Some(Box::new(self.exec_state.renaming.clone()));
+    state.renaming = Some(self.exec_state.renaming.clone());
     self.top().add_state(pc, state);
   }
 
