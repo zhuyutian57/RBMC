@@ -119,6 +119,7 @@ impl VCSystem {
     for i in self.asserts_map.keys() {
       let m = *self.asserts_map.get(i).unwrap();
       if self.vcs[m].is_sliced { continue; }
+      println!("{:?}", self.vcs[m].msg());
       let mut n = 0;
       for j in 0..m - 1 {
         if self.vcs[j].is_sliced { continue; }
