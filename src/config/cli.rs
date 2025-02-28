@@ -15,7 +15,7 @@ pub struct Cli {
 
   /// Show state
   #[arg(long, default_value_t = false)]
-  pub show_state: bool,
+  pub show_states: bool,
 
   /// Show program
   #[arg(long, default_value_t = false)]

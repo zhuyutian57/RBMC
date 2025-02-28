@@ -88,11 +88,13 @@ impl<'cfg> Symex<'cfg> {
     while let Some(pc) = self.top().cur_pc() {
       // Merge states
       if self.merge_states(pc) {
-        println!(
-          "Enter {:?} - bb{pc}\n{:?}",
-          self.top().function().name(),
-          self.top().cur_state()
-        );
+        if self.config.cli.show_states {
+          println!(
+            "Enter {:?} - bb{pc}\n{:?}",
+            self.top().function().name(),
+            self.top().cur_state()
+          );
+        }
         let bb = self.top().function().basicblock(pc);
         self.symex_basicblock(bb);
       } else {
