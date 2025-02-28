@@ -64,7 +64,6 @@ impl State {
   }
 
   pub fn merge(&mut self, other: &State) {
-    println!("{self:?}\n{other:?}");
     let ctx = self.guard.ctx.clone();
     if self.guard.is_false() {
       self.place_states = other.place_states.clone();

@@ -41,7 +41,8 @@ pub(super) enum FnKind {
 }
 
 pub struct Symex<'cfg> {
-  pub(super) program : &'cfg Program,
+  pub(super) config : &'cfg Config,
+  pub(super) program: &'cfg Program,
   pub(super) ctx: ExprCtx,
   pub(super) exec_state: ExecutionState<'cfg>,
   pub(super) vc_system: VCSysPtr,
@@ -49,14 +50,21 @@ pub struct Symex<'cfg> {
 
 impl<'cfg> Symex<'cfg> {
   pub fn new(
-    program: &'cfg Program,
-    ctx: ExprCtx,
+    config: &'cfg Config,
     vc_system: VCSysPtr) -> Self {
-    let mut exec_state = ExecutionState::new(program, ctx.clone());
+    let ctx = config.expr_ctx.clone();
+    let mut exec_state =
+      ExecutionState::new(&config.program, ctx.clone());
     exec_state.setup();
 
     let mut symex =
-      Symex { program, ctx: ctx.clone(), exec_state, vc_system };
+      Symex {
+        config,
+        program: &config.program,
+        ctx: ctx.clone(),
+        exec_state,
+        vc_system
+      };
     let mut alloc_array =
       symex.exec_state.ns.lookup_object(NString::ALLOC_SYM);
     let mut const_array =

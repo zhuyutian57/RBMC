@@ -13,6 +13,10 @@ pub struct Cli {
   #[arg(long, default_value_t = false)]
   pub show_program: bool,
 
+  /// Show state
+  #[arg(long, default_value_t = false)]
+  pub show_state: bool,
+
   /// Show program
   #[arg(long, default_value_t = false)]
   pub show_vcc: bool,

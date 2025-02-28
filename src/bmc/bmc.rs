@@ -20,8 +20,7 @@ impl<'cfg> Bmc<'cfg> {
   pub fn new(config: &'cfg Config) -> Self {
     let vc_system =
       VCSysPtr::new(RefCell::new(VCSystem::default()));
-    let symex =
-      Symex::new(&config.program, config.expr_ctx.clone(), vc_system.clone());
+    let symex = Symex::new(config, vc_system.clone());
     let runtime_solver =
       Solver::new(&config.solver_config);
     Bmc { config, symex, vc_system, runtime_solver }
