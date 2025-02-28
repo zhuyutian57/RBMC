@@ -10,8 +10,8 @@ use super::z3::z3_conv::*;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum PResult {
   PSat,
-  PUnsat,
   PUnknow,
+  PUnsat,
 }
 
 pub struct Solver<'ctx> {
@@ -32,6 +32,10 @@ impl<'ctx> Solver<'ctx> {
 
   pub fn check(&self) -> PResult {
     self.smt_solver.check()
+  }
+
+  pub fn reset(&self) {
+    self.smt_solver.reset();
   }
 
   pub fn eval_bool(&self, expr: Expr) -> bool {

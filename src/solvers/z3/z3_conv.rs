@@ -75,9 +75,9 @@ impl<'ctx> SmtSolver<'ctx> for Z3Conv<'ctx> {
 
   fn check(&self) -> PResult {
     match self.z3_solver.check() {
-      z3::SatResult::Unsat => PResult::PUnsat,
-      z3::SatResult::Unknown => PResult::PUnknow,
       z3::SatResult::Sat => PResult::PSat,
+      z3::SatResult::Unknown => PResult::PUnknow,
+      z3::SatResult::Unsat => PResult::PUnsat,
     }
   }
 

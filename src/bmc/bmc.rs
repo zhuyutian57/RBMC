@@ -2,10 +2,12 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::config::cli::SmtStrategy;
 use crate::expr::expr::ExprBuilder;
 use crate::program::program::*;
 use crate::solvers::solver::*;
 use crate::symex::symex::*;
+use crate::vc::slicer::Slicer;
 use crate::vc::vc::*;
 use crate::Config;
 
@@ -35,23 +37,59 @@ impl<'cfg> Bmc<'cfg> {
   }
 
   fn check_properties(&mut self) {
-    if self.config.cli.show_vcc {
-      println!("{:?}", self.vc_system.borrow());
-    }
-    self.generate_smt_formula();
+    let res =
+      match self.config.cli.smt_strategy {
+        SmtStrategy::Forward => self.check_forward(),
+        SmtStrategy::Once => self.check_once(),
+      };
+    println!(
+      "Verification result: {}.",
+      match res {
+        PResult::PSat => "fail",
+        PResult::PUnknow => "unknown",
+        PResult::PUnsat => "success",
+      }
+    );
+  }
 
-    let presult = self.runtime_solver.check();
-    match presult {
-      PResult::PSat => {
-          println!("Verification Fail\n");
-          self.show_issue();
-          if self.config.cli.show_smt_model {
-            self.runtime_solver.show_model();
-          }
-        }
-      PResult::PUnsat => println!("Verification Success"),
-      PResult::PUnknow => println!("Unknow"),
+  fn check_forward(&mut self) -> PResult {
+    let mut slicer = Slicer::default();
+    let size = self.vc_system.borrow().num_asserts();
+    for i in 0..size {
+      slicer.slice_nth(self.vc_system.clone(), i);
+      if self.config.cli.show_vcc {
+        println!("Verifying condition #{i}:");
+        self.vc_system.borrow().show_vcc();
+      }
+      self.runtime_solver.reset();
+      self.generate_smt_formula();
+      let res = self.smt_result();
+      println!("Result: {res:?}\n");
+      if res != PResult::PUnsat { return res; }
     }
+    PResult::PUnsat
+  }
+
+  fn check_once(&mut self) -> PResult {
+    let mut slicer = Slicer::default();
+    slicer.slice_whole(self.vc_system.clone());
+    if self.config.cli.show_vcc {
+      println!("Verifying condition:");
+      self.vc_system.borrow().show_vcc();
+    }
+    self.runtime_solver.reset();
+    self.generate_smt_formula();
+    let res = self.smt_result();
+    println!("Result: {res:?}\n");
+    res
+  }
+
+  fn smt_result(&mut self) -> PResult {
+    let res = self.runtime_solver.check();
+    if res == PResult::PSat && self.config.cli.show_smt_model {
+      self.runtime_solver.show_model();
+    }
+    res
   }
 
   /// TODO: maybe trace

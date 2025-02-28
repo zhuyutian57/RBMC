@@ -3,6 +3,12 @@ use clap::*;
 
 use crate::NString;
 
+#[derive(clap::ValueEnum, Debug, Clone, Copy)]
+pub enum SmtStrategy {
+  Forward,
+  Once,
+}
+
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
@@ -20,6 +26,15 @@ pub struct Cli {
   /// Show program
   #[arg(long, default_value_t = false)]
   pub show_vcc: bool,
+
+  /// The strategy for invoking SMT solver.
+  /// 
+  /// `Forward`: stop while an assertion fail.
+  /// 
+  /// `Once`: encoding all assertions and check only for one time.
+  #[clap(value_enum)]
+  #[arg(long, default_value_t = SmtStrategy::Forward)]
+  pub smt_strategy: SmtStrategy,
 
   /// Show SMT formula
   #[arg(long, default_value_t = false)]
