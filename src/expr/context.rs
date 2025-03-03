@@ -292,6 +292,9 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id: if b { 0 } else { 1 } }
   }
 
+  fn _true(&self) -> Expr { self.constant_bool(true) }
+  fn _false(&self) -> Expr { self.constant_bool(false) }
+
   fn constant_integer(&self, i: BigInt, ty: Type) -> Expr {
     let terminal = Terminal::Constant(Constant::Integer(i));
     let terminal_id = self.borrow_mut().add_terminal(terminal);

@@ -25,7 +25,7 @@ pub struct State {
 impl State {
   pub fn new(ctx: ExprCtx) -> Self {
     State {
-      guard: ctx.constant_bool(true),
+      guard: ctx._true(),
       place_states: PlaceStates::default(),
       value_set: ValueSet::default(),
       renaming: None,

@@ -14,7 +14,7 @@ impl<'cfg> Symex<'cfg> {
     
     // Drop recursively
     let object = self.make_project(place);
-    self.symex_drop_rec(object, self.ctx.constant_bool(true));
+    self.symex_drop_rec(object, self.ctx._true());
 
     self.register_state(*target, state);
     self.top().inc_pc();
@@ -62,7 +62,7 @@ impl<'cfg> Symex<'cfg> {
       self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
     let index =
       self.ctx.index(alloc_array, pointer_ident, Type::bool_type());
-    self.assign(index, self.ctx.constant_bool(false), guard.clone());
+    self.assign(index, self.ctx._false(), guard.clone());
   }
 
   /// Drop a struct may drop the inner box pointer

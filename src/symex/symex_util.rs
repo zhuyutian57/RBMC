@@ -29,7 +29,7 @@ impl<'cfg> Symex<'cfg> {
     // We have put all states that reach current pc in the
     // queue. Thus, we first construct an empty state.
     // That is, make `gurad` of current state be `false`.
-    self.top().cur_state.guard = self.ctx.constant_bool(false);
+    self.top().cur_state.guard = self.ctx._false();
 
     if let Some(states) = state_vec {
       for mut state in states {
@@ -287,33 +287,6 @@ impl<'cfg> Symex<'cfg> {
       }
       _ => Err(Error),
     }.expect("Do no exits")
-  }
-
-  pub(super) fn make_fn_kind(
-    &mut self,
-    fndef: (FnDef, GenericArgs),
-    args: &Vec<Operand>
-  ) -> FnKind {
-    let name = NString::from(fndef.0.trimmed_name());
-    if self.program.contains_function(name) {
-      Ok(FnKind::Unwind(self.program.function_idx(name)))
-    } else if name == NString::from("Layout::new") {
-      assert!(fndef.1.0.len() == 1);
-      let ty = fndef.1.0[0].ty().unwrap();
-      Ok(FnKind::Layout(Type::from(*ty)))
-    } else if name == NString::from("Box::<T>::new") {
-      assert!(args.len() == 1);
-      let ty = self.make_layout(&args[0]);
-      Ok(FnKind::Allocation(AllocKind::Box, ty))
-    } else if name == NString::from("alloc") {
-      assert!(args.len() == 1);
-      let ty = self.make_layout(&args[0]);
-      Ok(FnKind::Allocation(AllocKind::Alloc, ty))
-    } else if name == NString::from("AsMut::as_mut") {
-      Ok(FnKind::AsMut(args[0].clone()))
-    } else {
-      Err(Error)
-    }.expect(format!("Do not support {name:?}").as_str())
   }
 
   /// Interface for `l2` reaming.

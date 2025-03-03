@@ -32,11 +32,7 @@ impl<'cfg> Symex<'cfg> {
         )
       );
     let store =
-      ctx.store(
-        alloc_array.clone(),
-        pt_indent,
-        ctx.constant_bool(true)
-      );
-    self.assign(alloc_array, store, self.ctx.constant_bool(true));
+      ctx.store(alloc_array.clone(), pt_indent, ctx._true());
+    self.assign(alloc_array, store, self.ctx._true());
   }
 }

@@ -11,14 +11,14 @@ impl<'cfg> Symex<'cfg> {
     // construct lhs expr and rhs expr from MIR
     let lhs = self.make_project(place);
     let rhs = self.make_rvalue(rvalue);
-    self.assign(lhs, rhs, self.ctx.constant_bool(true));
+    self.assign(lhs, rhs, self.ctx._true());
   }
 
   pub(super) fn symex_assign_layout(&mut self, place: &Place, ty: Type) {
     // Use l2 symbol to do assignment
     let l2_var = self.make_project(place);
     let layout = self.ctx.mk_type(ty);
-    self.assign(l2_var, layout, self.ctx.constant_bool(true));
+    self.assign(l2_var, layout, self.ctx._true());
   }
 
   pub(super) fn assign(&mut self, lhs: Expr, rhs: Expr, guard: Expr) {

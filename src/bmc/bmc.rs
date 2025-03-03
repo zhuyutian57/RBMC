@@ -112,7 +112,7 @@ impl<'cfg> Bmc<'cfg> {
   fn generate_smt_formula(&mut self) {
     let ctx = self.config.expr_ctx.clone();
 
-    let mut assumetion = ctx.constant_bool(true);
+    let mut assumetion = ctx._true();
     let mut assertions = Vec::new();
     
     for vc in self.vc_system.borrow().iter() {
@@ -132,11 +132,11 @@ impl<'cfg> Bmc<'cfg> {
     }
 
     self.runtime_solver.assert_expr(
-      if assertions.is_empty() { ctx.constant_bool(false) }
+      if assertions.is_empty() { ctx._false() }
       else {
         let mut assertion =
           assertions.into_iter().fold(
-            ctx.constant_bool(false),
+            ctx._false(),
             |acc, b| ctx.or(acc, b)
           );
         assertion.simplify();

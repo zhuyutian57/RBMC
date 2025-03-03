@@ -69,7 +69,7 @@ impl<'cfg> Symex<'cfg> {
       symex.exec_state.ns.lookup_object(NString::ALLOC_SYM);
     let mut const_array =
       ctx.constant_array(Constant::Bool(false), Type::bool_type());
-    symex.assign(alloc_array, const_array, ctx.constant_bool(true));
+    symex.assign(alloc_array, const_array, ctx._true());
     symex
   }
 

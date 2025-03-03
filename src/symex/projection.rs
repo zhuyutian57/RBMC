@@ -43,14 +43,9 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         match elem {
           ProjectionElem::Deref
             => self
-                .project_deref(
-                  ret.clone(), Mode::Read,
-                  ctx.constant_bool(true)).unwrap(),
+                .project_deref(ret.clone(), Mode::Read, ctx._true()).unwrap(),
           ProjectionElem::Field(i, ty)
-            => self.project_field(
-              ret.clone(),
-              *i,
-              Type::from(*ty)),
+            => self.project_field(ret.clone(), *i, Type::from(*ty)),
           ProjectionElem::Index(local)
             => {
               let index =
