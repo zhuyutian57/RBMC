@@ -23,9 +23,13 @@ pub struct Cli {
   #[arg(long, default_value_t = false)]
   pub show_states: bool,
 
-  /// Show program
+  /// Show VCC
   #[arg(long, default_value_t = false)]
   pub show_vcc: bool,
+
+  /// Do not slice VCC
+  #[arg(long, default_value_t = false)]
+  pub no_slice: bool,
 
   /// The strategy for invoking SMT solver.
   /// 
