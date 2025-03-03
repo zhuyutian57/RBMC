@@ -56,13 +56,13 @@ impl<'cfg> Bmc<'cfg> {
     let mut slicer = Slicer::default();
     let size = self.vc_system.borrow().num_asserts();
     for i in 0..size {
+      println!("Verifying condition #{i}:");
 
       if !self.config.cli.no_slice {
         slicer.slice_nth(self.vc_system.clone(), i);
       }
 
       if self.config.cli.show_vcc {
-        println!("Verifying condition #{i}:");
         self.vc_system.borrow().show_vcc();
       }
       
@@ -77,13 +77,13 @@ impl<'cfg> Bmc<'cfg> {
   }
 
   fn check_once(&mut self) -> PResult {
+    println!("Verifying condition:");
     if !self.config.cli.no_slice {
       let mut slicer = Slicer::default();
       slicer.slice_whole(self.vc_system.clone());
     }
 
     if self.config.cli.show_vcc {
-      println!("Verifying condition:");
       self.vc_system.borrow().show_vcc();
     }
 

@@ -218,7 +218,7 @@ impl<'cfg> Symex<'cfg> {
         Ok(address_of)
       },
       Rvalue::Aggregate(k, operands) => {
-        // println!("{k:?}\n{:?}", operands.len());
+        println!("{k:?}\n{:?}", operands);
         todo!()
       },
       Rvalue::BinaryOp(mir_op, lop, rop) => {

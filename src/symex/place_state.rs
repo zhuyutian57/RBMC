@@ -70,7 +70,7 @@ impl PlaceStates {
     self
       ._place_states_map
       .iter()
-      .filter(|(&p, _)| matches!(p.0, PlaceKind::Stack))
+      .filter(|&(p, _)| matches!(p.0, PlaceKind::Stack))
       .map(|(p, s)| (p.clone(), s.clone()))
       .collect()
   }
@@ -79,7 +79,7 @@ impl PlaceStates {
     self
       ._place_states_map
       .iter()
-      .filter(|(&p, _)| matches!(p.0, PlaceKind::Stack))
+      .filter(|&(p, _)| matches!(p.0, PlaceKind::Stack))
       .map(|(p, s)| (p.clone(), s.clone()))
       .collect()
   }
