@@ -156,7 +156,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
   fn convert_tuple(
     &mut self,
-    fields: Vec<z3::ast::Dynamic<'ctx>>,
+    fields: &Vec<z3::ast::Dynamic<'ctx>>,
     ty: Type
   ) -> z3::ast::Dynamic<'ctx> {
     self.create_tuple(fields, ty)
@@ -479,7 +479,7 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   
   fn create_tuple(
     &mut self,
-    fields: Vec<z3::ast::Dynamic<'ctx>>,
+    fields: &Vec<z3::ast::Dynamic<'ctx>>,
     ty: Type
   ) -> z3::ast::Dynamic<'ctx> {
     if !self.tuple_sorts.contains_key(&ty) { self.create_tuple_sort(ty); }

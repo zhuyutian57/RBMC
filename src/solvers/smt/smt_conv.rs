@@ -68,6 +68,10 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
       a = Some(self.convert_address_of(object));
     }
 
+    if expr.is_aggregate() {
+      a = Some(self.convert_tuple(&args, expr.ty()));
+    }
+
     if expr.is_binary() {
       let lhs = &args[0];
       let rhs = &args[1];
@@ -184,7 +188,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         for (c, st) in constants {
           fields.push(self.convert_constant(c, st.clone()));
         }
-        self.convert_tuple(fields, ty)
+        self.convert_tuple(&fields, ty)
       },
     }
   }
@@ -193,7 +197,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
   fn convert_pointer(&self, ident: &Ast, offset: &Ast) -> Ast;
   fn convert_pointer_ident(&self, pt: &Ast) -> Ast;
   fn convert_pointer_offset(&self, pt: &Ast) -> Ast;
-  fn convert_tuple(&mut self, fields: Vec<Ast>, ty: Type) -> Ast;
+  fn convert_tuple(&mut self, fields: &Vec<Ast>, ty: Type) -> Ast;
 
   fn convert_symbol(&mut self, name: NString, ty: Type) -> Ast {
     if ty.is_bool() { return self.mk_bool_symbol(name); }

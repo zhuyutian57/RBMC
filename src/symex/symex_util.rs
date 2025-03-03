@@ -1,6 +1,7 @@
 
 use std::fmt::Error;
 
+use stable_mir::mir::AggregateKind;
 use stable_mir::mir::Operand;
 use stable_mir::mir::Rvalue;
 use stable_mir::mir::Place;
@@ -215,11 +216,10 @@ impl<'cfg> Symex<'cfg> {
       Rvalue::AddressOf(m, p) => {
         let place = self.make_project(p);
         let address_of = self.ctx.address_of(place, ty);
-        Ok(address_of)
+        address_of
       },
       Rvalue::Aggregate(k, operands) => {
-        println!("{k:?}\n{:?}", operands);
-        todo!()
+        self.make_aggregate(k, operands, ty)
       },
       Rvalue::BinaryOp(mir_op, lop, rop) => {
         let op = BinOp::from(mir_op.clone());
@@ -241,7 +241,7 @@ impl<'cfg> Symex<'cfg> {
             BinOp::Or => self.ctx.or(lhs, rhs),
             BinOp::Implies => self.ctx.implies(lhs, rhs),
           };
-        Ok(expr)
+        expr
       },
       Rvalue::UnaryOp(mir_op, o) => {
         let op = UnOp::from(mir_op.clone());
@@ -251,25 +251,24 @@ impl<'cfg> Symex<'cfg> {
             UnOp::Not => self.ctx.not(operand),
             UnOp::Neg => self.ctx.neg(operand),
           };
-        Ok(expr)
+        expr
       },
       Rvalue::Cast(_, operand, t) => {
         // TODO: handle cast kind
         let op = self.make_operand(operand);
         let target_ty = self.ctx.mk_type(Type::from(t.clone()));
         let cast = self.ctx.cast(op, target_ty);
-        Ok(cast)
+        cast
       },
       Rvalue::Ref(_, _, p) => {
         let object = self.make_project(p);
         // TODO: handle borrow kind.
         let address_of = self.ctx.address_of(object, ty);
-        Ok(address_of)
+        address_of
       },
-      Rvalue::Use(operand)
-        => Ok(self.make_operand(operand)),
-      _ => Err(Error),
-    }.expect(format!("Do not support: {rvalue:?}").as_str())
+      Rvalue::Use(operand) => self.make_operand(operand),
+      _ => todo!(),
+    }
   }
 
   pub(super) fn make_layout(&mut self, arg: &Operand) -> Type {
@@ -287,6 +286,26 @@ impl<'cfg> Symex<'cfg> {
       }
       _ => Err(Error),
     }.expect("Do no exits")
+  }
+
+  fn make_aggregate(
+    &mut self,
+    k: &AggregateKind,
+    operands: &Vec<Operand>,
+    ty: Type
+  ) -> Expr {
+    match k {
+      AggregateKind::Array(..) => assert!(ty.is_array()),
+      AggregateKind::Adt(..) => assert!(ty.is_struct()),
+      AggregateKind::RawPtr(..) => assert!(ty.is_ptr()),
+      _ => todo!(),
+    };
+    let operand_exprs =
+      operands
+        .iter()
+        .map(|o| self.make_operand(o))
+        .collect::<Vec<Expr>>();
+    self.ctx.aggregate(operand_exprs, ty)
   }
 
   /// Interface for `l2` reaming.

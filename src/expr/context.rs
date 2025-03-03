@@ -141,6 +141,11 @@ impl Context {
     self.nodes[i].kind().is_address_of()
   }
 
+  pub fn is_aggregate(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_aggregate()
+  }
+
   pub fn is_binary(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     self.nodes[i].kind().is_binary()
@@ -206,7 +211,7 @@ impl Context {
     assert!(i < self.nodes.len());
     match self.nodes[i].kind() {
       NodeKind::Terminal(t)
-        => Ok(self.terminals[t].clone()),
+        => Ok(self.terminals[*t].clone()),
       _ => Err("Not terminal"),
     }
   }
@@ -222,7 +227,7 @@ impl Context {
     if self.is_type(i) {
       Ok(self.extract_terminal(i).unwrap().to_type())
     } else if let NodeKind::Unknown(ty) = self.nodes[i].kind() {
-      Ok(ty)
+      Ok(*ty)
     } else {
       Err("Not contains type")
     }
@@ -238,7 +243,7 @@ impl Context {
   pub fn extract_bin_op(&self, i: NodeId) -> Result<BinOp, &str> {
     assert!(i < self.nodes.len());
     match self.nodes[i].kind() {
-      NodeKind::Binary(op, _, _) => Ok(op),
+      NodeKind::Binary(op, _, _) => Ok(*op),
       _ => Err("Not binary operator"),
     }
   }
@@ -246,7 +251,7 @@ impl Context {
   pub fn extract_un_op(&self, i: NodeId) ->  Result<UnOp, &str> {
     assert!(i < self.nodes.len());
     match self.nodes[i].kind() {
-      NodeKind::Unary(op, _,) => Ok(op),
+      NodeKind::Unary(op, _,) => Ok(*op),
       _ => Err("Not unary operator"),
     }
   }
@@ -254,7 +259,7 @@ impl Context {
   pub fn extract_ownership(&self, i: NodeId) -> Result<Ownership, &str> {
     assert!(i < self.nodes.len());
     match self.nodes[i].kind() {
-      NodeKind::Object(o, ..) => Ok(o),
+      NodeKind::Object(o, ..) => Ok(*o),
       _ => Err("Not object"),
     }
   }
@@ -355,6 +360,20 @@ impl ExprBuilder for ExprCtx {
   fn address_of(&self, object: Expr, ty: Type) -> Expr {
     assert!(object.is_object());
     let kind = NodeKind::AddressOf(object.id);
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+
+  fn aggregate(&self, operands: Vec<Expr>, ty: Type) -> Expr {
+    assert!(ty.is_array() || ty.is_struct());
+    // TODO: match size of fields/len
+    let ops = 
+      operands
+        .into_iter()
+        .map(|e| e.id)
+        .collect::<Vec<NodeId>>();
+    let kind = NodeKind::Aggregate(ops);
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }

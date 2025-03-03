@@ -76,12 +76,14 @@ impl Debug for Terminal {
 
 pub type NodeId = usize;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(super) enum NodeKind {
   /// Terminal is the bridge connecting with terminals.
   Terminal(TerminalId),
   /// Get address from a place. Create `Ref` if necessary.
   AddressOf(NodeId),
+  /// Aggregate value such as tuple and struct
+  Aggregate(Vec<NodeId>),
   Binary(BinOp, NodeId, NodeId),
   Unary(UnOp, NodeId),
   Ite(NodeId, NodeId, NodeId),
@@ -96,9 +98,7 @@ pub(super) enum NodeKind {
   Store(NodeId, NodeId, NodeId),
   /// `PointerIdent(pt)` retrieve the ident of a pointer
   PointerIdent(NodeId),
-
   // Predicates for symbolic execution. Not used in vcc.
-
   /// `Invalid(object)`: `object` is not alloced
   Invalid(NodeId),
   /// Representing dereference of null
@@ -110,6 +110,10 @@ pub(super) enum NodeKind {
 impl NodeKind {
   pub fn is_terminal(&self) -> bool {
     matches!(self, NodeKind::Terminal(_))
+  }
+
+  pub fn is_aggregate(&self) -> bool {
+    matches!(self, NodeKind::Aggregate(_))
   }
 
   pub fn is_address_of(&self) -> bool {
@@ -174,32 +178,34 @@ pub(super) struct Node {
 impl Node {
   pub fn new(kind: NodeKind, ty: Type) -> Self { Node { kind, ty } }
 
-  pub fn kind(&self) -> NodeKind { self.kind }
+  pub fn kind(&self) -> &NodeKind { &self.kind }
 
   pub fn ty(&self) -> Type { self.ty }
 
   /// Retrieve sub-nodes from AST
   pub fn sub_nodes(&self) -> Option<Vec<NodeId>> {
-    match self.kind {
+    match &self.kind {
       NodeKind::AddressOf(p)
-        => Some(vec![p]),
+        => Some(vec![*p]),
+      NodeKind::Aggregate(nodes)
+        => Some(nodes.clone()),
       NodeKind::Binary(_, l, r) |
       NodeKind::Cast(l, r) |
       NodeKind::SameObject(l, r)
-        => Some(vec![l, r]),
+        => Some(vec![*l, *r]),
       NodeKind::Unary(_, o) |
       NodeKind::Object(_, o)
-        => Some(vec![o]),
+        => Some(vec![*o]),
       NodeKind::Ite(c, tv, fv)
-        => Some(vec![c, tv, fv]),
+        => Some(vec![*c, *tv, *fv]),
       NodeKind::Index(o, i)
-        => Some(vec![o, i]),
+        => Some(vec![*o, *i]),
       NodeKind::Store(o, i, v)
-        => Some(vec![o, i, v]),
+        => Some(vec![*o, *i, *v]),
       NodeKind::PointerIdent(p)
-        => Some(vec![p]),
+        => Some(vec![*p]),
       NodeKind::Invalid(o)
-        => Some(vec![o]),
+        => Some(vec![*o]),
       NodeKind::NullObject | NodeKind::Unknown(_)
         => Some(vec![]),
       _ => None,

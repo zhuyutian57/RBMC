@@ -35,6 +35,7 @@ impl Expr {
   pub fn is_symbol(&self) -> bool { self.ctx.borrow().is_symbol(self.id) }
 
   pub fn is_address_of(&self) -> bool { self.ctx.borrow().is_address_of(self.id) }
+  pub fn is_aggregate(&self) -> bool { self.ctx.borrow().is_aggregate(self.id) }
   pub fn is_binary(&self) -> bool { self.ctx.borrow().is_binary(self.id) }
   pub fn is_unary(&self) -> bool { self.ctx.borrow().is_unary(self.id) }
   pub fn is_ite(&self) -> bool { self.ctx.borrow().is_ite(self.id) }
@@ -240,6 +241,11 @@ impl Expr {
       return;
     }
 
+    if self.is_aggregate() {
+      *self = self.ctx.aggregate(sub_exprs.clone(), self.ty());
+      return;
+    }
+
     if self.is_binary() {
       let lhs = sub_exprs[0].clone();
       let rhs = sub_exprs[1].clone();
@@ -437,6 +443,7 @@ pub trait ExprBuilder {
   fn mk_type(&self, ty: Type) -> Expr;
 
   fn address_of(&self, object: Expr, ty: Type) -> Expr;
+  fn aggregate(&self, operands: Vec<Expr>, ty: Type) -> Expr;
 
   fn add(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn sub(&self, lhs: Expr, rhs: Expr) -> Expr;
