@@ -74,9 +74,7 @@ impl<'cfg> Symex<'cfg> {
         self.ctx.object(
           self.ctx.index(
             st.clone(),
-            self.ctx.constant_integer(
-              BigInt(false, i as u128), 
-              Type::unsigned_type(UintTy::Usize)),
+            self.ctx.constant_usize(i),
             *ty),
           st.extract_ownership() 
         );

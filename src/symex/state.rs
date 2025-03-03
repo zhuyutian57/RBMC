@@ -145,7 +145,6 @@ impl State {
     suffix: NString,
     values: &mut ObjectSet
   ) {
-
     if expr.is_null() {
       values.insert(expr.ctx.null_object(expr.ty().pointee_ty()));
       return;
@@ -184,19 +183,25 @@ impl State {
     }
 
     if expr.is_index() {
-      let object = expr.extract_object();
+      let inner_expr = expr.extract_object().extract_inner_expr();
       let index_str = format!("{:?}", expr.extract_index());
-      let i = index_str.parse::<u128>().expect("Not integer index");
-      self.get_value_set_rec(
-        object,
-        suffix + 
-          if expr.ty().is_array() {
-            format!("[{i}]")
-          } else {
-            format!(".{i}")
-          },
-        values
-      );
+      let i = index_str.parse::<usize>().expect("Not integer index");
+      if inner_expr.is_symbol() {
+        let new_suffix = 
+          suffix + 
+            if expr.ty().is_array() {
+              format!("[{i}]")
+            } else {
+              format!(".{i}")
+            };
+        self.get_value_set_rec(inner_expr.clone(), new_suffix, values);
+      } else if inner_expr.is_aggregate() {
+        let fields = inner_expr.extract_fields();
+        assert!(i < fields.len());
+        self.get_value_set_rec(fields[i].clone(), suffix, values);
+      } else {
+        panic!("Wrong object?");
+      }
       return;
     }
 

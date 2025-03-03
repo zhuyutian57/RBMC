@@ -252,7 +252,7 @@ impl<'cfg> ExecutionState<'cfg> {
   }
 
   pub fn assign(&mut self, lhs: Expr, rhs: Expr) {
-    assert!(lhs.is_symbol()); // TODO: do more jobs?
+    assert!(lhs.is_symbol());
 
     // Constant propagation
     self.constant_propagate(lhs.clone(), rhs.clone());
@@ -264,6 +264,10 @@ impl<'cfg> ExecutionState<'cfg> {
     self.update_place_state(lhs.clone(), PlaceState::Initialized);
     
     // Update value Set
+    self.update_value_set_rec(lhs, rhs);
+  }
+
+  fn update_value_set_rec(&mut self, lhs: Expr, rhs: Expr) {
     if lhs.ty().is_any_ptr() {
       let mut l1_lhs = lhs.clone();
       let mut l1_rhs = rhs.clone();
@@ -272,6 +276,31 @@ impl<'cfg> ExecutionState<'cfg> {
       let mut objects = ObjectSet::new();
       self.cur_state().get_value_set(l1_rhs.clone(), &mut objects);
       self.cur_state_mut().assign(l1_lhs, objects);
+      return;
+    }
+
+    if lhs.ty().is_struct() {
+      // We do not care the ownership here
+      let lhs_object = self.ctx.object(lhs.clone(), Ownership::Unknown);
+      let rhs_object = 
+        if rhs.is_object() { rhs.clone() }
+        else { self.ctx.object(rhs.clone(), Ownership::Unknown) };
+      for (i, (_, ty)) in lhs.ty().struct_def().1.iter().enumerate() {
+        if !ty.is_any_ptr() { return; }
+        let i = self.ctx.constant_usize(i);
+        let new_lhs = self.ctx.index(lhs_object.clone(), i.clone(), *ty);
+        let new_rhs = self.ctx.index(rhs_object.clone(), i.clone(), *ty);
+        self.update_value_set_rec(new_lhs, new_rhs);
+      }
+      return;
+    }
+
+    if lhs.ty().is_array() {
+      if lhs.ty().array_range().is_any_ptr() {
+        // TODO
+      }
+      return;
     }
   }
+
 }

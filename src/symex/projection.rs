@@ -149,13 +149,9 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
 
     // TODO: shall we add bound check here?
 
-    let field =
-      ctx.constant_integer(
-        BigInt(false, field as u128),
-        Type::unsigned_type(UintTy::Usize)
-      );
+    let i = ctx.constant_usize(field);
     
-    let index = ctx.index(object, field, Type::from(ty));
+    let index = ctx.index(object, i, Type::from(ty));
     let ownership = index.extract_ownership();
     ctx.object(index, ownership)
   }

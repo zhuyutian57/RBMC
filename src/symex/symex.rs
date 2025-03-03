@@ -105,10 +105,23 @@ impl<'cfg> Symex<'cfg> {
   }
 
   fn symex_basicblock(&mut self, bb: &BasicBlock) {
-    for statement in bb.statements.iter() {
+    for (i, statement) 
+      in bb.statements.iter().enumerate() {
       self.symex_statement(statement);
+      if self.config.cli.show_states {
+        println!(
+          "After symex {i}\n{:?}",
+          self.top().cur_state()
+        );
+      }
     }
     self.symex_terminator(&bb.terminator);
+    if self.config.cli.show_states {
+      println!(
+        "After symex terminator\n{:?}",
+        self.top().cur_state()
+      );
+    }
   }
 
   fn symex_statement(&mut self, statement: &Statement) {

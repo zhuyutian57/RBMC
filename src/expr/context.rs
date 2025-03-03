@@ -309,7 +309,13 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  // `ty` indicates the pointer type
+  fn constant_usize(&self, i: usize) -> Expr {
+    let bigint = BigInt(false, i as u128);
+    let ty = Type::unsigned_type(UintTy::Usize);
+    self.constant_integer(bigint, ty)
+  }
+
+  /// `ty` indicates the pointer type
   fn null(&self, ty: Type) -> Expr {
     let terminal = Terminal::Constant(Constant::Null);
     let terminal_id = self.borrow_mut().add_terminal(terminal);
@@ -536,9 +542,10 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn object(&self, object: Expr, ownership: Ownership) -> Expr {
-    let kind = NodeKind::Object(ownership, object.id);
-    let ty = object.ty();
+  fn object(&self, inner_expr: Expr, ownership: Ownership) -> Expr {
+    assert!(!inner_expr.is_object());
+    let kind = NodeKind::Object(ownership, inner_expr.id);
+    let ty = inner_expr.ty();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }

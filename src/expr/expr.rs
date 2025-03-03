@@ -96,6 +96,11 @@ impl Expr {
     self.sub_exprs().unwrap().remove(0)
   }
 
+  pub fn extract_fields(&self) -> Vec<Expr> {
+    assert!(self.is_aggregate());
+    self.sub_exprs().unwrap()
+  }
+
   pub fn extract_bin_op(&self) -> BinOp {
     assert!(self.is_binary());
     self.ctx.borrow().extract_bin_op(self.id).unwrap()
@@ -448,6 +453,7 @@ pub trait ExprBuilder {
   fn _true(&self) -> Expr;
   fn _false(&self) -> Expr;
   fn constant_integer(&self, i: BigInt, ty: Type) -> Expr;
+  fn constant_usize(&self, i: usize) -> Expr;
   fn null(&self, ty: Type) -> Expr;
   fn constant_array(&self, constant: Constant, elem_ty: Type) -> Expr;
   fn constant_struct(&self, fields: Vec<StructField>, ty: Type) -> Expr;
@@ -475,7 +481,7 @@ pub trait ExprBuilder {
   fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr;
   fn cast(&self, operand: Expr, target_ty: Expr) -> Expr;
 
-  fn object(&self, object: Expr, ownership: Ownership) -> Expr;
+  fn object(&self, inner_expr: Expr, ownership: Ownership) -> Expr;
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr;
   fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
