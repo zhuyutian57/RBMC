@@ -18,7 +18,7 @@ impl<'cfg> Symex<'cfg> {
         }
       }
     }
-    state.remove_stack_places();
+    state.remove_stack_places(self.top().function_id());
     self.register_state(n, state);
 
     self.top().inc_pc();

@@ -84,9 +84,11 @@ impl<'func> Frame<'func> {
     self.function
   }
 
+  pub fn function_id(&self) -> NString {
+    self.function.name() + "_" + self.id.to_string()
+  }
+
   pub fn local_ident(&self, local: Local) -> NString {
-    self.function.name()
-      + "_" + self.id.to_string()
-      + "::" + local.to_string()
+    self.function_id() + "::" + local.to_string()
   }
 }

@@ -38,8 +38,8 @@ impl State {
     self.place_states.update(place, state);
   }
 
-  pub fn remove_stack_places(&mut self) {
-    self.place_states.remove_stack_places();
+  pub fn remove_stack_places(&mut self, function_name: NString) {
+    self.place_states.remove_stack_places(function_name);
     // TODO: handle reborrow
   }
 
@@ -57,10 +57,44 @@ impl State {
     self.value_set.remove(symbol.name());
   }
 
-  pub fn assign(&mut self, pt: Expr, values: ObjectSet) {
-    assert!(pt.ty().is_any_ptr() && pt.is_symbol());
-    let symbol = pt.extract_symbol();
-    self.value_set.insert(symbol.l1_name(), values);
+  pub fn assign(&mut self, expr: Expr, values: ObjectSet) {
+    assert!(expr.ty().is_any_ptr());
+    self.assign_rec(expr, NString::EMPTY, values);
+  }
+
+  fn assign_rec(&mut self, expr: Expr, suffix: NString, values: ObjectSet) {
+    if expr.is_symbol() {
+      let symbol = expr.extract_symbol();
+      let ident = symbol.l1_name() + suffix;
+      self.value_set.insert(ident, values.clone());
+      return;
+    }
+
+    if expr.is_object() {
+      let inner_expr = expr.extract_inner_expr();
+      self.assign_rec(inner_expr, suffix, values);
+      return;
+    }
+
+    assert!(expr.ty().is_any_ptr());
+
+    if expr.is_index() {
+      let object = expr.extract_object();
+      let index_str = format!("{:?}", expr.extract_index());
+      let i = index_str.parse::<u128>().expect("Not integer index");
+      self.assign_rec(
+        object,
+        suffix + 
+          if expr.ty().is_array() {
+            format!("[{i}]")
+          } else {
+            format!(".{i}")
+          },
+        values.clone());
+      return;
+    }
+
+    todo!("assign value set for {expr:?}");
   }
 
   pub fn merge(&mut self, other: &State) {
@@ -98,6 +132,19 @@ impl State {
 
   pub fn get_value_set(&self, expr: Expr, values: &mut ObjectSet) {
     assert!(expr.ty().is_any_ptr());
+    self.get_value_set_rec(expr.clone(), NString::EMPTY, values);
+    if values.is_empty() {
+      // The pointer points to nothing
+      values.insert(expr.ctx.unknown(expr.ty().pointee_ty()));
+    }
+  }
+
+  pub fn get_value_set_rec(
+    &self,
+    expr: Expr,
+    suffix: NString,
+    values: &mut ObjectSet
+  ) {
 
     if expr.is_null() {
       values.insert(expr.ctx.null_object(expr.ty().pointee_ty()));
@@ -106,11 +153,8 @@ impl State {
 
     if expr.is_symbol() {
       let pt = expr.extract_symbol().name();
-      self.value_set.get(pt, values);
-      if values.is_empty() {
-        // The pointer points to nothing
-        values.insert(expr.ctx.unknown(expr.ty().pointee_ty()));
-      }
+      let ident = pt + suffix;
+      self.value_set.get(ident, values);
       return;
     }
 
@@ -119,23 +163,40 @@ impl State {
       return;
     }
 
+    if expr.is_ite() {
+      let true_value = expr.extract_true_value();
+      let false_value = expr.extract_false_value();
+      self.get_value_set_rec(true_value, suffix, values);
+      self.get_value_set_rec(false_value, suffix, values);
+      return;
+    }
+
     if expr.is_cast() {
       let src_expr = expr.extract_src();
-      self.get_value_set(src_expr, values);
+      self.get_value_set_rec(src_expr, suffix, values);
       return;
     }
 
     if expr.is_object() {
       let inner_object = expr.extract_inner_expr();
-      self.get_value_set(inner_object, values);
+      self.get_value_set_rec(inner_object, suffix, values);
       return;
     }
 
-    if expr.is_ite() {
-      let true_value = expr.extract_true_value();
-      let false_value = expr.extract_false_value();
-      self.get_value_set(true_value, values);
-      self.get_value_set(false_value, values);
+    if expr.is_index() {
+      let object = expr.extract_object();
+      let index_str = format!("{:?}", expr.extract_index());
+      let i = index_str.parse::<u128>().expect("Not integer index");
+      self.get_value_set_rec(
+        object,
+        suffix + 
+          if expr.ty().is_array() {
+            format!("[{i}]")
+          } else {
+            format!(".{i}")
+          },
+        values
+      );
       return;
     }
 

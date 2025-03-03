@@ -6,6 +6,7 @@ use std::hash::Hash;
 use stable_mir::mir::Mutability;
 
 use crate::symbol::symbol::*;
+use crate::NString;
 
 use super::ast::*;
 use super::constant::*;
@@ -359,6 +360,17 @@ impl Debug for Expr {
       if self.is_address_of() {
         let place = &sub_exprs[0];
         return write!(f, "&{place:?}");
+      }
+
+      if self.is_aggregate() {
+        let ty = self.ty();
+        let type_info =
+          if ty.is_struct() {
+            ty.struct_def().0
+          } else {
+            todo!()
+          };
+        return write!(f, "{type_info:?} {sub_exprs:?}");
       }
       
       if self.is_binary() {

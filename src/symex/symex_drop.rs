@@ -1,6 +1,8 @@
 
 use stable_mir::mir::*;
+use stable_mir::ty::UintTy;
 
+use crate::expr::constant::BigInt;
 use crate::expr::expr::*;
 use crate::expr::predicates::*;
 use crate::expr::ty::*;
@@ -27,7 +29,7 @@ impl<'cfg> Symex<'cfg> {
       } else if expr.ty().is_struct() {
         self.drop_struct(expr.clone(), guard.clone());
       } else {
-        panic!("drop {:?} should be implemented", expr.ty());
+        panic!("May be just return");
       }
       return;
     }
@@ -52,8 +54,6 @@ impl<'cfg> Symex<'cfg> {
 
   /// Drop a box will free the memory it points to
   fn drop_box(&mut self, _box: Expr, guard: Expr) {
-    assert!(_box.is_object() && _box.ty().is_box());
-
     // Check whethe the box is uninitilized
     self.make_deref(_box.clone(), Mode::Drop, guard.clone());
 
@@ -67,6 +67,20 @@ impl<'cfg> Symex<'cfg> {
 
   /// Drop a struct may drop the inner box pointer
   fn drop_struct(&mut self, st: Expr, guard: Expr) {
-    todo!()
+    let def = st.ty().struct_def();
+    for (i, (_, ty)) in def.1.iter().enumerate() {
+      if !ty.is_box() && !ty.is_struct() { continue; }
+      let object = 
+        self.ctx.object(
+          self.ctx.index(
+            st.clone(),
+            self.ctx.constant_integer(
+              BigInt(false, i as u128), 
+              Type::unsigned_type(UintTy::Usize)),
+            *ty),
+          st.extract_ownership() 
+        );
+      self.symex_drop_rec(object, guard.clone());
+    }
   }
 }
