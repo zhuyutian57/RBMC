@@ -130,7 +130,7 @@ impl Expr {
   }
 
   pub fn extract_inner_expr(&self) -> Expr {
-    assert!(self.is_object());
+    assert!(self.is_object() || self.is_unary());
     self.sub_exprs().unwrap().remove(0)
   }
 
@@ -186,6 +186,19 @@ impl Expr {
           _ => {},
         }
       }
+
+      if self.is_unary() {
+        let operand = &sub_exprs[0];
+        match self.extract_un_op() {
+          UnOp::Not => {
+            if operand.is_unary() && operand.extract_un_op() == UnOp::Not {
+              self.id = operand.extract_inner_expr().id;
+            }
+          },
+          _ => panic!(),
+        }
+      }
+
       // TODO: do more simplify
     }
   }
@@ -345,7 +358,7 @@ impl Debug for Expr {
       if self.is_binary() {
         let lhs = &sub_exprs[0];
         let rhs = &sub_exprs[1];
-        return write!(f, "{lhs:?} {:?} {rhs:?}", self.extract_bin_op());
+        return write!(f, "({lhs:?} {:?} {rhs:?})", self.extract_bin_op());
       }
 
       if self.is_unary() {
