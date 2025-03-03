@@ -107,6 +107,12 @@ impl VCSystem {
     self.vcs.push(Vc::new(VcKind::Assume(cond)));
   }
 
+  pub fn set_nth_assertion(&mut self, n: usize) {
+    for (i, j) in self.asserts_map.iter() {
+      self.vcs[*j].is_sliced = *i == n; 
+    }
+  }
+
   pub fn iter(&self) -> Iter<'_, Vc> {
     self.vcs.iter()
   }

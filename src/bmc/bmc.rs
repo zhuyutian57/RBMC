@@ -58,6 +58,8 @@ impl<'cfg> Bmc<'cfg> {
     for i in 0..size {
       println!("Verifying condition #{i}:");
 
+      self.vc_system.borrow_mut().set_nth_assertion(i);
+
       if !self.config.cli.no_slice {
         slicer.slice_nth(self.vc_system.clone(), i);
       }
