@@ -16,6 +16,7 @@ use super::value_set::*;
 pub enum Mode {
   Read,
   Drop,
+  Dealloc,
 }
 
 pub(super) struct Projection<'a, 'cfg> {
@@ -97,11 +98,11 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
       ret = 
         match mode {
           Mode::Read => Some(self.make_invalid_object(pt.ty().pointee_ty())),
-          Mode::Drop => None,
+          _ => None,
         };
     }
 
-    if mode == Mode::Drop { return ret; }
+    if mode == Mode::Drop || mode == Mode::Dealloc { return ret; }
     
     for object in objects{
       // An object is valid if it is owned by some variable
@@ -219,6 +220,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
       match mode {
         Mode::Read => NString::from("dereference failure: invalid pointer"),
         Mode::Drop => NString::from("drop failure: uninitilized box(smart) pointer"),
+        Mode::Dealloc => NString::from("dealloc failure: invalid pointer"),
       };
     let fail =
       ctx.and(ctx.and(guard, ne), ctx.not(index));

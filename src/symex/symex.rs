@@ -35,6 +35,7 @@ pub(super) enum FnKind {
   Unwind(FunctionIdx),
   Layout(Type),
   Allocation(AllocKind, Type),
+  Dealloc(Operand, Type),
   AsMut(Operand),
   AsRef(Operand),
 }

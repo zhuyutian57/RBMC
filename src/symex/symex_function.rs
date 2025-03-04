@@ -44,6 +44,11 @@ impl <'cfg> Symex<'cfg> {
             };
           self.exec_state.update_place_state(object, place_state);
         },
+        FnKind::Dealloc(o, t) => {
+          let mut pt = self.make_operand(o);
+          self.replace_predicates(&mut pt);
+          self.symex_dealloc(pt, *t);
+        },
         _ => panic!("Need implement"),
     };
     if matches!(fnkind, FnKind::Unwind(_)) { return; }
@@ -102,6 +107,10 @@ impl <'cfg> Symex<'cfg> {
       assert!(args.len() == 1);
       let ty = self.make_layout(&args[0]);
       Ok(FnKind::Allocation(AllocKind::Alloc, ty))
+    } else if name == NString::from("dealloc") {
+      assert!(args.len() == 2);
+      let ty = self.make_layout(&args[1]);
+      Ok(FnKind::Dealloc(args[0].clone(), ty))
     } else if name == NString::from("AsMut::as_mut") {
       Ok(FnKind::AsMut(args[0].clone()))
     } else {

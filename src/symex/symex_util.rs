@@ -219,19 +219,19 @@ impl<'cfg> Symex<'cfg> {
 
   pub(super) fn make_layout(&mut self, arg: &Operand) -> Type {
     match arg {
+      Operand::Copy(p) |
       Operand::Move(p) => {
         assert!(p.projection.is_empty());
         let mut ty =
           self.exec_state.current_local(p.local, Level::Level2);
         self.rename(&mut ty);
         assert!(ty.is_type());
-        Ok(ty.extract_layout())
+        ty.extract_type()
       },
       Operand::Constant(c) => {
-        Ok(Type::from(c.ty()))
-      }
-      _ => Err(Error),
-    }.expect("Do no exits")
+        Type::from(c.ty())
+      },
+    }
   }
 
   /// Interface for `l2` reaming.

@@ -75,10 +75,6 @@ impl Expr {
     self.ctx.borrow().extract_type(self.id).unwrap()
   }
 
-  pub fn extract_layout(&self) -> Type {
-    self.extract_type()
-  }
-
   pub fn extract_address_type(&self) -> Type {
     assert!(self.is_object());
     Type::ptr_type(
@@ -120,7 +116,7 @@ impl Expr {
   
   pub fn extract_target_type(&self) -> Type {
     assert!(self.is_cast());
-    self.sub_exprs().unwrap().remove(1).extract_layout()
+    self.sub_exprs().unwrap().remove(1).extract_type()
   }
 
   pub fn extract_cond(&self) -> Expr {
