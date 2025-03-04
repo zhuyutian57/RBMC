@@ -5,7 +5,6 @@ use stable_mir::mir::*;
 
 use crate::expr::context::*;
 use crate::expr::expr::*;
-use crate::expr::predicates::*;
 use crate::expr::ty::*;
 use crate::program::program::*;
 use crate::symbol::symbol::*;
@@ -49,7 +48,7 @@ impl<'cfg> ExecutionState<'cfg> {
     // create global variable
     let ty = Type::const_array_type(Type::bool_type());
     let alloc_array_symbol = self.l0_symbol(NString::ALLOC_SYM, ty);
-    let alloc_array = self.ctx.object(alloc_array_symbol, Ownership::Own);
+    let alloc_array = self.ctx.object(alloc_array_symbol);
     self.ns.insert_object(alloc_array);
     // Initialized stack
     self.push_frame(0, None, None);
@@ -67,9 +66,13 @@ impl<'cfg> ExecutionState<'cfg> {
     // Record the ident
     self.ns.insert_symbol(sym_expr.clone());
     // Create an object not being owned by any variable.
-    let object = self.ctx.object(sym_expr, Ownership::Not);
+    let object = self.ctx.object(sym_expr);
     self.objects.push(object.clone());
     object
+  }
+
+  pub fn frames(&self) -> &Vec<Frame<'cfg>> {
+    &self.frames
   }
 
   pub fn cur_state(&self) -> &State {
@@ -230,15 +233,8 @@ impl<'cfg> ExecutionState<'cfg> {
       let mut l1_place = place;
       self.rename(&mut l1_place, Level::Level1);
       let ident = l1_place.extract_symbol().l1_name();
-      let kind = PlaceKind::from(ident);
-      let nplace = NPlace::new(kind, ident);
+      let nplace = NPlace(ident);
       self.cur_state_mut().update_place_state(nplace, state);
-      return;
-    }
-
-    if place.is_address_of() {
-      let object = place.extract_object();
-      self.update_place_state(object, state);
       return;
     }
 
@@ -259,9 +255,6 @@ impl<'cfg> ExecutionState<'cfg> {
     
     // `Layout` is only used for allocation
     if rhs.is_type() { return; }
-
-    // Update place state
-    self.update_place_state(lhs.clone(), PlaceState::Initialized);
     
     // Update value Set
     self.update_value_set_rec(lhs, rhs);
@@ -281,10 +274,10 @@ impl<'cfg> ExecutionState<'cfg> {
 
     if lhs.ty().is_struct() {
       // We do not care the ownership here
-      let lhs_object = self.ctx.object(lhs.clone(), Ownership::Unknown);
+      let lhs_object = self.ctx.object(lhs.clone());
       let rhs_object = 
         if rhs.is_object() { rhs.clone() }
-        else { self.ctx.object(rhs.clone(), Ownership::Unknown) };
+        else { self.ctx.object(rhs.clone()) };
       for (i, (_, ty)) in lhs.ty().struct_def().1.iter().enumerate() {
         if !ty.is_any_ptr() { return; }
         let i = self.ctx.constant_usize(i);

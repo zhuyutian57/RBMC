@@ -11,7 +11,6 @@ use crate::expr::context::*;
 use crate::expr::constant::*;
 use crate::expr::expr::*;
 use crate::expr::op::*;
-use crate::expr::predicates::*;
 use crate::expr::ty::*;
 use crate::solvers::solver::Solver;
 use crate::symbol::nstring::*;
@@ -75,30 +74,34 @@ impl<'cfg> Symex<'cfg> {
 
   pub fn can_exec(&self) -> bool { self.exec_state.can_exec() }
 
-  pub(super) fn top(&mut self) -> &mut Frame<'cfg> {
+  pub(super) fn top(&self) -> &Frame<'cfg> {
+    self.exec_state.top()
+  }
+
+  pub(super) fn top_mut(&mut self) -> &mut Frame<'cfg> {
     self.exec_state.top_mut()
   }
 
   pub(super) fn register_state(&mut self, pc: Pc, mut state: State) {
     state.renaming = Some(self.exec_state.renaming.clone());
-    self.top().add_state(pc, state);
+    self.top_mut().add_state(pc, state);
   }
 
   pub fn symex(&mut self) {
-    while let Some(pc) = self.top().cur_pc() {
+    while let Some(pc) = self.top_mut().cur_pc() {
       // Merge states
       if self.merge_states(pc) {
         if self.config.cli.enable_display_state_bb() {
           println!(
             "Enter {:?} - bb{pc}\n{:?}",
-            self.top().function().name(),
-            self.top().cur_state()
+            self.top_mut().function().name(),
+            self.top_mut().cur_state()
           );
         }
-        let bb = self.top().function().basicblock(pc);
+        let bb = self.top_mut().function().basicblock(pc);
         self.symex_basicblock(bb);
       } else {
-        self.top().inc_pc();
+        self.top_mut().inc_pc();
       }
     }
     self.exec_state.pop_frame();
@@ -111,7 +114,7 @@ impl<'cfg> Symex<'cfg> {
       if self.config.cli.enable_display_state_statement() {
         println!(
           "After symex {i}\n{:?}",
-          self.top().cur_state()
+          self.top_mut().cur_state()
         );
       }
     }
@@ -119,7 +122,7 @@ impl<'cfg> Symex<'cfg> {
     if self.config.cli.enable_display_state_terminator() {
       println!(
         "After symex terminator\n{:?}",
-        self.top().cur_state()
+        self.top_mut().cur_state()
       );
     }
   }
@@ -141,11 +144,15 @@ impl<'cfg> Symex<'cfg> {
 
   fn symex_storagelive(&mut self, local: Local) {
     let var = self.exec_state.new_local(local, Level::Level1);
-    // TODO: maybe do something will pointers
+    self.top_mut().cur_state.update_place_state(
+      NPlace::from(var),
+      PlaceState::Own
+    );
   }
 
   fn symex_storagedead(&mut self, local: Local) {
     let var = self.exec_state.current_local(local, Level::Level1);
+    self.top_mut().cur_state.remove_place(NPlace::from(var.clone()));
     if var.ty().is_any_ptr() {
       self.exec_state.cur_state_mut().remove_pointer(var);
     }

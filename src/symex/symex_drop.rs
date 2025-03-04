@@ -1,10 +1,11 @@
 
+use std::collections::HashSet;
+
 use stable_mir::mir::*;
 use stable_mir::ty::UintTy;
 
 use crate::expr::constant::BigInt;
 use crate::expr::expr::*;
-use crate::expr::predicates::*;
 use crate::expr::ty::*;
 use crate::symex::projection::Mode;
 use crate::NString;
@@ -16,9 +17,9 @@ impl<'cfg> Symex<'cfg> {
     let object = self.make_project(place);
     self.symex_drop_rec(object, self.ctx._true());
 
-    let state = self.top().cur_state().clone();
+    let state = self.top_mut().cur_state().clone();
     self.register_state(*target, state);
-    self.top().inc_pc();
+    self.top_mut().inc_pc();
   }
 
   fn symex_drop_rec(&mut self, expr: Expr, guard: Expr) {
@@ -55,8 +56,8 @@ impl<'cfg> Symex<'cfg> {
   fn drop_box(&mut self, _box: Expr, guard: Expr) {
     // Check whethe the box is uninitilized
     self.make_deref(_box.clone(), Mode::Drop, guard.clone());
-
-    self.top().cur_state.remove_pointer(_box.clone());
+    self.top_mut().cur_state.dealloc_objects(_box.clone());
+    self.top_mut().cur_state.remove_pointer(_box.clone());
 
     let pointer_ident = self.ctx.pointer_ident(_box);
     let alloc_array =
@@ -76,9 +77,7 @@ impl<'cfg> Symex<'cfg> {
           self.ctx.index(
             st.clone(),
             self.ctx.constant_usize(i),
-            *ty),
-          st.extract_ownership() 
-        );
+            *ty));
       self.symex_drop_rec(object, guard.clone());
     }
   }

@@ -73,12 +73,7 @@ impl Debug for ValueSet {
             let debug_objects =
             objects
               .iter()
-              .map(|x| 
-                if x.is_object() && x.extract_ownership().is_own() {
-                  format!("Own({x:?})")
-                } else {
-                  format!("{x:?}")
-                })
+              .map(|x| format!("{x:?}"))
               .collect::<Vec<String>>()
               .join(", ");
             format!("    {pt:?}: {debug_objects}\n")

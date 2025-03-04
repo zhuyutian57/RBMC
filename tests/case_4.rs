@@ -1,22 +1,11 @@
 
-fn sum_to(slice: &[u8], to: usize) -> u64 {
-  // This function bypasses rust bounds checking. to must be less than or
-  // equal to the length of the slice.
-  
-  // if slice.len() < to { panic!(); }
-  let slice_ptr = slice.as_ptr();
-  let mut sum = 0;
-  // Bypass bounds checking
-  unsafe {
-    for idx in 0..to {
-        sum += *slice_ptr.add(idx) as u64;
-    }
-  }
-  sum
-}
+struct Node { x : Box<i32> }
 
+fn take_ownership(n : Node) {}
 
 fn main() {
-  let x = [1];
-  sum_to(&x, 2);
+    let mut n = Node { x : Box::new(10) };
+    let p = &*n.x as *const i32;
+    take_ownership(n);
+    let y = unsafe { *p }; // invalid-deref, `n` is moved
 }

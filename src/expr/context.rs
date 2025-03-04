@@ -12,7 +12,6 @@ use super::ast::*;
 use super::constant::*;
 use super::expr::*;
 use super::op::*;
-use super::predicates::*;
 use super::ty::*;
 
 /// Context is used to manage type and expression.
@@ -258,14 +257,6 @@ impl Context {
     match self.nodes[i].kind() {
       NodeKind::Unary(op, _,) => Ok(*op),
       _ => Err("Not unary operator"),
-    }
-  }
-
-  pub fn extract_ownership(&self, i: NodeId) -> Result<Ownership, &str> {
-    assert!(i < self.nodes.len());
-    match self.nodes[i].kind() {
-      NodeKind::Object(o, ..) => Ok(*o),
-      _ => Err("Not object"),
     }
   }
 
@@ -547,9 +538,9 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn object(&self, inner_expr: Expr, ownership: Ownership) -> Expr {
+  fn object(&self, inner_expr: Expr) -> Expr {
     assert!(!inner_expr.is_object());
-    let kind = NodeKind::Object(ownership, inner_expr.id);
+    let kind = NodeKind::Object(inner_expr.id);
     let ty = inner_expr.ty();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);

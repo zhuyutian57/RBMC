@@ -12,7 +12,6 @@ use stable_mir::CrateDef;
 use crate::expr::expr::*;
 use crate::expr::constant::*;
 use crate::expr::op::*;
-use crate::expr::predicates::*;
 use crate::expr::ty::*;
 use crate::program::program::*;
 use crate::symbol::symbol::*;
@@ -24,13 +23,23 @@ use super::state::State;
 use super::symex::*;
 
 impl<'cfg> Symex<'cfg> {
+  pub(super) fn is_stack_symbol(&self, expr: Expr) -> bool {
+    assert!(expr.is_symbol());
+    let ident = expr.extract_symbol().ident();
+    let mut res = false;
+    for frame in self.exec_state.frames().iter().rev() {
+      res |= ident == frame.function_id()
+    }
+    res
+  }
+
   pub(super) fn merge_states(&mut self, pc: Pc) -> bool {
-    let state_vec = self.top().states_from(pc);
+    let state_vec = self.top_mut().states_from(pc);
 
     // We have put all states that reach current pc in the
     // queue. Thus, we first construct an empty state.
     // That is, make `gurad` of current state be `false`.
-    self.top().cur_state.guard = self.ctx._false();
+    self.top_mut().cur_state.guard = self.ctx._false();
 
     if let Some(states) = state_vec {
       for mut state in states {
@@ -39,11 +48,11 @@ impl<'cfg> Symex<'cfg> {
         // SSA assigment
         self.phi_function(&mut state);
 
-        self.top().cur_state.merge(&state);
+        self.top_mut().cur_state.merge(&state);
       }
     }
 
-    !self.top().cur_state.guard.is_false()
+    !self.top_mut().cur_state.guard.is_false()
   }
 
   fn phi_function(&mut self, nstate: &mut State) {
@@ -104,7 +113,8 @@ impl<'cfg> Symex<'cfg> {
 
   fn memory_leak_check(&self) {
     for object in &self.exec_state.objects {
-      if object.extract_ownership().is_own() { continue; }
+      let s = self.top().cur_state.place_states.place_state(object);
+      if s.is_own() || s.is_dealloced() { continue; }
 
       let msg = 
         NString::from(format!("memory leak: {object:?} is not dealloced"));

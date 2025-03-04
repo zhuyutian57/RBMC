@@ -8,16 +8,17 @@ use super::symex::*;
 
 impl<'cfg> Symex<'cfg> {
   pub(super) fn symex_goto(&mut self, target: &BasicBlockIdx) {
-    let state = self.top().cur_state().clone();
+    let state = self.top_mut().cur_state().clone();
     self.register_state(*target, state);
-    self.top().inc_pc();
+    self.top_mut().inc_pc();
   }
 
   pub(super) fn symex_switchint(&mut self, discr: &Operand, targets: &SwitchTargets) {
-    let discr_expr = self.make_operand(discr);
+    let mut discr_expr = self.make_operand(discr);
+    self.replace_predicates(&mut discr_expr);
     let mut otherwise_guard = self.ctx._true();
     for (i, bb) in targets.branches() {
-      let mut state = self.top().cur_state().clone();
+      let mut state = self.top_mut().cur_state().clone();
       // branches
       let branch_guard = self.make_branch_guard(discr_expr.clone(), i);
       state.guard =
@@ -32,14 +33,14 @@ impl<'cfg> Symex<'cfg> {
         );
     }
     // otherwise
-    let mut otherwise_state = self.top().cur_state().clone();
+    let mut otherwise_state = self.top_mut().cur_state().clone();
     otherwise_state.guard =
       self.ctx.and(otherwise_state.guard(), otherwise_guard);
     otherwise_state.guard.simplify();
     self.rename(&mut otherwise_state.guard);
     self.register_state(targets.otherwise(), otherwise_state);
 
-    self.top().inc_pc();
+    self.top_mut().inc_pc();
   }
 
   fn make_branch_guard(&mut self, discr_expr: Expr, i: u128) -> Expr {

@@ -1,6 +1,5 @@
 
 use crate::expr::expr::*;
-use crate::expr::predicates::*;
 use crate::expr::ty::*;
 use crate::symbol::nstring::*;
 use super::symex::*;
@@ -8,11 +7,6 @@ use super::symex::*;
 impl<'cfg> Symex<'cfg> {
   pub(super) fn symex_alloc(&mut self, ty: Type, kind: AllocKind) -> Expr {
     let mut object = self.exec_state.new_object(ty);
-    assert!(object.extract_ownership().is_not());
-    if kind == AllocKind::Box {
-      let inner_object = object.sub_exprs().unwrap().remove(0);
-      object = self.ctx.object(inner_object, Ownership::Own);
-    }
     self.track_new_object(object.clone());
     object
   }

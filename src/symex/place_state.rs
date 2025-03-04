@@ -2,55 +2,57 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 
+use crate::expr::expr::Expr;
 use crate::symbol::nstring::*;
 
+/// `Place State` is the abstraction of a piece of memory(an object).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PlaceState {
-  Uninitialized,
-  Moved,
-  Initialized,
+  /// We don't know the state
+  Unknown,
+  /// The (dynamic)place is alloced
+  Alloced,
+  /// The (dynamic)place is dealloced
+  Dealloced,
+  /// The place is owned by some variables or in stack
+  Own,
 }
 
 impl PlaceState {
-  /// Meet operator
-  pub fn merge(s1: PlaceState, s2: PlaceState) -> Self {
-    if s1 < s2 { s1 } else { s2 }
+  pub fn is_unknown(&self) -> bool {
+    matches!(self, PlaceState::Unknown)
   }
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum PlaceKind {
-  Stack,
-  Heap,
-}
+  pub fn is_alloced(&self) -> bool {
+    matches!(self, PlaceState::Alloced)
+  }
 
-impl From<NString> for PlaceKind {
-  fn from(value: NString) -> Self {
-    if value.contains(NString::from("heap")) {
-      PlaceKind::Heap
-    } else {
-      PlaceKind::Stack
-    }
+  pub fn is_dealloced(&self) -> bool {
+    matches!(self, PlaceState::Dealloced)
+  }
+
+  pub fn is_own(&self) -> bool {
+    matches!(self, PlaceState::Own)
+  }
+  
+  pub fn merge(s1: PlaceState, s2: PlaceState) -> Self {
+    if s1 != s2 { PlaceState::Unknown } else { s1 }
   }
 }
 
 /// Add a kind flag
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct NPlace(PlaceKind, NString);
-
-impl NPlace {
-  pub fn new(kind: PlaceKind, ident: NString) -> Self {
-    NPlace(kind, ident)
-  }
-
-  pub fn kind(&self) -> PlaceKind { self.0 }
-
-  pub fn place(&self) -> NString { self.1 }
-}
+pub struct NPlace(pub NString);
 
 impl Debug for NPlace {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "({:?}, {:?})", self.0, self.1)
+    write!(f, "{:?}", self.0)
+  }
+}
+
+impl From<Expr> for NPlace {
+  fn from(value: Expr) -> Self {
+    NPlace(NString::from(format!("{value:?}")))
   }
 }
 
@@ -62,26 +64,13 @@ pub struct PlaceStates {
 }
 
 impl PlaceStates {
-  pub fn place_states(&self) -> &PlaceStateMap {
-    &self._place_states_map
-  }
-
-  pub fn local_place_states(&self) -> PlaceStateMap {
+  pub fn place_state(&self, place: &Expr) -> PlaceState {
+    let nplace = NPlace(NString::from(format!("{place:?}")));
     self
       ._place_states_map
-      .iter()
-      .filter(|&(p, _)| matches!(p.0, PlaceKind::Stack))
-      .map(|(p, s)| (p.clone(), s.clone()))
-      .collect()
-  }
-
-  pub fn heap_place_states(&self) -> PlaceStateMap {
-    self
-      ._place_states_map
-      .iter()
-      .filter(|&(p, _)| matches!(p.0, PlaceKind::Stack))
-      .map(|(p, s)| (p.clone(), s.clone()))
-      .collect()
+      .get(&nplace)
+      .expect(format!("Do not contains {nplace:?}").as_str())
+      .to_owned()
   }
 
   pub fn update(&mut self, place: NPlace, state: PlaceState) {
@@ -92,22 +81,26 @@ impl PlaceStates {
       .or_insert(state);
   }
 
+  pub fn remove(&mut self, place: NPlace) {
+    self._place_states_map.remove(&place);
+  }
+
   pub fn merge(&mut self, rhs: &PlaceStates) {
-    for (&place, &state) in rhs.place_states().iter() {
+    for (&place, &state) in rhs._place_states_map.iter() {
       self
         ._place_states_map
         .entry(place)
         .and_modify(
           |s|
           *s = PlaceState::merge(*s, state))
-        .or_insert(state);
+        .or_insert(PlaceState::Unknown);
     }
   }
 
   pub fn remove_stack_places(&mut self, function_name: NString) {
     self
       ._place_states_map
-      .retain(|k, _| !k.1.contains(function_name));
+      .retain(|p,_| !p.0.contains(function_name));
   }
 }
 

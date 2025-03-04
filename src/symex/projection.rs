@@ -4,7 +4,6 @@ use stable_mir::ty::UintTy;
 
 use crate::expr::constant::BigInt;
 use crate::expr::expr::*;
-use crate::expr::predicates::*;
 use crate::expr::ty::Type;
 use crate::symbol::symbol::*;
 use crate::vc::vc::VCSystem;
@@ -36,7 +35,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         ._callback_symex
         .exec_state
         .current_local(place.local, Level::Level1);
-    ret = ctx.object(ret, Ownership::Own);
+    ret = ctx.object(ret);
 
     for elem in place.projection.iter() {
       ret =
@@ -110,7 +109,15 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
       if object.is_null_object() ||
          object.is_unknown() { continue; }
 
-      if object.extract_ownership().is_not() {
+      // Do more analysis
+      let place_state =
+        self
+          ._callback_symex
+          .top_mut()
+          .cur_state
+          .place_states
+          .place_state(&object);
+      if !place_state.is_own() && !place_state.is_alloced() {
         let pointer_guard =
           ctx.same_object(
             pt.clone(),
@@ -153,8 +160,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     let i = ctx.constant_usize(field);
     
     let index = ctx.index(object, i, Type::from(ty));
-    let ownership = index.extract_ownership();
-    ctx.object(index, ownership)
+    ctx.object(index)
   }
 
   /// Visit an array/slice. Return `Index(array/slice, i)`.
@@ -174,7 +180,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         ._callback_symex
         .exec_state
         .new_symbol(&l0_symbol, Level::Level1);
-    ctx.object(l1_symbol, Ownership::Not)
+    ctx.object(l1_symbol)
   }
 
   fn valid_check(&mut self, object: Expr, guard: Expr) {

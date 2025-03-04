@@ -5,6 +5,8 @@ use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::expr::op::*;
 use crate::symbol::symbol::*;
+use crate::symex::place_state::NPlace;
+use crate::symex::place_state::PlaceState;
 use super::symex::*;
 
 type BinOp = crate::expr::op::BinOp;
@@ -44,6 +46,12 @@ impl<'cfg> Symex<'cfg> {
     self.rename(&mut rhs);
     // New l2 symbol
     lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
+
+    // update new lhs place state
+    if self.is_stack_symbol(lhs.clone()) {
+      let nplace = NPlace(lhs.extract_symbol().l1_name());
+      self.top_mut().cur_state.update_place_state(nplace, PlaceState::Own);
+    }
 
     self.exec_state.assign(lhs.clone(), rhs.clone());
 
@@ -98,7 +106,7 @@ impl<'cfg> Symex<'cfg> {
   }
 
   fn make_rvalue(&mut self, rvalue: &Rvalue) -> Expr {
-    let ty = self.top().function().rvalue_type(rvalue);
+    let ty = self.top_mut().function().rvalue_type(rvalue);
     match rvalue {
       Rvalue::AddressOf(m, p) => {
         let place = self.make_project(p);

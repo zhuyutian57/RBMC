@@ -8,6 +8,7 @@ use stable_mir::CrateDef;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::program::program::*;
+use crate::symbol::symbol::Level;
 use crate::NString;
 use super::place_state::*;
 use super::symex::*;
@@ -20,7 +21,7 @@ impl <'cfg> Symex<'cfg> {
     dest: &Place,
     target: &Option<BasicBlockIdx>
   ) {
-    let ty = self.top().function().operand_type(func);
+    let ty = self.top_mut().function().operand_type(func);
     let fndef = ty.fn_def();
     let fnkind = self.make_fn_kind(fndef, args);
     match &fnkind {
@@ -33,23 +34,23 @@ impl <'cfg> Symex<'cfg> {
           
           self.assign(pt, address_of, self.ctx._true());
 
-          let object_state =
+          let place_state =
             if matches!(k, AllocKind::Box) {
               let value = self.make_operand(&args[0]);
               self.assign(object.clone(), value, self.ctx._true());
-              PlaceState::Initialized
+              PlaceState::Own
             } else {
-              PlaceState::Uninitialized
+              PlaceState::Alloced
             };
-          self.exec_state.update_place_state(object, object_state);
+          self.exec_state.update_place_state(object, place_state);
         },
         _ => panic!("Need implement"),
     };
     if matches!(fnkind, FnKind::Unwind(_)) { return; }
     if let Some(t) = target {
-      let state = self.top().cur_state().clone();
+      let state = self.top_mut().cur_state().clone();
       self.register_state(*t, state);
-      self.top().inc_pc();
+      self.top_mut().inc_pc();
     }
   }
 
@@ -69,7 +70,7 @@ impl <'cfg> Symex<'cfg> {
       .exec_state
       .push_frame(i, Some(dest.clone()), *target);
     // Set arguements
-    let args = self.top().function().args();
+    let args = self.top_mut().function().args();
     if !args.is_empty() {
       for arg_local in args.iter() {
         let lhs = self.exec_state.l0_local(*arg_local);
@@ -77,7 +78,7 @@ impl <'cfg> Symex<'cfg> {
         self.assign(lhs, rhs, self.ctx._true());
       }
     }
-    let state = self.top().cur_state().clone();
+    let state = self.top_mut().cur_state().clone();
     self.register_state(0, state);
   }
 

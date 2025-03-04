@@ -17,17 +17,13 @@ impl<'cfg> Symex<'cfg> {
 
     if expr.is_move() {
       let object = expr.extract_object();
-      self.exec_state.update_place_state(
-        object.clone(),
-        PlaceState::Moved
-      );
       self.move_rec(object);
     }
   }
 
   fn move_rec(&mut self, expr: Expr) {
     if expr.ty().is_box() {
-      self.top().cur_state.remove_pointer(expr);
+      self.top_mut().cur_state.remove_pointer(expr);
       return; 
     }
 

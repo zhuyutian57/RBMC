@@ -12,7 +12,6 @@ use super::ast::*;
 use super::constant::*;
 use super::context::*;
 use super::op::*;
-use super::predicates::*;
 use super::ty::*;
 
 /// `Expr` is a wrapper for AST node. It only carry node index that
@@ -154,16 +153,6 @@ impl Expr {
     self.sub_exprs().unwrap().remove(2)
   }
 
-  pub fn extract_ownership(&self) -> Ownership {
-    if self.is_object() {
-      self.ctx.borrow().extract_ownership(self.id).unwrap()
-    } else if self.is_index() {
-      self.extract_object().extract_ownership()
-    } else {
-      panic!("Do not have ownership:\n{self:?}")
-    }
-  }
-
   pub fn simplify(&mut self) {
     if let Some(mut sub_exprs) = self.sub_exprs() {
       for sub_expr in sub_exprs.iter_mut() { sub_expr.simplify(); }
@@ -295,9 +284,8 @@ impl Expr {
     }
 
     if self.is_object() {
-      let ownership = self.extract_ownership();
-      let object = sub_exprs[0].clone();
-      *self = self.ctx.object(object, ownership);
+      let inner_expr = sub_exprs[0].clone();
+      *self = self.ctx.object(inner_expr);
       return;
     }
 
@@ -492,7 +480,7 @@ pub trait ExprBuilder {
   fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr;
   fn cast(&self, operand: Expr, target_ty: Expr) -> Expr;
 
-  fn object(&self, inner_expr: Expr, ownership: Ownership) -> Expr;
+  fn object(&self, inner_expr: Expr) -> Expr;
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr;
   fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;

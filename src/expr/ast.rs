@@ -7,7 +7,6 @@ use crate::symbol::symbol::*;
 use crate::symbol::nstring::*;
 use super::constant::*;
 use super::op::*;
-use super::predicates::*;
 use super::ty::*;
 
 pub type TerminalId = usize;
@@ -89,7 +88,7 @@ pub(super) enum NodeKind {
   Ite(NodeId, NodeId, NodeId),
   Cast(NodeId, NodeId),
   /// Unified form for object, including stack objects and heap objects.
-  Object(Ownership, NodeId),
+  Object(NodeId),
   /// A pointer's value is the address of an object...
   SameObject(NodeId, NodeId),
   /// `IndexOf` represents a load for an array or a struct.
@@ -200,7 +199,7 @@ impl Node {
       NodeKind::SameObject(l, r)
         => Some(vec![*l, *r]),
       NodeKind::Unary(_, o) |
-      NodeKind::Object(_, o)
+      NodeKind::Object(o)
         => Some(vec![*o]),
       NodeKind::Ite(c, tv, fv)
         => Some(vec![*c, *tv, *fv]),

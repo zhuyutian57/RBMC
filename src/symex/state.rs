@@ -38,17 +38,24 @@ impl State {
     self.place_states.update(place, state);
   }
 
+  pub fn remove_place(&mut self, place: NPlace) {
+    self.place_states.remove(place);
+  }
+
   pub fn remove_stack_places(&mut self, function_name: NString) {
     self.place_states.remove_stack_places(function_name);
     self.value_set.remove_stack_places(function_name);
-    // TODO: handle reborrow
   }
 
-  pub fn add_pointer(&mut self, pt: Expr) {
-    assert!(pt.ty().is_any_ptr() && pt.is_symbol());
-    let symbol = pt.extract_symbol();
-    assert!(symbol.is_level1());
-    self.value_set.add(symbol.name());
+  pub fn dealloc_objects(&mut self, pt: Expr) {
+    assert!(pt.ty().is_any_ptr());
+    let mut objects = HashSet::new();
+    self.get_value_set(pt.clone(), &mut objects);
+    for object in objects {
+      if object.is_unknown() { continue; }
+      let place = NPlace::from(object);
+      self.update_place_state(place, PlaceState::Dealloced);
+    }
   }
 
   pub fn remove_pointer(&mut self, pt: Expr) {
