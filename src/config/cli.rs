@@ -9,6 +9,14 @@ pub enum SmtStrategy {
   Once,
 }
 
+#[derive(clap::ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DisplayState {
+  BB,
+  Statement,
+  Terminator,
+  All,
+}
+
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
@@ -20,8 +28,9 @@ pub struct Cli {
   pub show_program: bool,
 
   /// Show state
-  #[arg(long, default_value_t = false)]
-  pub show_states: bool,
+  #[clap(value_enum)]
+  #[arg(long, default_value_t = DisplayState::BB)]
+  pub show_states: DisplayState,
 
   /// Show VCC
   #[arg(long, default_value_t = false)]
@@ -61,5 +70,20 @@ impl Cli {
       "-Copt-level=1".to_string(),
       "-Zmir-enable-passes=+ReorderBasicBlocks".to_string()
     ]
+  }
+
+  pub fn enable_display_state_bb(&self) -> bool {
+    self.show_states == DisplayState::BB ||
+      self.show_states == DisplayState::All
+  }
+
+  pub fn enable_display_state_statement(&self) -> bool {
+    self.show_states == DisplayState::Statement ||
+      self.show_states == DisplayState::All
+  }
+
+  pub fn enable_display_state_terminator(&self) -> bool {
+    self.show_states == DisplayState::Terminator ||
+      self.show_states == DisplayState::All
   }
 }

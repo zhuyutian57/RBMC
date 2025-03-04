@@ -88,7 +88,7 @@ impl<'cfg> Symex<'cfg> {
     while let Some(pc) = self.top().cur_pc() {
       // Merge states
       if self.merge_states(pc) {
-        if self.config.cli.show_states {
+        if self.config.cli.enable_display_state_bb() {
           println!(
             "Enter {:?} - bb{pc}\n{:?}",
             self.top().function().name(),
@@ -108,7 +108,7 @@ impl<'cfg> Symex<'cfg> {
     for (i, statement) 
       in bb.statements.iter().enumerate() {
       self.symex_statement(statement);
-      if self.config.cli.show_states {
+      if self.config.cli.enable_display_state_statement() {
         println!(
           "After symex {i}\n{:?}",
           self.top().cur_state()
@@ -116,7 +116,7 @@ impl<'cfg> Symex<'cfg> {
       }
     }
     self.symex_terminator(&bb.terminator);
-    if self.config.cli.show_states {
+    if self.config.cli.enable_display_state_terminator() {
       println!(
         "After symex terminator\n{:?}",
         self.top().cur_state()
