@@ -14,6 +14,7 @@ pub(super) mod symex_branch;
 pub(super) mod symex_drop;
 pub(super) mod symex_dealloc;
 pub(super) mod symex_function;
-pub(super) mod symex_util;
 pub(super) mod symex_memory;
+pub(super) mod symex_move;
 pub(super) mod symex_return;
+pub(super) mod symex_util;
