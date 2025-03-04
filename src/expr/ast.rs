@@ -99,6 +99,8 @@ pub(super) enum NodeKind {
   /// `PointerIdent(pt)` retrieve the ident of a pointer
   PointerIdent(NodeId),
   // Predicates for symbolic execution. Not used in vcc.
+  /// `Move(expr)`: move a value
+  Move(NodeId),
   /// `Invalid(object)`: `object` is not alloced
   Invalid(NodeId),
   /// Representing dereference of null
@@ -156,6 +158,10 @@ impl NodeKind {
     matches!(self, NodeKind::PointerIdent(..))
   }
 
+  pub fn is_move(&self) -> bool {
+    matches!(self, NodeKind::Move(..))
+  }
+
   pub fn is_invalid(&self) -> bool {
     matches!(self, NodeKind::Invalid(..))
   }
@@ -204,6 +210,7 @@ impl Node {
         => Some(vec![*o, *i, *v]),
       NodeKind::PointerIdent(p)
         => Some(vec![*p]),
+      NodeKind::Move(o) |
       NodeKind::Invalid(o)
         => Some(vec![*o]),
       NodeKind::NullObject | NodeKind::Unknown(_)

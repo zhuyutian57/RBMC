@@ -199,7 +199,8 @@ impl<'cfg> Symex<'cfg> {
         self.make_project(p)
       },
       Operand::Move(p) => {
-        self.symex_move(p)
+        let expr = self.make_project(p);
+        self.ctx._move(expr)
       },
       Operand::Constant(op) 
         => self.make_mirconst(&op.const_),
@@ -267,6 +268,12 @@ impl<'cfg> Symex<'cfg> {
       *expr = not_alloced;
       return;
     }
+
+    if expr.is_move() {
+      *expr = expr.extract_object();
+      return;
+    }
+
   }
 
   pub(super) fn claim(&self, msg: NString, mut expr: Expr) {

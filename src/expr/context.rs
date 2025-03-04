@@ -191,6 +191,11 @@ impl Context {
     self.nodes[i].kind().is_pointer_ident()
   }
 
+  pub fn is_move(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_move()
+  }
+
   pub fn is_invalid(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     self.nodes[i].kind().is_invalid()
@@ -585,6 +590,15 @@ impl ExprBuilder for ExprCtx {
     assert!(pt.ty().is_any_ptr());
     let kind = NodeKind::PointerIdent(pt.id);
     let ty = Type::unsigned_type(UintTy::Usize);
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+
+  fn _move(&self, object: Expr) -> Expr {
+    assert!(object.is_object());
+    let kind = NodeKind::Move(object.id);
+    let ty = object.ty();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }

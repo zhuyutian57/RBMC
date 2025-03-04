@@ -8,14 +8,21 @@ use super::symex::*;
 
 impl<'cfg> Symex<'cfg> {
   /// `Move` semantic: if a value is move, it becomes uninitialized.
-  pub(super) fn symex_move(&mut self, place: &Place) -> Expr {
-    let expr = self.make_project(place);
-    self.exec_state.update_place_state(
-      expr.clone(),
-      PlaceState::Moved
-    );
-    self.move_rec(expr.clone());
-    expr
+  pub(super) fn symex_move(&mut self, expr: Expr) {
+    if let Some(sub_exprs) = expr.sub_exprs() {
+      for e in sub_exprs {
+        self.symex_move(e);
+      }
+    }
+
+    if expr.is_move() {
+      let object = expr.extract_object();
+      self.exec_state.update_place_state(
+        object.clone(),
+        PlaceState::Moved
+      );
+      self.move_rec(object);
+    }
   }
 
   fn move_rec(&mut self, expr: Expr) {
@@ -36,9 +43,8 @@ impl<'cfg> Symex<'cfg> {
           );
         self.move_rec(index);
       }
-    }
-
-    // Maybe more 
+      return;
+    } 
   }
 
 }

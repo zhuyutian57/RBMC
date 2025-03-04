@@ -46,6 +46,8 @@ impl Expr {
   pub fn is_index(&self) -> bool { self.ctx.borrow().is_index(self.id) }
   pub fn is_store(&self) -> bool { self.ctx.borrow().is_store(self.id) }
   pub fn is_pointer_ident(&self) -> bool { self.ctx.borrow().is_pointer_ident(self.id) }
+
+  pub fn is_move(&self) -> bool { self.ctx.borrow().is_move(self.id) }
   pub fn is_invalid(&self) -> bool { self.ctx.borrow().is_invalid(self.id) }
   pub fn is_null_object(&self) -> bool { self.ctx.borrow().is_null_object(self.id) }
   pub fn is_unknown(&self) -> bool { self.ctx.borrow().is_unknown(self.id) }
@@ -91,6 +93,7 @@ impl Expr {
       self.is_address_of() ||
       self.is_index() ||
       self.is_store() ||
+      self.is_move() ||
       self.is_invalid()
     );
     self.sub_exprs().unwrap().remove(0)
@@ -225,7 +228,7 @@ impl Expr {
   }
 
   pub fn has_predicates(&self) -> bool {
-    if self.is_invalid() { return true; }
+    if self.is_invalid() | self.is_move() { return true; }
     match self.sub_exprs() {
       Some(sub_exprs) => {
         sub_exprs
@@ -434,6 +437,14 @@ impl Debug for Expr {
         return write!(f, "{pt:?}");
       }
 
+      if self.is_invalid() {
+        return write!(f, "Invalid({:?})", sub_exprs[0]);
+      }
+
+      if self.is_move() {
+        return write!(f, "Move({:?})", sub_exprs[0]);
+      }
+
       if self.is_null_object() {
         return write!(f, "NULL_OBJECT");
       }
@@ -488,6 +499,7 @@ pub trait ExprBuilder {
 
   fn pointer_ident(&self, pt: Expr) -> Expr;
 
+  fn _move(&self, object: Expr) -> Expr;
   fn invalid(&self, object: Expr) -> Expr;
   fn null_object(&self, ty: Type) -> Expr;
   fn unknown(&self, ty: Type) -> Expr;
