@@ -11,6 +11,7 @@ pub enum SmtStrategy {
 
 #[derive(clap::ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DisplayState {
+  None,
   BB,
   Statement,
   Terminator,
@@ -29,7 +30,7 @@ pub struct Cli {
 
   /// Show state
   #[clap(value_enum)]
-  #[arg(long, default_value_t = DisplayState::BB)]
+  #[arg(long, default_value_t = DisplayState::None)]
   pub show_states: DisplayState,
 
   /// Show VCC
