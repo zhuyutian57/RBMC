@@ -40,6 +40,7 @@ impl State {
 
   pub fn remove_stack_places(&mut self, function_name: NString) {
     self.place_states.remove_stack_places(function_name);
+    self.value_set.remove_stack_places(function_name);
     // TODO: handle reborrow
   }
 
@@ -51,10 +52,9 @@ impl State {
   }
 
   pub fn remove_pointer(&mut self, pt: Expr) {
-    assert!(pt.ty().is_any_ptr() && pt.is_symbol());
-    let symbol = pt.extract_symbol();
-    assert!(symbol.is_level1());
-    self.value_set.remove(symbol.name());
+    assert!(pt.ty().is_any_ptr());
+    let ident = NString::from(format!("{pt:?}"));
+    self.value_set.remove(ident);
   }
 
   pub fn assign(&mut self, expr: Expr, values: ObjectSet) {

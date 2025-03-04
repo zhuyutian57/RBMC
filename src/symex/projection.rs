@@ -71,6 +71,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     guard: Expr,
   ) -> Option<Expr> {
     assert!(pt.ty().is_any_ptr());
+    
     let mut objects = ObjectSet::new();
     self
       ._callback_symex
