@@ -108,8 +108,10 @@ impl VCSystem {
   }
 
   pub fn set_nth_assertion(&mut self, n: usize) {
-    for (i, j) in self.asserts_map.iter() {
-      self.vcs[*j].is_sliced = *i == n; 
+    let m = *self.asserts_map.get(&n).unwrap();
+    for (i, vc) in self.vcs.iter_mut().enumerate() {
+      if vc.is_assert() { vc.is_sliced = (i != m); }
+      else { vc.is_sliced = (i > m); }
     }
   }
 
@@ -127,7 +129,7 @@ impl VCSystem {
       if self.vcs[m].is_sliced { continue; }
       println!("{:?}", self.vcs[m].msg());
       let mut n = 0;
-      for j in 0..m - 1 {
+      for j in 0..m {
         if self.vcs[j].is_sliced { continue; }
         if self.vcs[j].is_assert() { continue; }
         println!("#{n} {:?}", self.vcs[j]);
