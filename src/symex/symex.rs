@@ -89,7 +89,7 @@ impl<'cfg> Symex<'cfg> {
         self.top_mut().inc_pc();
       }
     }
-    self.exec_state.pop_frame();
+    self.symex_end_function();
   }
 
   fn symex_basicblock(&mut self, bb: &BasicBlock) {

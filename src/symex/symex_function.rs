@@ -148,4 +148,46 @@ impl <'cfg> Symex<'cfg> {
 
     self.assign(lhs, rhs, self.ctx._true());
   }
+
+  pub(super) fn symex_return(&mut self) {
+    let n = self.top_mut().function().size();
+    let mut state = self.top_mut().cur_state().clone();
+    self.register_state(n, state);
+
+    self.top_mut().inc_pc();
+  }
+
+  pub(super) fn symex_end_function(&mut self) {
+    let pc = self.top().function().size();
+    // Must exist
+    assert!(self.merge_states(pc));
+
+    let frame = self.exec_state.pop_frame();
+    if !self.can_exec() { return; }
+
+    self.top_mut().cur_state = frame.cur_state.clone();
+    
+    // Assign return value
+    if let Some(ret) = &frame.destination {
+      let lhs = self.make_project(ret);
+      let rhs_ident = frame.local_ident(0);
+      let rhs_ty = frame.function().local_type(0);
+      let rhs = self.exec_state.l0_symbol(rhs_ident, rhs_ty);
+      self.assign(lhs, rhs, self.ctx._true());
+    }
+
+    if let Some(t) = &frame.target {
+      let mut state = self.top().cur_state.clone();
+      state.remove_stack_places(frame.function_id());
+      self.top_mut().add_state(*t, state);
+    }
+
+    // clear namspace
+    self.exec_state.ns.clear_local_symbols(frame.function_id());
+
+    // clear renaming
+    self.exec_state.renaming.borrow_mut().cleanr_locals(frame.function_id());
+
+    self.top_mut().inc_pc();
+  }
 }

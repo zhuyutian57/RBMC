@@ -18,8 +18,8 @@ pub struct Frame<'func> {
   id: usize,
   function: &'func Function,
   /// Previous info. Used for recovering
-  destination: Option<Place>,
-  target: Option<BasicBlockIdx>,
+  pub(super) destination: Option<Place>,
+  pub(super) target: Option<BasicBlockIdx>,
   /// Current Computing
   pc: Pc,
   pub(super) cur_state: State,
@@ -45,11 +45,7 @@ impl<'func> Frame<'func> {
       state_map,
     }
   }
-
-  pub fn destination(&self) -> &Option<Place> { &self.destination }
-
-  pub fn target(&self) -> &Option<BasicBlockIdx> { &self.target }
-
+  
   pub fn cur_pc(&self) -> Option<Pc> {
     if self.pc < self.function.size() {
       Some(self.pc)

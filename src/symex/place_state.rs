@@ -97,10 +97,10 @@ impl PlaceStates {
     }
   }
 
-  pub fn remove_stack_places(&mut self, function_name: NString) {
+  pub fn remove_stack_places(&mut self, function_id: NString) {
     self
       ._place_states_map
-      .retain(|p,_| !p.0.contains(function_name));
+      .retain(|p,_| !p.0.contains(function_id));
   }
 }
 

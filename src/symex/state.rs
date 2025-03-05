@@ -42,9 +42,12 @@ impl State {
     self.place_states.remove(place);
   }
 
-  pub fn remove_stack_places(&mut self, function_name: NString) {
-    self.place_states.remove_stack_places(function_name);
-    self.value_set.remove_stack_places(function_name);
+  pub fn remove_stack_places(&mut self, function_id: NString) {
+    self.place_states.remove_stack_places(function_id);
+    self.value_set.remove_stack_places(function_id);
+    if let Some(renaming) = &self.renaming {
+      renaming.borrow_mut().cleanr_locals(function_id);
+    }
   }
 
   pub fn dealloc_objects(&mut self, pt: Expr) {

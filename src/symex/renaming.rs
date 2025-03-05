@@ -152,6 +152,12 @@ impl Renaming {
     for sub_expr in sub_exprs.iter_mut() { self.l2_rename(sub_expr); }
     expr.replace_sub_exprs(sub_exprs);
   }
+
+  pub(super) fn cleanr_locals(&mut self, function_id: NString) {
+    self.l1_renaming.retain(|x, _| !x.contains(function_id));
+    self.l2_renaming.retain(|x, _| !x.contains(function_id));
+    self.constant_map.retain(|x, _| x.ident() != function_id);
+  }
 }
 
 

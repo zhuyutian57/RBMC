@@ -34,8 +34,10 @@ impl Namespace {
     self.symbols.insert(symbol.ident(), expr);
   }
 
-  pub fn remove_symbol(&mut self, name: NString) {
-    self.symbols.remove(&name);
+  pub fn clear_local_symbols(&mut self, function_id: NString) {
+    self
+      .symbols
+      .retain(|x, _| !x.contains(function_id));
   }
 
   pub fn lookup_symbol(&self, ident: NString) -> Expr {

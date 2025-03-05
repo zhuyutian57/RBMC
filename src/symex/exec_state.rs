@@ -114,29 +114,9 @@ impl<'cfg> ExecutionState<'cfg> {
     for i in 0..self.top().function().locals().len() { self.l0_local(i); }
   }
 
-  pub fn pop_frame(&mut self) {
+  pub fn pop_frame(&mut self) -> Frame<'cfg> {
     assert!(!self.frames.is_empty());
-    let mut frame = self.frames.pop().unwrap();
-    if self.frames.is_empty() { return; }
-
-    let new_states =
-      frame.states_from(frame.function().size());
-
-    if let Some(t) = frame.target() {
-      if let Some(states) = new_states {
-        for state in states {
-          self.top_mut().add_state(*t, state);
-        }
-      }
-    }
-
-    // clear namspace
-    for i in 0..frame.function().locals().len() {
-      let ident = frame.local_ident(i);
-      self.ns.remove_symbol(ident);
-    }
-
-    self.top_mut().inc_pc();
+    self.frames.pop().unwrap()
   }
 
   pub fn l0_symbol(&mut self, ident: NString, ty: Type) -> Expr {

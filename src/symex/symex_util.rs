@@ -35,7 +35,7 @@ impl<'cfg> Symex<'cfg> {
 
   pub(super) fn merge_states(&mut self, pc: Pc) -> bool {
     let state_vec = self.top_mut().states_from(pc);
-
+  
     // We have put all states that reach current pc in the
     // queue. Thus, we first construct an empty state.
     // That is, make `gurad` of current state be `false`.

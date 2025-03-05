@@ -16,5 +16,4 @@ pub(super) mod symex_dealloc;
 pub(super) mod symex_function;
 pub(super) mod symex_memory;
 pub(super) mod symex_move;
-pub(super) mod symex_return;
 pub(super) mod symex_util;
