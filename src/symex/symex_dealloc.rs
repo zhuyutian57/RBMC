@@ -6,7 +6,7 @@ use super::symex::*;
 use super::projection::*;
 
 impl<'cfg> Symex<'cfg> {
-  pub(super) fn symex_dealloc(&mut self, pt: Expr, ty: Type) {
+  pub(super) fn symex_dealloc(&mut self, pt: Expr) {
     assert!(pt.ty().is_ptr());
     // Generate assertions
     self.make_deref(pt.clone(), Mode::Dealloc, self.ctx._true());

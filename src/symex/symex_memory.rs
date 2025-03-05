@@ -5,7 +5,7 @@ use crate::symbol::nstring::*;
 use super::symex::*;
 
 impl<'cfg> Symex<'cfg> {
-  pub(super) fn symex_alloc(&mut self, ty: Type, kind: AllocKind) -> Expr {
+  pub(super) fn symex_alloc(&mut self, ty: Type) -> Expr {
     let mut object = self.exec_state.new_object(ty);
     self.track_new_object(object.clone());
     object

@@ -24,22 +24,6 @@ use super::place_state::*;
 use super::projection::*;
 use super::state::State;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum AllocKind {
-  Alloc,
-  Box,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum FnKind {
-  Unwind(FunctionIdx),
-  Layout(Type),
-  Allocation(AllocKind, Type),
-  Dealloc(Operand, Type),
-  AsMut(Operand),
-  AsRef(Operand),
-}
-
 pub struct Symex<'cfg> {
   pub(super) config : &'cfg Config,
   pub(super) program: &'cfg Program,

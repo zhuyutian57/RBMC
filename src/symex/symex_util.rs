@@ -217,7 +217,7 @@ impl<'cfg> Symex<'cfg> {
     }
   }
 
-  pub(super) fn make_layout(&mut self, arg: &Operand) -> Type {
+  pub(super) fn make_type(&mut self, arg: &Operand) -> Type {
     match arg {
       Operand::Copy(p) |
       Operand::Move(p) => {
