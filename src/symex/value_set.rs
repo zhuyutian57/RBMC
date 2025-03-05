@@ -55,10 +55,10 @@ impl ValueSet {
     for object in objects { s.insert(object); }    
   }
 
-  pub fn remove_stack_places(&mut self, function_name: NString) {
+  pub fn remove_stack_places(&mut self, function_id: NString) {
     self
       ._points_to_map
-      .retain(|k, _| !k.contains(function_name));
+      .retain(|k, _| !k.contains(function_id));
   }
 }
 
