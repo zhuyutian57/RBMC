@@ -1,6 +1,7 @@
 
 use std::fmt::Error;
 
+use num_bigint::BigInt;
 use stable_mir::mir::Operand;
 use stable_mir::mir::Place;
 use stable_mir::target::*;
@@ -108,19 +109,23 @@ impl<'cfg> Symex<'cfg> {
 
   pub(super) fn memory_leak_check(&self) {
     for object in &self.exec_state.objects {
-      let s = self.top().cur_state.place_states.place_state(object);
-      if s.is_own() || s.is_dealloced() { continue; }
+      let mut l1_object = object.clone();
+      self.exec_state.rename(&mut l1_object, Level::Level1);
+      let place_state =
+        self.top().cur_state.place_states.place_state(&l1_object);
+      if place_state.is_own() || place_state.is_dealloced() { continue; }
 
       let msg = 
         NString::from(format!("memory leak: {object:?} is not dealloced"));
       let alloac_array =
-        self.exec_state.ns.lookup_symbol(NString::ALLOC_SYM);
+        self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
       let address_of =
         self.ctx.address_of(object.clone(), object.extract_address_type());
+      let ident = self.ctx.pointer_ident(address_of);
       let is_leak = 
         self.ctx.index(
           alloac_array,
-          address_of,
+          ident,
           Type::bool_type()
         );
       self.claim(msg, is_leak);
@@ -168,11 +173,7 @@ impl<'cfg> Symex<'cfg> {
             value_vec.push(Constant::Bool(raw_bytes[0] == 1));
             continue;
           }
-          let value =
-            read_target_integer(
-              raw_bytes.as_slice(),
-              fields[i].1.is_signed()
-            );
+          let value = read_target_integer(raw_bytes.as_slice());
           value_vec.push(Constant::Integer(value));
         }
 

@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use std::fmt::Error;
 use std::hash::Hash;
 
+use num_bigint::BigInt;
 use stable_mir::mir::Mutability;
 
 use crate::symbol::symbol::*;

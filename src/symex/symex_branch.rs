@@ -1,4 +1,5 @@
 
+use num_bigint::BigInt;
 use stable_mir::mir::*;
 
 use crate::expr::expr::*;
@@ -46,7 +47,7 @@ impl<'cfg> Symex<'cfg> {
     if discr_expr.ty().is_integer() {
       self.ctx.eq(
         discr_expr.clone(),
-        self.ctx.constant_integer(BigInt(false, i), discr_expr.ty())
+        self.ctx.constant_integer(BigInt::ZERO, discr_expr.ty())
       )
     } else if discr_expr.ty().is_bool() {
       if i == 0 {

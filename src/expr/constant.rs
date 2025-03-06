@@ -1,35 +1,8 @@
 use std::fmt::Debug;
 
+use num_bigint::BigInt;
+
 use super::ty::Type;
-
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Hash)]
-pub struct BigInt(pub bool, pub u128);
-
-impl BigInt {
-  pub fn zero() -> Self { BigInt(false, 0) }
-
-  pub fn is_negative(&self) -> bool { self.0 }
-  pub fn is_positive(&self) -> bool { !self.0 }
-  
-  pub fn to_int(&self) -> i128 {
-    (self.1 as i128) * if self.0 { -1 } else { 1 }
-  }
-
-  pub fn to_uint(&self) -> u128 {
-    assert!(self.is_positive());
-    self.1
-  }
-}
-
-impl Debug for BigInt {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}{}", if self.0 { "-" } else { "" }, self.1)
-  }
-}
-
-impl ToString for BigInt {
-  fn to_string(&self) -> String { format!("{self:?}") }
-}
 
 pub type StructField = (Constant, Type);
 
@@ -72,7 +45,7 @@ impl Constant {
 
   pub fn to_integer(&self) -> BigInt {
     match self {
-      Constant::Integer(i) => *i,
+      Constant::Integer(i) => i.clone(),
       _ => panic!("Not integer constant"),
     }
   }

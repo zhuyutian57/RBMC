@@ -159,19 +159,20 @@ impl <'cfg> Symex<'cfg> {
     let pc = self.top().function().size();
     // Must exist
     assert!(self.merge_states(pc));
-
-    let frame = self.exec_state.pop_frame();
     if !self.exec_state.can_exec() { return; }
 
+    let frame = self.exec_state.pop_frame();
     self.top_mut().cur_state = frame.cur_state.clone();
     
     // Assign return value
-    if let Some(ret) = &frame.destination {
-      let lhs = self.make_project(ret);
-      let rhs_ident = frame.local_ident(0);
-      let rhs_ty = frame.function().local_type(0);
-      let rhs = self.exec_state.l0_symbol(rhs_ident, rhs_ty);
-      self.assign(lhs, rhs, self.ctx._true());
+    if !frame.function().local_type(0).is_unit() {
+      if let Some(ret) = &frame.destination {
+        let lhs = self.make_project(ret);
+        let rhs_ident = frame.local_ident(0);
+        let rhs_ty = frame.function().local_type(0);
+        let rhs = self.exec_state.l0_symbol(rhs_ident, rhs_ty);
+        self.assign(lhs, rhs, self.ctx._true());
+      }
     }
 
     if let Some(t) = &frame.target {

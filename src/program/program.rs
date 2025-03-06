@@ -2,11 +2,11 @@
 use std::collections::HashMap;
 use std::io::*;
 
+use num_bigint::BigInt;
 use stable_mir::*;
 use stable_mir::mir::*;
 use stable_mir::target::*;
 
-use crate::expr::constant::BigInt;
 use crate::expr::ty::*;
 use crate::symbol::nstring::NString;
 
@@ -119,7 +119,7 @@ impl Program {
   pub fn show(&self) {
     let target = MachineInfo::target();
     println!(
-      " Crate:{:?}, Endian:{}, MachineSize:{}",
+      "Crate:{:?}, Endian:{}, MachineSize:{}",
       self._crate,
       match target.endian {
         Endian::Little => "Little",
@@ -128,70 +128,19 @@ impl Program {
       target.pointer_width.bytes()
     );
     for function in self.functions.iter() {
-      println!("\n --->> Function: {:?}", function.name());
+      println!("--->>> Function: {:?}", function.name());
       function
         .body()
         .dump(&mut stdout().lock(), &function.name().to_string())
         .unwrap();
+      println!("<<<--- End: {:?}\n", function.name());
     }
   }
 }
 
-macro_rules! READ_INT {
-  ($ty:ident, $bytes:ident) => {
-    {
-      let buf = $bytes.try_into().unwrap();
-      let i = 
-        match MachineInfo::target().endian {
-          Endian::Little => $ty::from_le_bytes(buf),
-          _ => $ty::from_be_bytes(buf),
-        } as i128;
-      Ok(BigInt(i < 0, i.abs() as u128))
-    }
-  };
-}
-
-macro_rules! READ_UINT {
-  ($ty:ident, $bytes:ident) => {
-    {
-      let buf = $bytes.try_into().unwrap();
-      Ok(
-        BigInt(
-          false,
-          match MachineInfo::target().endian {
-            Endian::Little => $ty::from_le_bytes(buf),
-            _ => $ty::from_be_bytes(buf),
-          } as u128
-        )
-      )
-    }
-  };
-}
-
-pub(crate) fn read_target_integer(
-  bytes: &[u8],
-  is_signed: bool,
-) -> BigInt {
-  match is_signed {
-    true => {
-      match bytes.len() {
-        1 => READ_INT!(i8, bytes),
-        2 => READ_INT!(i16, bytes),
-        4 => READ_INT!(i32, bytes),
-        8 => READ_INT!(i64, bytes),
-        16 => READ_INT!(i128, bytes),
-        _ => Err("Wrong bytes"),
-      }
-    },
-    false => {
-      match bytes.len() {
-        1 => READ_UINT!(u8, bytes),
-        2 => READ_UINT!(u16, bytes),
-        4 => READ_UINT!(u32, bytes),
-        8 => READ_UINT!(u64, bytes),
-        16 => READ_UINT!(u128, bytes),
-        _ => Err("Wrong bytes"),
-      }
-    },
-  }.expect("Wrong bytes")
+pub(crate) fn read_target_integer(bytes: &[u8]) -> BigInt {
+  match MachineInfo::target().endian {
+    Endian::Big => BigInt::from_signed_bytes_be(bytes),
+    Endian::Little => BigInt::from_signed_bytes_le(bytes),
+  }
 }

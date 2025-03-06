@@ -56,7 +56,7 @@ impl<'cfg> Bmc<'cfg> {
     let mut slicer = Slicer::default();
     let size = self.vc_system.borrow().num_asserts();
     for i in 0..size {
-      println!("Verifying condition #{i}:");
+      print!("Verifying condition {i} ");
 
       self.vc_system.borrow_mut().set_nth_assertion(i);
 

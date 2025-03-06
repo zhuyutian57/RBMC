@@ -4,6 +4,7 @@ use std:: collections::HashMap;
 use std::fmt::Debug;
 use std::rc::Rc;
 
+use num_bigint::BigInt;
 use stable_mir::ty::*;
 
 use crate::symbol::nstring::*;
@@ -297,9 +298,9 @@ impl ExprBuilder for ExprCtx {
   }
 
   fn constant_usize(&self, i: usize) -> Expr {
-    let bigint = BigInt(false, i as u128);
+    let integer = BigInt::from(i);
     let ty = Type::unsigned_type(UintTy::Usize);
-    self.constant_integer(bigint, ty)
+    self.constant_integer(integer, ty)
   }
 
   /// `ty` indicates the pointer type

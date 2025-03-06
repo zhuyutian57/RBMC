@@ -56,7 +56,10 @@ impl<'cfg> ExecutionState<'cfg> {
     self.top_mut().add_state(0, State::new(ctx));
   }
 
-  pub fn can_exec(&self) -> bool { !self.frames.is_empty() }
+  pub fn can_exec(&self) -> bool {
+    self.frames.len() > 1 ||
+      self.frames.len() == 1 && self.top().cur_pc() != None
+  }
 
   pub fn new_object(&mut self, ty: Type) -> Expr {
     let name =

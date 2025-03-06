@@ -1,7 +1,8 @@
 
 use std::fmt::Debug;
 
-use crate::expr::constant::BigInt;
+use num_bigint::BigInt;
+
 use crate::expr::constant::Constant;
 use crate::expr::expr::*;
 use crate::expr::op::*;
@@ -175,7 +176,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
   fn convert_constant(&mut self, constant: &Constant, ty: Type) -> Ast {
     match constant {
       Constant::Bool(b) => self.mk_smt_bool(*b),
-      Constant::Integer(i) => self.mk_smt_int(*i),
+      Constant::Integer(i) => self.mk_smt_int(i.clone()),
       Constant::Null => self.convert_null(),
       Constant::Array(c, t) => {
         let domain = self.convert_sort(ty.array_domain());
@@ -214,7 +215,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
       let sort = self.convert_tuple_sort(ty);
       return self.mk_tuple_symbol(name, &sort)
     }
-    panic!("{ty:?} symbol is not support?")
+    panic!("{name:?} {ty:?} symbol is not support?")
   }
 
   fn convert_address_of(&mut self, object: Expr) -> Ast {
@@ -226,7 +227,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
 
     if inner_expr.is_symbol() {
       let ident = self.convert_object_space(&inner_expr);
-      let offset = self.mk_smt_int(BigInt(false, 0));
+      let offset = self.mk_smt_int(BigInt::ZERO);
       return self.convert_pointer(&ident, &offset);
     }
 

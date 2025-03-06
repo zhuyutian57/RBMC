@@ -1,6 +1,7 @@
 
 use std::collections::HashMap;
 
+use num_bigint::BigInt;
 use stable_mir::mir::Mutability;
 
 use z3;
@@ -123,8 +124,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
   fn convert_null(&self) -> z3::ast::Dynamic<'ctx> {
     self.mk_pointer(
-      &self.mk_smt_int(BigInt::zero()),
-      &self.mk_smt_int(BigInt::zero())
+      &self.mk_smt_int(BigInt::ZERO),
+      &self.mk_smt_int(BigInt::ZERO)
     )
   }
 
@@ -167,7 +168,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     object: Expr,
     field: Expr
   ) -> z3::ast::Dynamic<'ctx> {
-    let i = field.extract_integer().to_uint() as usize;
+    let i = field.extract_integer();
     self.mk_tuple_select(object, i)
   }
 
@@ -177,7 +178,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     field: Expr,
     value: Expr
   ) -> z3::ast::Dynamic<'ctx> {
-    let i = field.extract_constant().to_integer().to_uint() as usize;
+    let i = field.extract_constant().to_integer();
     self.mk_tuple_store(object, i, value)
   }
 
@@ -485,31 +486,36 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     f.apply(args.as_slice())
   }
 
-  fn mk_tuple_select(&mut self, object: Expr, field: usize) -> z3::ast::Dynamic<'ctx> {
+  fn mk_tuple_select(
+    &mut self,
+    object: Expr,
+    field: BigInt
+  ) -> z3::ast::Dynamic<'ctx> {
     let args = 
       &[&self.convert_ast(object.clone()) as &dyn Ast];
     let dtsort =
       self.tuple_sorts.get(&object.ty())
       .expect(format!("{object:?} is not struct").as_str());
-    assert!(field < dtsort.variants[0].accessors.len());
+    assert!(field >= BigInt::ZERO);
+    assert!(field < dtsort.variants[0].accessors.len().into());
     dtsort
       .variants[0]
-      .accessors[field]
+      .accessors[field.bits() as usize]
       .apply(args)
   }
   
   fn mk_tuple_store(
     &mut self,
     object: Expr,
-    field: usize,
+    field: BigInt,
     value: Expr
   ) -> z3::ast::Dynamic<'ctx> {
     let n = self.tuple_sorts.get(&object.ty()).unwrap().variants[0].accessors.len();
     let mut fields_values = Vec::with_capacity(n);
     let update_value = self.convert_ast(value);
     for i in 0..n {
-      if i != field {
-        fields_values.push(self.mk_tuple_select(object.clone(), i));
+      if field != i.into() {
+        fields_values.push(self.mk_tuple_select(object.clone(), i.into()));
       } else {
         fields_values.push(update_value.clone());
       }
@@ -579,12 +585,12 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
     let ident = self.mk_int_symbol(space_ident);
     let base = self.mk_int_symbol(space_base);
-    let len = self.mk_smt_int(BigInt(false, space_len as u128));
+    let len = self.mk_smt_int(BigInt::from(space_len));
 
     // Ident is greater than 0
-    self.assert(self.mk_gt(&ident, &self.mk_smt_int(BigInt(false, 0))));
+    self.assert(self.mk_gt(&ident, &self.mk_smt_int(BigInt::ZERO)));
     // base is also greater than 0
-    self.assert(self.mk_gt(&base, &self.mk_smt_int(BigInt(false, 0))));
+    self.assert(self.mk_gt(&base, &self.mk_smt_int(BigInt::ZERO)));
     // disjoint relationship
     for (i, (b, l))
       in self.pointer_logic.object_spaces().values() {
