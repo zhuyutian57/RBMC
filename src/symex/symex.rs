@@ -43,7 +43,7 @@ impl<'cfg> Symex<'cfg> {
     let alloc_array =
       symex.exec_state.ns.lookup_object(NString::ALLOC_SYM);
     let const_array =
-      ctx.constant_array(Constant::Bool(false), Type::bool_type());
+      ctx.constant_array(ctx.constant_bool(false), None);
     symex.assign(alloc_array, const_array, ctx._true());
     symex
   }
@@ -154,6 +154,13 @@ impl<'cfg> Symex<'cfg> {
       } => self.symex_call(func, args, destination, target),
       TerminatorKind::Return
         => self.symex_return(),
+      TerminatorKind::Assert { 
+        cond,
+        expected,
+        msg,
+        target,
+        ..
+      } => self.symex_assert(cond, expected, msg, target),
       _ => {},
     }
   }

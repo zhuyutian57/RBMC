@@ -147,6 +147,8 @@ impl<'cfg> Symex<'cfg> {
 
   pub(super) fn make_mirconst(&mut self, mirconst: &MirConst) -> Expr {
     match mirconst.kind() {
+      ConstantKind::Ty(tyconst)
+        => Ok(self.make_tyconst(tyconst)),
       ConstantKind::Allocated(allocation) => {
         let ty = Type::from(mirconst.ty());
         let fields =
@@ -199,6 +201,7 @@ impl<'cfg> Symex<'cfg> {
     }.expect("Not support")
   }
 
+  /// Return `l1` expr
   pub(super) fn make_operand(&mut self, operand: &Operand) -> Expr {
     match operand {
       Operand::Copy(p) => {
@@ -210,6 +213,21 @@ impl<'cfg> Symex<'cfg> {
       },
       Operand::Constant(op) 
         => self.make_mirconst(&op.const_),
+    }
+  }
+
+  pub(super) fn make_tyconst(&mut self, tyconst: &TyConst) -> Expr {
+    match tyconst.kind() {
+      TyConstKind::Value(ty, allocation) => {
+        let ty = Type::from(*ty);
+        if ty.is_unsigned() {
+          let n = tyconst.eval_target_usize().expect("Not usize") as usize;
+          self.ctx.constant_integer(BigInt::from(n), ty)
+        } else {
+          todo!()
+        }
+      },
+      _ => todo!("{:?}", tyconst.kind())
     }
   }
 

@@ -11,6 +11,7 @@ use z3::ast::Ast;
 use crate::expr::constant::*;
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
+use crate::program::program::*;
 use crate::solvers::smt::smt_conv::*;
 use crate::solvers::smt::smt_memspace::*;
 use crate::solvers::smt::smt_tuple::*;
@@ -514,7 +515,7 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     assert!(field < dtsort.variants[0].accessors.len().into());
     dtsort
       .variants[0]
-      .accessors[field.bits() as usize]
+      .accessors[bigint_to_usize(&field)]
       .apply(args)
   }
   

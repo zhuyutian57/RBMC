@@ -3,6 +3,8 @@ use stable_mir::mir::*;
 
 use crate::expr::expr::*;
 use crate::expr::ty::*;
+use crate::program::program::bigint_to_u64;
+use crate::program::program::bigint_to_usize;
 use crate::symbol::symbol::*;
 use crate::symex::place_state::NPlace;
 use crate::symex::place_state::PlaceState;
@@ -161,7 +163,15 @@ impl<'cfg> Symex<'cfg> {
         address_of
       },
       Rvalue::Use(operand) => self.make_operand(operand),
-      _ => todo!(),
+      Rvalue::Repeat(operand, tyconst) => {
+        let value = self.make_operand(operand);
+        let len_expr = self.make_tyconst(tyconst);
+        // Carefully for bits
+        let bigint = len_expr.extract_constant().to_integer();
+        let len = bigint_to_u64(&bigint);
+        self.ctx.constant_array(value, Some(len))
+      },
+      _ => todo!("{rvalue:?}"),
     }
   }
 

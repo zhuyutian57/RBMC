@@ -151,9 +151,6 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     assert!(object.ty().is_struct());
 
     let ctx = object.ctx.clone();
-
-    // TODO: shall we add bound check here?
-
     let i = ctx.constant_usize(field);
     
     let index = ctx.index(object, i, Type::from(ty));
@@ -162,7 +159,15 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
 
   /// Visit an array/slice. Return `Index(array/slice, i)`.
   fn project_index(&mut self, object: Expr, index: Expr) -> Expr {
-    todo!()
+    let array_ty = object.ty();
+    assert!(array_ty.is_array());
+    
+    // Bound check
+    self.bound_check(object.clone(), index.clone());
+
+    let ctx = object.ctx.clone();
+    let index = ctx.index(object, index, array_ty.array_range());
+    ctx.object(index)
   }
 
   fn make_invalid_object(&mut self, ty: Type) -> Expr {
@@ -187,6 +192,22 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     let msg =
       NString::from(format!("dereference failure: {object:?} is not alloced"));
     self._callback_symex.claim(msg, ctx.and(guard, invalid));
+  }
+
+  fn bound_check(&mut self, object: Expr, index: Expr) {
+    let ctx = object.ctx.clone();
+    let array_ty = object.ty();
+    let s = array_ty.array_size();
+    if let Some(len) = s {
+      // If the array/slice is finite, the assertion must be
+      // in the mir. No need to check again
+      if len > 0 { return; }
+      let out_of_bound =
+        ctx.ge(index.clone(), ctx.constant_usize(len as usize));
+      let msg =
+        NString::from(format!("bound check: {object:?}[{index:?}] is out-of-bound"));
+      self._callback_symex.claim(msg, out_of_bound);
+    }
   }
 
   fn dereference_null(&mut self, pt: Expr, guard: Expr) {

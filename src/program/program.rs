@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use std::io::*;
 
 use num_bigint::BigInt;
+use num_bigint::Sign;
+use stable_mir::ty::UintTy;
 use stable_mir::*;
 use stable_mir::mir::*;
 use stable_mir::target::*;
@@ -143,4 +145,15 @@ pub(crate) fn read_target_integer(bytes: &[u8]) -> BigInt {
     Endian::Big => BigInt::from_signed_bytes_be(bytes),
     Endian::Little => BigInt::from_signed_bytes_le(bytes),
   }
+}
+
+pub fn bigint_to_u64(bigint: &BigInt) -> u64 {
+  let (sign, digits) = bigint.to_u64_digits();
+  assert!(sign == Sign::NoSign || sign == Sign::Plus);
+  assert!(digits.len() == 1);
+  digits[0]
+}
+
+pub fn bigint_to_usize(bigint: &BigInt) -> usize {
+  bigint_to_u64(bigint) as usize
 }

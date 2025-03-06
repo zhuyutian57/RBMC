@@ -10,6 +10,7 @@ mod value_set;
 
 pub mod symex;
 pub(super) mod symex_assign;
+pub(super) mod symex_assert;
 pub(super) mod symex_branch;
 pub(super) mod symex_drop;
 pub(super) mod symex_dealloc;

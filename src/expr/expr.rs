@@ -449,7 +449,7 @@ pub trait ExprBuilder {
   fn constant_integer(&self, i: BigInt, ty: Type) -> Expr;
   fn constant_usize(&self, i: usize) -> Expr;
   fn null(&self, ty: Type) -> Expr;
-  fn constant_array(&self, constant: Constant, elem_ty: Type) -> Expr;
+  fn constant_array(&self, constant: Expr, len: Option<u64>) -> Expr;
   fn constant_struct(&self, fields: Vec<StructField>, ty: Type) -> Expr;
   fn mk_symbol(&self, symbol: Symbol, ty: Type) -> Expr;
   fn mk_type(&self, ty: Type) -> Expr;
