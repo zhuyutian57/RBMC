@@ -81,10 +81,16 @@ impl Type {
   pub fn is_fn(&self) -> bool { self.0.kind().is_fn() }
 
   pub fn is_layout(&self) -> bool { format!("{self:?}") == "Layout" }
-
   
   pub fn is_struct(&self) -> bool {
     self.0.kind().is_struct() && !self.is_box() && !self.is_layout()
+  }
+
+  pub fn is_tuple(&self) -> bool {
+    match self.0.kind().rigid() {
+      Some(r) => matches!(r, RigidTy::Tuple(..)),
+      None => false,
+    }
   }
 
   pub fn is_ref(&self) -> bool { self.0.kind().is_ref() }

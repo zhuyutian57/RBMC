@@ -222,11 +222,15 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     assert!(object.is_object());
     let inner_expr = object.extract_inner_expr();
     if inner_expr.is_index() {
-      todo!()
+      let inner_object = inner_expr.extract_object();
+      let inner_offset = inner_expr.extract_index();
+      let ident = self.convert_object_space(&inner_object);
+      let offset = self.convert_ast(inner_offset);
+      return self.convert_pointer(&ident, &offset);
     }
 
     if inner_expr.is_symbol() {
-      let ident = self.convert_object_space(&inner_expr);
+      let ident = self.convert_object_space(&object);
       let offset = self.mk_smt_int(BigInt::ZERO);
       return self.convert_pointer(&ident, &offset);
     }

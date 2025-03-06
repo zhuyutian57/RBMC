@@ -55,12 +55,14 @@ impl<'ctx> SmtSolver<'ctx> for Z3Conv<'ctx> {
   }
 
   fn assert_assign(&mut self, lhs: Expr, rhs: Expr) {
-    let a = self.convert_ast(lhs);
+    let a = self.convert_ast(lhs.clone());
     let b = self.convert_ast(rhs);
 
     let res = a._eq(&b);
 
     self.assert(z3::ast::Dynamic::from(res));
+
+    self.cache_ast(lhs, b);
   }
 
   fn assert_expr(&mut self, expr: Expr) {
@@ -160,7 +162,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   }
 
   fn convert_object_space(&mut self, object: &Expr) -> z3::ast::Dynamic<'ctx> {
-    self.create_object_space(object)
+    assert!(object.is_object() && object.extract_inner_expr().is_symbol());
+    self.create_object_space(&object.extract_inner_expr())
   }
 
   fn convert_tuple_load(
@@ -447,18 +450,29 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
 impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn create_tuple_sort(&mut self, ty: Type) -> z3::Sort<'ctx> {
-    assert!(ty.is_struct());
+    assert!(ty.is_struct() || ty.is_tuple());
+    let prefix =
+      if ty.is_struct() { "_struct_" } else { "_tuple_" }.to_string();
+
     if self.tuple_sorts.contains_key(&ty) {
       return self.tuple_sorts.get(&ty).unwrap().sort.clone();
     }
 
     let def = ty.struct_def();
-    let name = "_struct_".to_string() + def.0.to_string().as_str();
+    let name = prefix + def.0.to_string().as_str();
+    let mut cache_field_names = Vec::new();
+    for (i, def) in def.1.iter().enumerate() {
+      let field_name =
+        name.clone() + "_" +
+        if def.0.is_empty() { i.to_string().into() }
+        else { def.0 }.as_str();
+      cache_field_names.push(field_name);
+    }
     let mut fields = Vec::new();
-    for field in def.1 {
+    for (i, (_, ty)) in def.1.iter().enumerate() {
       let accessor =
-        z3::DatatypeAccessor::Sort(self.convert_sort(field.1));
-      fields.push((field.0.as_str(), accessor));
+        DatatypeAccessor::Sort(self.convert_sort(*ty));
+      fields.push((cache_field_names[i].as_str(), accessor));
     }
 
     let dtsort =

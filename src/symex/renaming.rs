@@ -115,8 +115,7 @@ impl Renaming {
     expr.replace_sub_exprs(sub_exprs);
   }
 
-  pub fn l2_rename(&mut self, expr: &mut Expr) {
-
+  pub fn l2_rename(&mut self, expr: &mut Expr, propagate: bool) {
     if expr.is_address_of() {
       self.l1_rename(expr);
       return;
@@ -130,7 +129,7 @@ impl Renaming {
           symbol = self.current_l2_symbol(symbol.ident(), symbol.l1_num());
         }
 
-        if self.constant_map.contains_key(&symbol) {
+        if propagate && self.constant_map.contains_key(&symbol) {
           *expr = self.constant_map.get(&symbol).unwrap().clone();
         } else {
           *expr = expr.ctx.mk_symbol(symbol, expr.ty());
@@ -138,10 +137,16 @@ impl Renaming {
       }
       return;
     }
-
+    
     // Expr is not a leaf. There must be some sub-nodes in AST
     let mut sub_exprs = expr.sub_exprs().unwrap();
-    for sub_expr in sub_exprs.iter_mut() { self.l2_rename(sub_expr); }
+
+    for (i, sub_expr) in sub_exprs.iter_mut().enumerate() {
+      let prop =
+        if expr.is_store() && i == 0 { false } else { propagate };
+      self.l2_rename(sub_expr, prop);
+    }
+
     expr.replace_sub_exprs(sub_exprs);
   }
 

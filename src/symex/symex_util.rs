@@ -83,9 +83,9 @@ impl<'cfg> Symex<'cfg> {
       nrenaming.l1_rename(&mut new_rhs);
 
       // Current assignment
-      self.exec_state.renaming.borrow_mut().l2_rename(&mut cur_rhs);
+      self.exec_state.renaming.borrow_mut().l2_rename(&mut cur_rhs, true);
       // Other assignment
-      nrenaming.l2_rename(&mut new_rhs);
+      nrenaming.l2_rename(&mut new_rhs, true);
 
       let rhs = 
         if self.exec_state.cur_state().guard.is_false() {

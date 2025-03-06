@@ -186,7 +186,7 @@ impl<'cfg> ExecutionState<'cfg> {
     match level {
       Level::Level0 => return,
       Level::Level1 => self.renaming.borrow_mut().l1_rename(expr),
-      Level::Level2 => self.renaming.borrow_mut().l2_rename(expr),
+      Level::Level2 => self.renaming.borrow_mut().l2_rename(expr, true),
     };
   }
 

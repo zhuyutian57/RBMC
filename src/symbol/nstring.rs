@@ -62,6 +62,10 @@ impl NString {
   pub const ALLOC_SYM: NString = NString(1);
   pub const INVALID_OBJECT: NString = NString(2);
 
+  pub fn is_empty(&self) -> bool {
+    *self == NString::EMPTY
+  }
+
   pub fn contains(&self, str: NString) -> bool {
     let string = string_m().get_string(self.0);
     let sub_str = string_m().get_string(str.0);
