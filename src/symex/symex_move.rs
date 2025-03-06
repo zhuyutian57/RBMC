@@ -1,9 +1,5 @@
 
-use stable_mir::mir::Place;
-
 use crate::expr::expr::*;
-use crate::expr::ty::*;
-use super::place_state::*;
 use super::symex::*;
 
 impl<'cfg> Symex<'cfg> {

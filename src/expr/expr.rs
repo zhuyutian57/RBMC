@@ -6,8 +6,6 @@ use std::hash::Hash;
 use stable_mir::mir::Mutability;
 
 use crate::symbol::symbol::*;
-use crate::NString;
-
 use super::ast::*;
 use super::constant::*;
 use super::context::*;

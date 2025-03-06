@@ -1,7 +1,5 @@
 
 use crate::expr::expr::Expr;
-use crate::program::program::Program;
-use crate::vc::vc::*;
 
 use super::context::SolverCtx;
 use super::smt::smt_conv::*;
@@ -20,7 +18,6 @@ pub struct Solver<'ctx> {
 
 impl<'ctx> Solver<'ctx> {
   pub fn new(solver_ctx: &'ctx SolverCtx) -> Self {
-    
     let mut smt_solver =
       match solver_ctx {
         SolverCtx::Z3(ctx)

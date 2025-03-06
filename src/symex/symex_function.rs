@@ -8,7 +8,6 @@ use stable_mir::CrateDef;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::program::program::*;
-use crate::symbol::symbol::Level;
 use crate::NString;
 use super::place_state::*;
 use super::symex::*;
@@ -52,7 +51,6 @@ impl <'cfg> Symex<'cfg> {
           self.symex_dealloc(pt);
         },
         FnKind::PtrEq => self.ptr_eq(dest, args),
-        _ => panic!("Need implement"),
     };
     if matches!(fnkind, FnKind::Unwind(_)) { return; }
     if let Some(t) = target {
@@ -151,7 +149,7 @@ impl <'cfg> Symex<'cfg> {
 
   pub(super) fn symex_return(&mut self) {
     let n = self.top_mut().function().size();
-    let mut state = self.top_mut().cur_state().clone();
+    let state = self.top_mut().cur_state().clone();
     self.register_state(n, state);
 
     self.top_mut().inc_pc();
@@ -163,7 +161,7 @@ impl <'cfg> Symex<'cfg> {
     assert!(self.merge_states(pc));
 
     let frame = self.exec_state.pop_frame();
-    if !self.can_exec() { return; }
+    if !self.exec_state.can_exec() { return; }
 
     self.top_mut().cur_state = frame.cur_state.clone();
     

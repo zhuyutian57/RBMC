@@ -1,14 +1,10 @@
 
 use stable_mir::mir::*;
-use stable_mir::ty::UintTy;
 
-use crate::expr::constant::BigInt;
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
 use crate::symbol::symbol::*;
-use crate::vc::vc::VCSystem;
 use crate::NString;
-use super::exec_state::*;
 use super::symex::Symex;
 use super::value_set::*;
 
@@ -171,7 +167,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
 
   fn make_invalid_object(&mut self, ty: Type) -> Expr {
     let ctx = self._callback_symex.ctx.clone();
-    let mut l0_symbol =
+    let l0_symbol =
       self
         ._callback_symex
         .exec_state

@@ -214,7 +214,7 @@ impl Debug for Type {
           write!(f, "{name}")
         }
       },
-      RigidTy::Array(ty, c) => {
+      RigidTy::Array(ty, _) => {
         let t = Type::from(*ty);
         write!(f, "Array({t:?})")
       },

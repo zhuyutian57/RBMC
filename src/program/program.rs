@@ -101,15 +101,9 @@ impl Program {
     Program { _crate, functions, idx }
   }
 
-  pub fn entry_fn(&self) -> &Function { self.function(0) }
-
   pub fn function(&self, i: FunctionIdx) -> &Function {
     assert!(i < self.functions.len());
     &self.functions[i]
-  }
-
-  pub fn functions(&self) -> &Vec<Function> {
-    &self.functions
   }
 
   pub fn size(&self) -> usize { self.functions.len() }

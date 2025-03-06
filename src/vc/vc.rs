@@ -5,7 +5,6 @@ use std::fmt::Debug;
 use std::rc::Rc;
 use std::slice::{Iter, IterMut};
 
-use crate::expr::context::ExprCtx;
 use crate::expr::expr::*;
 use crate::NString;
 
@@ -83,15 +82,11 @@ pub struct VCSystem {
 }
 
 impl VCSystem {
-  pub fn size(&self) -> usize {
-    self.vcs.len()
-  }
-
   pub fn num_asserts(&self) -> usize {
     self.asserts_map.len()
   }
 
-  pub fn assign(&mut self, lhs: Expr, mut rhs: Expr) {
+  pub fn assign(&mut self, lhs: Expr, rhs: Expr) {
     self.vcs.push(Vc::new(VcKind::Assign(lhs, rhs)));
   }
 
@@ -110,8 +105,8 @@ impl VCSystem {
   pub fn set_nth_assertion(&mut self, n: usize) {
     let m = *self.asserts_map.get(&n).unwrap();
     for (i, vc) in self.vcs.iter_mut().enumerate() {
-      if vc.is_assert() { vc.is_sliced = (i != m); }
-      else { vc.is_sliced = (i > m); }
+      if vc.is_assert() { vc.is_sliced = i != m; }
+      else { vc.is_sliced = i > m; }
     }
   }
 

@@ -4,7 +4,6 @@ use std::cell::RefCell;
 use crate::expr;
 use crate::program::program::Program;
 use crate::solvers::context::SolverCtx;
-use crate::solvers::solver;
 use crate::ExprCtx;
 use crate::solvers;
 use crate::NString;

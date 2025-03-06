@@ -11,7 +11,6 @@ extern crate stable_mir;
 
 use clap::Parser;
 use rustc_smir::{run, rustc_internal};
-use std::cell::RefCell;
 use std::ops::ControlFlow;
 use std::process::ExitCode;
 use stable_mir::*;
@@ -29,7 +28,6 @@ use crate::bmc::bmc::Bmc;
 use crate::config::cli::*;
 use crate::config::config::Config;
 use crate::expr::context::*;
-use crate::program::program::Program;
 use crate::symbol::nstring::NString;
 
 fn main() -> ExitCode {

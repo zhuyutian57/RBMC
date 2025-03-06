@@ -88,51 +88,42 @@ impl Context {
 
   pub fn is_constant(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(
-      self.extract_terminal(i),
-      Ok(t) if matches!(*t, Terminal::Constant(_))
-    )
+    matches!(self.extract_terminal(i), Ok(t) if t.is_constant())
   }
 
   pub fn is_constant_bool(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(self.extract_constant(i), Ok(Constant::Bool(..)))
+    matches!(self.extract_constant(i), Ok(t) if t.is_bool())
   }
 
   pub fn is_constant_integer(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(self.extract_constant(i), Ok(Constant::Integer(..)))
+    matches!(self.extract_constant(i), Ok(t) if t.is_integer())
   }
 
   pub fn is_null(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(self.extract_constant(i), Ok(Constant::Null))
+    matches!(self.extract_constant(i), Ok(t) if t.is_null())
   }
 
   pub fn is_constant_array(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(self.extract_constant(i), Ok(Constant::Array(..)))
+    matches!(self.extract_constant(i), Ok(t) if t.is_array())
   }
 
   pub fn is_constant_struct(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(self.extract_constant(i), Ok(Constant::Struct(..)))
+    matches!(self.extract_constant(i), Ok(t) if t.is_struct())
   }
 
   pub fn is_type(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(
-      self.extract_terminal(i),
-      Ok(t) if matches!(*t, Terminal::Type(_))
-    )
+    matches!(self.extract_terminal(i), Ok(t) if t.is_type())
   }
 
   pub fn is_symbol(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
-    matches!(
-      self.extract_terminal(i),
-      Ok(t) if matches!(*t, Terminal::Symbol(_))
-    )
+    matches!(self.extract_terminal(i), Ok(t) if t.is_symbol())
   }
 
   pub fn is_address_of(&self, i: NodeId) -> bool {

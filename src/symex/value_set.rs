@@ -13,21 +13,18 @@ pub(super) struct ValueSet {
 }
 
 impl ValueSet {
-  pub fn add(&mut self, pt: NString) {
-    self
-      ._points_to_map
-      .entry(pt)
-      .or_default();
+  pub fn contains(&self, pt: NString) -> bool {
+    self._points_to_map.contains_key(&pt)
+  }
+
+  pub fn insert(&mut self, pt: NString, objects: ObjectSet) {
+    self._points_to_map.insert(pt, objects);
   }
 
   pub fn remove(&mut self, pt: NString) {
     self
       ._points_to_map
       .remove(&pt);
-  }
-  
-  pub fn contains(&self, pt: NString) -> bool {
-    self._points_to_map.contains_key(&pt)
   }
 
   pub fn pointers(&self) -> HashSet<NString> {
@@ -40,19 +37,6 @@ impl ValueSet {
     if let Some(s) = self._points_to_map.get(&pt) {
       for object in s { objects.insert(object.clone()); }
     }
-  }
-
-  pub fn insert(&mut self, pt: NString, objects: ObjectSet) {
-    self._points_to_map.insert(pt, objects);
-  }
-
-  pub fn union(&mut self, pt: NString, objects: ObjectSet) {
-    let s =
-      self
-        ._points_to_map
-        .entry(pt)
-        .or_default();
-    for object in objects { s.insert(object); }    
   }
 
   pub fn remove_stack_places(&mut self, function_id: NString) {

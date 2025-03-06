@@ -153,21 +153,6 @@ impl<'cfg> ExecutionState<'cfg> {
     self.l0_symbol(ident, ty)
   }
 
-  pub fn l1_local_count(&self, local: Local) -> usize {
-    let ident = self.top().local_ident(local);
-    self.renaming.borrow_mut().l1_count(ident)
-  }
-
-  pub fn l1_local(&self, local: Local, mut l1_num: usize) -> Expr {
-    if l1_num == 0 { l1_num = self.l1_local_count(local); }
-    assert!(0 < l1_num && l1_num <= self.l1_local_count(local));
-    let ident = self.top().local_ident(local);
-    let symbol =
-      Symbol::new(ident, l1_num, 0, Level::Level1);
-    let ty = self.top().function().local_type(local);
-    self.ctx.mk_symbol(symbol, ty)
-  }
-
   pub fn current_local(&mut self, local: Local, level: Level) -> Expr {
     assert!(level != Level::Level0);
     let ident = self.top().local_ident(local);

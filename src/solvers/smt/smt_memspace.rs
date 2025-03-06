@@ -1,7 +1,7 @@
 
 use std::collections::HashMap;
 
-use crate::expr::{expr::Expr, ty::Type};
+use crate::expr::expr::Expr;
 
 pub type ObjectSpace<Ast> = (Ast, (Ast, Ast));
 

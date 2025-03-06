@@ -1,19 +1,15 @@
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use stable_mir::mir::Mutability;
 
 use z3;
 use z3::DatatypeAccessor;
-use z3::SortKind;
 use z3::ast::Ast;
 
 use crate::expr::constant::*;
-use crate::expr::context::*;
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
-use crate::program::program::Program;
-use crate::solvers::smt::smt_array::*;
 use crate::solvers::smt::smt_conv::*;
 use crate::solvers::smt::smt_memspace::*;
 use crate::solvers::smt::smt_tuple::*;
@@ -447,9 +443,6 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
       .ite(true_value, false_value)
   }
 }
-
-
-impl<'ctx> Array<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {}
 
 impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn create_tuple_sort(&mut self, ty: Type) -> z3::Sort<'ctx> {

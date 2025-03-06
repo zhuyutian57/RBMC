@@ -1,18 +1,10 @@
 
-use std::collections::HashMap;
-use std::fmt::Error;
-
-use stable_mir::CrateDef;
 use stable_mir::mir::*;
-use stable_mir::target::*;
-use stable_mir::ty::*;
 
 use crate::expr::context::*;
 use crate::expr::constant::*;
 use crate::expr::expr::*;
-use crate::expr::op::*;
 use crate::expr::ty::*;
-use crate::solvers::solver::Solver;
 use crate::symbol::nstring::*;
 use crate::program::program::*;
 use crate::symbol::symbol::*;
@@ -21,7 +13,6 @@ use crate::config::config::Config;
 use super::exec_state::*;
 use super::frame::*;
 use super::place_state::*;
-use super::projection::*;
 use super::state::State;
 
 pub struct Symex<'cfg> {
@@ -49,30 +40,20 @@ impl<'cfg> Symex<'cfg> {
         exec_state,
         vc_system
       };
-    let mut alloc_array =
+    let alloc_array =
       symex.exec_state.ns.lookup_object(NString::ALLOC_SYM);
-    let mut const_array =
+    let const_array =
       ctx.constant_array(Constant::Bool(false), Type::bool_type());
     symex.assign(alloc_array, const_array, ctx._true());
     symex
   }
 
-  pub fn can_exec(&self) -> bool { self.exec_state.can_exec() }
-
-  pub(super) fn top(&self) -> &Frame<'cfg> {
-    self.exec_state.top()
+  pub fn run(&mut self) {
+    while self.exec_state.can_exec() { self.symex(); }
+    self.memory_leak_check();
   }
 
-  pub(super) fn top_mut(&mut self) -> &mut Frame<'cfg> {
-    self.exec_state.top_mut()
-  }
-
-  pub(super) fn register_state(&mut self, pc: Pc, mut state: State) {
-    state.renaming = Some(self.exec_state.renaming.clone());
-    self.top_mut().add_state(pc, state);
-  }
-
-  pub fn symex(&mut self) {
+  fn symex(&mut self) {
     while let Some(pc) = self.top_mut().cur_pc() {
       // Merge states
       if self.merge_states(pc) {
@@ -90,6 +71,19 @@ impl<'cfg> Symex<'cfg> {
       }
     }
     self.symex_end_function();
+  }
+
+  pub(super) fn top(&self) -> &Frame<'cfg> {
+    self.exec_state.top()
+  }
+
+  pub(super) fn top_mut(&mut self) -> &mut Frame<'cfg> {
+    self.exec_state.top_mut()
+  }
+
+  pub(super) fn register_state(&mut self, pc: Pc, mut state: State) {
+    state.renaming = Some(self.exec_state.renaming.clone());
+    self.top_mut().add_state(pc, state);
   }
 
   fn symex_basicblock(&mut self, bb: &BasicBlock) {

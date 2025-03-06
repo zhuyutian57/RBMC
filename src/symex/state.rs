@@ -1,6 +1,5 @@
 
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 
@@ -116,7 +115,7 @@ impl State {
       // Merge place states
       self.place_states.merge(&other.place_states);
       // Merge value set
-      let mut pointers =
+      let pointers =
         self
           .value_set
           .pointers()

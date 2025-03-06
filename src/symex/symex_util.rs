@@ -1,23 +1,18 @@
 
 use std::fmt::Error;
 
-use stable_mir::mir::AggregateKind;
 use stable_mir::mir::Operand;
-use stable_mir::mir::Rvalue;
 use stable_mir::mir::Place;
 use stable_mir::target::*;
 use stable_mir::ty::*;
-use stable_mir::CrateDef;
 
 use crate::expr::expr::*;
 use crate::expr::constant::*;
-use crate::expr::op::*;
 use crate::expr::ty::*;
 use crate::program::program::*;
 use crate::symbol::symbol::*;
 use crate::symbol::nstring::*;
 use super::frame::Pc;
-use super::place_state::*;
 use super::projection::*;
 use super::state::State;
 use super::symex::*;
@@ -111,7 +106,7 @@ impl<'cfg> Symex<'cfg> {
     }
   }
 
-  fn memory_leak_check(&self) {
+  pub(super) fn memory_leak_check(&self) {
     for object in &self.exec_state.objects {
       let s = self.top().cur_state.place_states.place_state(object);
       if s.is_own() || s.is_dealloced() { continue; }
@@ -290,7 +285,7 @@ impl<'cfg> Symex<'cfg> {
     self.replace_predicates(&mut expr);
     self.rename(&mut expr);
     expr.simplify();
-    let mut guard = self.exec_state.cur_state().guard();
+    let guard = self.exec_state.cur_state().guard();
     let cond = self.ctx.implies(guard, expr);
     self.vc_system.borrow_mut().assert(msg, cond);
   }

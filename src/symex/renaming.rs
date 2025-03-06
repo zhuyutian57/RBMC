@@ -2,7 +2,6 @@
 use std::collections::HashMap;
 
 use crate::expr::expr::*;
-use crate::expr::op::*;
 use crate::symbol::symbol::*;
 use crate::symbol::nstring::*;
 
@@ -41,13 +40,6 @@ impl Renaming {
       .keys()
       .map(|x| *x)
       .collect::<Vec<_>>()
-  }
-
-  pub fn l1_count(&self, ident: NString) -> usize {
-    match self.l1_renaming.get(&ident) {
-      Some(n) => *n,
-      None => 0,
-    }
   }
 
   pub fn l2_count(&self, ident: NString) -> usize {

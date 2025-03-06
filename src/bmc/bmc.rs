@@ -1,10 +1,8 @@
 
 use std::cell::RefCell;
-use std::rc::Rc;
 
 use crate::config::cli::SmtStrategy;
 use crate::expr::expr::ExprBuilder;
-use crate::program::program::*;
 use crate::solvers::solver::*;
 use crate::symex::symex::*;
 use crate::vc::slicer::Slicer;
@@ -32,7 +30,9 @@ impl<'cfg> Bmc<'cfg> {
     if self.config.cli.show_program {
       self.config.program.show();
     }
-    while self.symex.can_exec() { self.symex.symex(); }
+
+    self.symex.run();
+
     self.check_properties();
   }
 
@@ -103,23 +103,6 @@ impl<'cfg> Bmc<'cfg> {
       self.runtime_solver.show_model();
     }
     res
-  }
-
-  /// TODO: maybe trace
-  fn show_issue(&mut self) {
-    let mut i = -1;
-    for vc in self.vc_system.borrow().iter() {
-      i += 1;
-      if vc.is_sliced { continue; }
-      match &vc.kind {
-        VcKind::Assert(msg, c) => {
-          if self.runtime_solver.eval_bool(c.clone()) {
-            println!("#{i} {msg:?}");
-          }
-        },
-        _ => {},
-      }
-    }
   }
 
   fn generate_smt_formula(&mut self) {

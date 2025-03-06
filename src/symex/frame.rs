@@ -14,7 +14,6 @@ pub type Pc = BasicBlockIdx;
 /// The id is used for naming variable. It is the unique
 /// identifier for each frame.
 pub struct Frame<'func> {
-  ctx: ExprCtx,
   id: usize,
   function: &'func Function,
   /// Previous info. Used for recovering
@@ -34,10 +33,10 @@ impl<'func> Frame<'func> {
     destination: Option<Place>,
     target: Option<BasicBlockIdx>
   ) -> Self {
-    let mut state_map = HashMap::new();
+    let state_map = HashMap::new();
     Frame {
-      ctx: ctx.clone(),
-      id, function,
+      id,
+      function,
       destination,
       target,
       pc: 0,
@@ -54,15 +53,7 @@ impl<'func> Frame<'func> {
     }
   }
 
-  pub fn inc_pc(&mut self) {
-    // println!(
-    //   "Done {:?} - bb{}\n{:?}",
-    //   self.function.name(),
-    //   self.pc,
-    //   self.cur_state
-    // );
-    self.pc += 1;
-  }
+  pub fn inc_pc(&mut self) { self.pc += 1; }
 
   pub fn cur_state(&self) -> &State { &self.cur_state }
 

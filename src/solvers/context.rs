@@ -13,8 +13,4 @@ impl SolverCtx {
       panic!("Not support for solve {:?}", cli.solver)
     }
   }
-
-  pub fn to_z3_ctx(&self) -> &z3::Context {
-    match self { SolverCtx::Z3(ctx) => ctx, }
-  }
 }

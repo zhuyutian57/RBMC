@@ -1,10 +1,6 @@
 
-use std::collections::HashSet;
-
 use stable_mir::mir::*;
-use stable_mir::ty::UintTy;
 
-use crate::expr::constant::BigInt;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::symex::projection::Mode;

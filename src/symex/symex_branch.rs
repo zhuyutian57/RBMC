@@ -3,7 +3,6 @@ use stable_mir::mir::*;
 
 use crate::expr::expr::*;
 use crate::expr::constant::*;
-use crate::symbol::symbol::*;
 use super::symex::*;
 
 impl<'cfg> Symex<'cfg> {
