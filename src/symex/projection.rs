@@ -49,7 +49,16 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
                   ._callback_symex
                   .exec_state
                   .current_local(*local, Level::Level2);
-              self.project_index(ret.clone(), index)
+              self.project_index(ret.clone(), index, true)
+            },
+          ProjectionElem::ConstantIndex {
+            offset,
+            min_length,
+            from_end }
+            => {
+              let i = if *from_end { min_length - offset } else { *offset };
+              let index = ctx.constant_usize(i as usize);
+              self.project_index(ret.clone(), index, false)
             },
           _ => panic!("Not support {elem:?} for {ret:?}"),
         };
@@ -158,12 +167,19 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
   }
 
   /// Visit an array/slice. Return `Index(array/slice, i)`.
-  fn project_index(&mut self, object: Expr, index: Expr) -> Expr {
+  fn project_index(
+    &mut self,
+    object: Expr,
+    index: Expr,
+    bound_check: bool
+  ) -> Expr {
     let array_ty = object.ty();
     assert!(array_ty.is_array());
     
     // Bound check
-    self.bound_check(object.clone(), index.clone());
+    if bound_check {
+      self.bound_check(object.clone(), index.clone());
+    }
 
     let ctx = object.ctx.clone();
     let index = ctx.index(object, index, array_ty.array_range());

@@ -8,6 +8,10 @@ use crate::symbol::nstring::*;
 use super::super::symex::*;
 
 /// This mod defines symbolic execution of api in std::vec
+/// In our memory model, `vec` is a special pointer that owns
+/// an infinite array.
+/// 
+/// TODO: think about how to manage its length.
 
 impl<'cfg> Symex<'cfg> {
   pub fn symex_vec_api(
@@ -31,5 +35,9 @@ impl<'cfg> Symex<'cfg> {
 
     let lhs = self.make_project(dest);
     
+  }
+
+  fn symex_from_elem(&mut self, dest: &Place, args: &Vec<Operand>) {
+    todo!()
   }
 }

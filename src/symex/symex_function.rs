@@ -32,6 +32,8 @@ impl <'cfg> Symex<'cfg> {
       self.symex_alloc_api(&fndef, args, dest);
     } else if name.contains(NString::from("std::boxed")) {
       self.symex_boxed_api(&fndef, args, dest);
+    } else if name.contains(NString::from("std::ops")) {
+      self.symex_ops_api(&fndef, args, dest);
     } else if name.contains(NString::from("std::ptr")) {
       self.symex_ptr_api(&fndef, args, dest);
     } else if name.contains(NString::from("std::vec")) {

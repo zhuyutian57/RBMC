@@ -8,7 +8,11 @@ use crate::symbol::nstring::*;
 use crate::symex::place_state::PlaceState;
 use super::super::symex::*;
 
-/// This mod defines symbolic execution of api in std::boxed
+/// This mod defines symbolic execution of api in std::boxed.
+/// In our memory model, `box` is a special pointer that owns
+/// the object it points to. Whenever it is dropped, the object
+/// is also dealloced, too. Thus, if we drop an uninitialized
+/// box, `Invalid-Free` occurs.
 
 impl<'cfg> Symex<'cfg> {
   pub fn symex_boxed_api(
