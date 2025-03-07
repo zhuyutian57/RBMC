@@ -5,12 +5,6 @@ use crate::symbol::nstring::*;
 use super::symex::*;
 
 impl<'cfg> Symex<'cfg> {
-  pub(super) fn symex_alloc(&mut self, ty: Type) -> Expr {
-    let object = self.exec_state.new_object(ty);
-    self.track_new_object(object.clone());
-    object
-  }
-
   pub(super) fn track_new_object(&mut self, object: Expr) {
     assert!(object.is_object());
     let ctx = object.ctx.clone();

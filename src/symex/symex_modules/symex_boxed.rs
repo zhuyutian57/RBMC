@@ -1,0 +1,42 @@
+
+use stable_mir::mir::*;
+use stable_mir::CrateDef;
+
+use crate::expr::expr::*;
+use crate::expr::ty::*;
+use crate::symbol::nstring::*;
+use crate::symex::place_state::PlaceState;
+use super::super::symex::*;
+
+/// This mod defines symbolic execution of api in std::boxed
+
+impl<'cfg> Symex<'cfg> {
+  pub fn symex_boxed_api(
+    &mut self,
+    fndef: &FunctionDef,
+    args: &Vec<Operand>,
+    dest: &Place,
+  ) {
+    let name = NString::from(fndef.0.trimmed_name());
+    if name == NString::from("Box::<T>::new") {
+      self.symex_box_new(dest, args);
+    } else {
+      panic!("Not support {name:?}");
+    }
+  }
+
+  fn symex_box_new(&mut self, dest: &Place, args: &Vec<Operand>) {
+    let ty = self.make_type(&args[0]);
+    let object = self.exec_state.new_object(ty);
+    let pt = self.make_project(dest);
+    let address_of = self.ctx.address_of(object.clone(), pt.ty());
+    
+    self.assign(pt, address_of, self.ctx._true());
+
+    let value = self.make_operand(&args[0]);
+    self.assign(object.clone(), value, self.ctx._true());
+
+    let place_state = PlaceState::Own;
+    self.exec_state.update_place_state(object, place_state);
+  }
+}

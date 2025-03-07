@@ -214,6 +214,11 @@ impl State {
       return;
     }
 
+    if expr.is_move() {
+      self.get_value_set_rec(expr.extract_object(), suffix, values);
+      return;
+    }
+
     panic!("Do not support dereferencing:\n{expr:?}");
   }
 }

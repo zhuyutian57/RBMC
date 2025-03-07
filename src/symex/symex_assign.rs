@@ -19,8 +19,6 @@ impl<'cfg> Symex<'cfg> {
     let lhs = self.make_project(place);
     let rhs = self.make_rvalue(rvalue);
     self.assign(lhs, rhs.clone(), self.ctx._true());
-    // move semantic
-    self.symex_move(rhs);
   }
 
   pub(super) fn symex_assign_layout(&mut self, place: &Place, ty: Type) {
@@ -30,10 +28,11 @@ impl<'cfg> Symex<'cfg> {
     self.assign(l2_var, layout, self.ctx._true());
   }
 
-  pub(super) fn assign(&mut self, lhs: Expr, mut rhs: Expr, guard: Expr) {
+  pub(super) fn assign(&mut self, lhs: Expr, rhs: Expr, guard: Expr) {
     assert!(lhs.ty().is_layout() || lhs.ty() == rhs.ty());
-    self.replace_predicates(&mut rhs);
-    self.assign_rec(lhs, rhs, guard);
+    self.assign_rec(lhs, rhs.clone(), guard);
+    // move semantic
+    self.symex_move(rhs);
   }
 
   fn assign_symbol(&mut self, mut lhs: Expr, mut rhs: Expr, guard: Expr) {
@@ -44,6 +43,7 @@ impl<'cfg> Symex<'cfg> {
     }
 
     // Rename to l2 rhs
+    self.replace_predicates(&mut rhs);
     self.rename(&mut rhs);
     // New l2 symbol
     lhs = self.exec_state.new_symbol(&lhs, Level::Level2);

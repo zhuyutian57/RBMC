@@ -10,6 +10,7 @@ use crate::NString;
 
 pub type FieldDef = (NString, Type);
 pub type StructDef = (NString, Vec<FieldDef>);
+pub type FunctionDef = (FnDef, GenericArgs);
 
 /// A wrapper for `Ty` in MIR
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -28,16 +29,16 @@ impl Type {
     Type::from(Ty::unsigned_ty(ty))
   }
 
-  pub fn array_type(ty: Type, len: u64) -> Self {
+  pub fn array_type(elem_ty: Type, len: u64) -> Self {
     Type::from(
-      Ty::try_new_array(ty.0, len)
-      .expect(format!("({ty:?}, {len}) is wrong for an array type").as_str())
+      Ty::try_new_array(elem_ty.0, len)
+      .expect(format!("({elem_ty:?}, {len}) is wrong for an array type").as_str())
     )
   }
 
-  pub fn const_array_type(ty: Type) -> Self {
+  pub fn infinite_array_type(elem_ty: Type) -> Self {
     // Array with len 0 as const array type
-    Type::array_type(ty, 0)
+    Type::array_type(elem_ty, 0)
   }
 
   pub fn unit_type() -> Self {
@@ -158,13 +159,6 @@ impl Type {
     panic!("Wrong struct type");
   }
 
-  pub fn fn_def(&self) -> (FnDef, GenericArgs) {
-    assert!(self.is_fn());
-    let kind = self.0.kind();
-    let _def = kind.fn_def().unwrap();
-    (_def.0, _def.1.clone())
-  }
-
   pub fn struct_name(&self) -> NString {
     assert!(self.is_struct());
     if let TyKind::RigidTy(r) = self.0.kind() {
@@ -187,6 +181,13 @@ impl Type {
     }
     assert!(!def.1.is_empty());
     def
+  }
+
+  pub fn fn_def(&self) -> FunctionDef {
+    assert!(self.is_fn());
+    let kind = self.0.kind();
+    let _def = kind.fn_def().unwrap();
+    (_def.0, _def.1.clone())
   }
 }
 
@@ -248,6 +249,12 @@ impl From<Ty> for Type {
   fn from(value: Ty) -> Self {
     assert!(matches!(value.kind(), TyKind::RigidTy(_)));
     Type(value)
+  }
+}
+
+impl From<&Ty> for Type {
+  fn from(value: &Ty) -> Self {
+    Type::from(*value)
   }
 }
 

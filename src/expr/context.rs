@@ -323,7 +323,7 @@ impl ExprBuilder for ExprCtx {
     let array_type =
       match len {
         Some(n) => Type::array_type(elem_ty, n),
-        None => Type::const_array_type(elem_ty),
+        None => Type::infinite_array_type(elem_ty),
       };
     let new_node = Node::new(kind, array_type);
     let id = self.borrow_mut().add_node(new_node);

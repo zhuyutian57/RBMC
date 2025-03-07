@@ -148,6 +148,7 @@ pub(crate) fn read_target_integer(bytes: &[u8]) -> BigInt {
 }
 
 pub fn bigint_to_u64(bigint: &BigInt) -> u64 {
+  if bigint == &BigInt::ZERO { return 0; }
   let (sign, digits) = bigint.to_u64_digits();
   assert!(sign == Sign::NoSign || sign == Sign::Plus);
   assert!(digits.len() == 1);

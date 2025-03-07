@@ -143,7 +143,9 @@ impl Renaming {
 
     for (i, sub_expr) in sub_exprs.iter_mut().enumerate() {
       let prop =
-        if expr.is_store() && i == 0 { false } else { propagate };
+        if i == 0 && (expr.is_store() || expr.is_index()) {
+          false
+        } else { propagate };
       self.l2_rename(sub_expr, prop);
     }
 

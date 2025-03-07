@@ -46,7 +46,7 @@ impl<'cfg> ExecutionState<'cfg> {
 
   pub fn setup(&mut self) {
     // create global variable
-    let ty = Type::const_array_type(Type::bool_type());
+    let ty = Type::infinite_array_type(Type::bool_type());
     let alloc_array_symbol = self.l0_symbol(NString::ALLOC_SYM, ty);
     let alloc_array = self.ctx.object(alloc_array_symbol);
     self.ns.insert_object(alloc_array);
