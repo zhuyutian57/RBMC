@@ -96,9 +96,21 @@ impl<'cfg> Symex<'cfg> {
     }
 
     if lhs.is_index() {
-      let new_lhs = lhs.extract_object();
-      let index = lhs.extract_index();
-      let new_rhs = self.ctx.store(new_lhs.clone(), index, rhs.clone());
+      let inner_object = lhs.extract_object();
+      let mut new_lhs = inner_object.clone();
+      let mut index = lhs.extract_index();
+      if inner_object.ty().is_slice() {
+        let slice = inner_object.extract_inner_expr();
+        new_lhs = slice.extract_object();
+        index =
+          self.ctx.add(
+            lhs.extract_index(),
+            slice.extract_slice_start()
+          );
+      }
+      let new_rhs =
+        self.ctx.store(new_lhs.clone(), index, rhs.clone());
+      
       self.assign_rec(new_lhs, new_rhs, guard);
       return;
     }
@@ -145,7 +157,8 @@ impl<'cfg> Symex<'cfg> {
         let expr =
           match op {
             UnOp::Not => self.ctx.not(operand),
-            UnOp::Neg => self.ctx.neg(operand),
+            UnOp::Minus => self.ctx.minus(operand),
+            UnOp::Meta => self.ctx.pointer_meta(operand),
           };
         expr
       },

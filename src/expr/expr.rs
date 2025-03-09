@@ -40,10 +40,13 @@ impl Expr {
   pub fn is_ite(&self) -> bool { self.ctx.borrow().is_ite(self.id) }
   pub fn is_cast(&self) -> bool { self.ctx.borrow().is_cast(self.id) }
   pub fn is_object(&self) -> bool { self.ctx.borrow().is_object(self.id) }
+  pub fn is_slice(&self) -> bool { self.ctx.borrow().is_slice(self.id) }
   pub fn is_same_object(&self) -> bool { self.ctx.borrow().is_same_object(self.id) }
   pub fn is_index(&self) -> bool { self.ctx.borrow().is_index(self.id) }
   pub fn is_store(&self) -> bool { self.ctx.borrow().is_store(self.id) }
   pub fn is_pointer_ident(&self) -> bool { self.ctx.borrow().is_pointer_ident(self.id) }
+  pub fn is_pointer_offset(&self) -> bool { self.ctx.borrow().is_pointer_offset(self.id) }
+  pub fn is_pointer_meta(&self) -> bool { self.ctx.borrow().is_pointer_meta(self.id) }
 
   pub fn is_move(&self) -> bool { self.ctx.borrow().is_move(self.id) }
   pub fn is_invalid(&self) -> bool { self.ctx.borrow().is_invalid(self.id) }
@@ -70,6 +73,10 @@ impl Expr {
     self.extract_constant().to_integer()
   }
 
+  pub fn extract_struct_fields(&self) -> Vec<StructFieldDef> {
+    self.extract_constant().to_struct_fields()
+  }
+
   pub fn extract_type(&self) -> Type {
     self.ctx.borrow().extract_type(self.id).unwrap()
   }
@@ -85,6 +92,7 @@ impl Expr {
   pub fn extract_object(&self) -> Expr {
     assert!(
       self.is_address_of() ||
+      self.is_slice() ||
       self.is_index() ||
       self.is_store() ||
       self.is_move() ||
@@ -138,6 +146,16 @@ impl Expr {
     self.sub_exprs().unwrap().remove(0)
   }
 
+  pub fn extract_slice_start(&self) -> Expr {
+    assert!(self.is_slice());
+    self.sub_exprs().unwrap().remove(1)
+  }
+
+  pub fn extract_slice_end(&self) -> Expr {
+    assert!(self.is_slice());
+    self.sub_exprs().unwrap().remove(2)
+  }
+
   pub fn extract_index(&self) -> Expr {
     assert!(self.is_index() || self.is_store());
     self.sub_exprs().unwrap().remove(1)
@@ -146,6 +164,19 @@ impl Expr {
   pub fn extract_update_value(&self) -> Expr {
     assert!(self.is_store());
     self.sub_exprs().unwrap().remove(2)
+  }
+
+  pub fn extract_pointer(&self) -> Expr {
+    assert!(self.is_pointer_meta());
+    self.sub_exprs().unwrap().remove(0)
+  }
+
+  pub fn unwrap_predicates(&self) -> Expr {
+    if self.is_move() || self.is_invalid() {
+      self.extract_object().unwrap_predicates()
+    } else {
+      self.clone()
+    }
   }
 
   pub fn simplify(&mut self) {
@@ -266,7 +297,8 @@ impl Expr {
       *self =
         match self.extract_un_op() {
           UnOp::Not => self.ctx.not(operand),
-          UnOp::Neg => self.ctx.neg(operand),
+          UnOp::Minus => self.ctx.minus(operand),
+          UnOp::Meta => self.ctx.pointer_meta(operand),
         };
       return;
     }
@@ -284,6 +316,14 @@ impl Expr {
       return;
     }
 
+    if self.is_slice() {
+      let object = sub_exprs[0].clone();
+      let start = sub_exprs[1].clone();
+      let end = sub_exprs[2].clone();
+      *self = self.ctx.slice(object, start, end);
+      return;
+    }
+    
     if self.is_index() {
       let object = sub_exprs[0].clone();
       let index = sub_exprs[1].clone();
@@ -314,7 +354,7 @@ impl Expr {
       return;
     }
 
-    if self.is_pointer_ident() {
+    if self.is_pointer_ident() || self.is_pointer_meta() {
       let pt = sub_exprs[0].clone();
       *self = self.ctx.pointer_ident(pt);
       return;
@@ -384,6 +424,13 @@ impl Debug for Expr {
         return write!(f, "{:?}", sub_exprs[0]);
       }
 
+      if self.is_slice() {
+        let object = &sub_exprs[0];
+        let start = &sub_exprs[1];
+        let end = &sub_exprs[2];
+        return write!(f, "{object:?}[{start:?}, {end:?})");
+      }
+
       if self.is_index() {
         let object = &sub_exprs[0];
         let index = &sub_exprs[1];
@@ -420,6 +467,11 @@ impl Debug for Expr {
         return write!(f, "{pt:?}");
       }
 
+      if self.is_pointer_meta() {
+        let pt = &sub_exprs[0];
+        return write!(f, "Meta({pt:?})");
+      }
+
       if self.is_invalid() {
         return write!(f, "Invalid({:?})", sub_exprs[0]);
       }
@@ -450,7 +502,7 @@ pub trait ExprBuilder {
   fn constant_usize(&self, i: usize) -> Expr;
   fn null(&self, ty: Type) -> Expr;
   fn constant_array(&self, constant: Expr, len: Option<u64>) -> Expr;
-  fn constant_struct(&self, fields: Vec<StructField>, ty: Type) -> Expr;
+  fn constant_struct(&self, fields: Vec<StructFieldDef>, ty: Type) -> Expr;
   fn mk_symbol(&self, symbol: Symbol, ty: Type) -> Expr;
   fn mk_type(&self, ty: Type) -> Expr;
 
@@ -471,16 +523,18 @@ pub trait ExprBuilder {
   fn or(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn implies(&self, cond: Expr, conseq: Expr) -> Expr;
   fn not(&self, operand: Expr) -> Expr;
-  fn neg(&self, operand: Expr) -> Expr;
+  fn minus(&self, operand: Expr) -> Expr;
   fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr;
   fn cast(&self, operand: Expr, target_ty: Expr) -> Expr;
 
   fn object(&self, inner_expr: Expr) -> Expr;
+  fn slice(&self, object: Expr, start: Expr, end: Expr) -> Expr;
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr;
   fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
 
   fn pointer_ident(&self, pt: Expr) -> Expr;
+  fn pointer_meta(&self, pt: Expr) -> Expr;
 
   fn _move(&self, object: Expr) -> Expr;
   fn invalid(&self, object: Expr) -> Expr;

@@ -162,6 +162,11 @@ impl Context {
     self.nodes[i].kind().is_object()
   }
 
+  pub fn is_slice(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_slice()
+  }
+
   pub fn is_same_object(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     self.nodes[i].kind().is_same_object()
@@ -180,6 +185,16 @@ impl Context {
   pub fn is_pointer_ident(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     self.nodes[i].kind().is_pointer_ident()
+  }
+
+  pub fn is_pointer_offset(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_pointer_offset()
+  }
+
+  pub fn is_pointer_meta(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_pointer_meta()
   }
 
   pub fn is_move(&self, i: NodeId) -> bool {
@@ -330,7 +345,7 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn constant_struct(&self, fields: Vec<StructField>, ty: Type) -> Expr {
+  fn constant_struct(&self, fields: Vec<StructFieldDef>, ty: Type) -> Expr {
     let terminal = Terminal::Constant(Constant::Struct(fields));
     let terminal_id = self.borrow_mut().add_terminal(terminal);
     let kind = NodeKind::Terminal(terminal_id);
@@ -358,7 +373,10 @@ impl ExprBuilder for ExprCtx {
   }
 
   fn address_of(&self, object: Expr, ty: Type) -> Expr {
-    assert!(object.is_object());
+    assert!(
+      object.unwrap_predicates().is_object() ||
+      object.is_move() && object.extract_object().is_object()
+    );
     let kind = NodeKind::AddressOf(object.id);
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
@@ -508,9 +526,9 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn neg(&self, operand: Expr) -> Expr {
+  fn minus(&self, operand: Expr) -> Expr {
     assert!(operand.ty().is_signed());
-    let kind = NodeKind::Unary(UnOp::Neg, operand.id);
+    let kind = NodeKind::Unary(UnOp::Minus, operand.id);
     let ty = operand.ty();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
@@ -545,6 +563,15 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
+  fn slice(&self, object: Expr, start: Expr, end: Expr) -> Expr {
+    assert!(object.unwrap_predicates().is_object() && object.ty().is_array());
+    let kind = NodeKind::Slice(object.id, start.id, end.id);
+    let ty = Type::slice_type_from_array_type(object.ty());
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr {
     assert!(lhs.ty().is_any_ptr() && rhs.ty().is_any_ptr());
     let kind = NodeKind::SameObject(lhs.id, rhs.id);
@@ -556,8 +583,10 @@ impl ExprBuilder for ExprCtx {
 
   fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr {
     assert!(
-      object.is_object() &&
-      (object.ty().is_array() || object.ty().is_struct())
+      object.unwrap_predicates().is_object() &&
+      (object.ty().is_array() ||
+       object.ty().is_struct() ||
+       object.ty().is_slice())
     );
     // TODO: match type
     let kind = NodeKind::Index(object.id, index.id);
@@ -567,7 +596,7 @@ impl ExprBuilder for ExprCtx {
   }
 
   fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr {
-    assert!(object.is_object());
+    assert!(object.unwrap_predicates().is_object());
     let kind = NodeKind::Store(object.id, key.id, value.id);
     let ty = object.ty();
     let new_node = Node::new(kind, ty);
@@ -584,8 +613,17 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
+  fn pointer_meta(&self, pt: Expr) -> Expr {
+    assert!(pt.ty().is_slice_ref());
+    let kind = NodeKind::PointerMeta(pt.id);
+    let ty = Type::unsigned_type(UintTy::Usize);
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+
   fn _move(&self, object: Expr) -> Expr {
-    assert!(object.is_object());
+    assert!(object.unwrap_predicates().is_object());
     let kind = NodeKind::Move(object.id);
     let ty = object.ty();
     let new_node = Node::new(kind, ty);
@@ -594,7 +632,7 @@ impl ExprBuilder for ExprCtx {
   }
 
   fn invalid(&self, object: Expr) -> Expr {
-    assert!(object.is_object());
+    assert!(object.unwrap_predicates().is_object());
     let kind = NodeKind::Invalid(object.id);
     let ty = Type::bool_type();
     let new_node = Node::new(kind, ty);

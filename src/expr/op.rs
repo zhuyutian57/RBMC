@@ -64,14 +64,16 @@ impl From<mir::BinOp> for BinOp {
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UnOp {
   Not,
-  Neg,
+  Minus,
+  Meta,
 }
 
 impl Debug for UnOp {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
       UnOp::Not => write!(f, "!"),
-      UnOp::Neg => write!(f, "neg"),
+      UnOp::Minus => write!(f, "-"),
+      UnOp::Meta => write!(f, "meta"),
     }
   }
 }
@@ -79,9 +81,9 @@ impl Debug for UnOp {
 impl From<mir::UnOp> for UnOp {
   fn from(value: mir::UnOp) -> Self {
     match value {
-      mir::UnOp::Not => Ok(UnOp::Not),
-      mir::UnOp::Neg => Ok(UnOp::Neg),
-      _ => Err(Error),
-    }.expect("Do not support")
+      mir::UnOp::Not => UnOp::Not,
+      mir::UnOp::Neg => UnOp::Minus,
+      mir::UnOp::PtrMetadata => UnOp::Meta,
+    }
   }
 }

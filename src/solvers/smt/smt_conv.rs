@@ -235,6 +235,13 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
       return self.convert_pointer(&ident, &offset);
     }
 
+    if inner_expr.is_slice() {
+      let inner_object = inner_expr.extract_object();
+      let start = inner_expr.extract_slice_start();
+      let end = inner_expr.extract_slice_end();
+      todo!();
+    }
+
     panic!("Do not support address_of {object:?}")
   }
 

@@ -1,6 +1,7 @@
 
 
 fn main() {
-  let b = Box::new(0);
-  let x = *b;
+  let v = vec![1, 2, 3, 4, 5];
+  let s = v.as_slice();
+  
 }

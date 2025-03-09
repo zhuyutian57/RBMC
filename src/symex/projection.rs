@@ -1,8 +1,10 @@
 
+use num_bigint::BigInt;
 use stable_mir::mir::*;
 
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
+use crate::program::program::bigint_to_usize;
 use crate::symbol::symbol::*;
 use crate::NString;
 use super::symex::Symex;
@@ -13,6 +15,7 @@ pub enum Mode {
   Read,
   Drop,
   Dealloc,
+  Slice(usize, usize),
 }
 
 pub(super) struct Projection<'a, 'cfg> {
@@ -80,8 +83,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     let mut objects = ObjectSet::new();
     self
       ._callback_symex
-      .exec_state
-      .cur_state()
+      .top()
+      .cur_state
       .get_value_set(pt.clone(), &mut objects);
 
     let ctx = pt.ctx.clone();
@@ -115,31 +118,35 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
       if object.is_null_object() ||
          object.is_unknown() { continue; }
 
-      // Do more analysis
+      let pointer_guard =
+        ctx.same_object(
+          pt.clone(),
+          ctx.address_of(object.clone(), pt.ty())
+        );
+
+      // Valid check
+      let root_object = self.get_root_object(&object);
       let place_state =
         self
           ._callback_symex
           .top_mut()
           .cur_state
           .place_states
-          .place_state(&object);
+          .place_state(&root_object);
       if !place_state.is_own() && !place_state.is_alloced() {
-        let pointer_guard =
-          ctx.same_object(
-            pt.clone(),
-            ctx.address_of(object.clone(), pt.ty())
-          );
-        self.valid_check(object.clone(), pointer_guard);
+        self.valid_check(object.clone(), pointer_guard.clone());
       }
+
+      let new_object = self.build_object(object, mode);
+      if new_object == None { continue; }
 
       ret =
         match ret {
           Some(x) => {
-            let obj_adr = ctx.address_of(object.clone(), pt.ty());
-            let cond = ctx.same_object(pt.clone(), obj_adr);
-            Some(ctx.ite(cond, object.clone(), x))
+            let cond = pointer_guard.clone();
+            Some(ctx.ite(cond, new_object.unwrap(), x))
           },
-          None => Some(object),
+          None => new_object,
         }
     }
 
@@ -173,17 +180,51 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     index: Expr,
     bound_check: bool
   ) -> Expr {
-    let array_ty = object.ty();
-    assert!(array_ty.is_array());
+    let ty = object.ty();
+    assert!(ty.is_array() || ty.is_slice());
     
     // Bound check
-    if bound_check {
+    if ty.is_array() && bound_check {
       self.bound_check(object.clone(), index.clone());
     }
 
     let ctx = object.ctx.clone();
-    let index = ctx.index(object, index, array_ty.array_range());
+    let elem_ty =
+      if ty.is_array() { ty.array_range() }
+      else { ty.slice_elem_ty() };
+    let index = ctx.index(object, index, elem_ty);
     ctx.object(index)
+  }
+
+  fn get_root_object(&mut self, object: &Expr) -> Expr {
+    if object.extract_inner_expr().is_slice() {
+      let inner_object = object.extract_inner_expr().extract_object();
+      self.get_root_object(&inner_object)
+    } else {
+      object.clone()
+    }
+  }
+
+  fn build_object(&mut self, object: Expr, mode: Mode) -> Option<Expr> {
+    match mode {
+      Mode::Slice(l, r) => self.build_slice(object, l, r),
+      _ => Some(object),
+    }
+  }
+
+  fn build_slice(&mut self, object: Expr, l: usize, r: usize) -> Option<Expr> {
+    let ctx = object.ctx.clone();
+    let new_slice =
+      if object.ty().is_array() {
+        let array_ty = object.ty();
+        let start = ctx.constant_usize(l);
+        let end = ctx.constant_usize(r);
+        // check len
+        ctx.slice(object.clone(), start, end)
+      } else {
+        todo!()
+      };
+    Some(new_slice)
   }
 
   fn make_invalid_object(&mut self, ty: Type) -> Expr {
@@ -254,10 +295,10 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         Mode::Read => NString::from("dereference failure: invalid pointer"),
         Mode::Drop => NString::from("drop failure: uninitilized box(smart) pointer"),
         Mode::Dealloc => NString::from("dealloc failure: invalid pointer"),
+        _ => todo!(),
       };
     let fail =
       ctx.and(ctx.and(guard, ne), ctx.not(index));
     self._callback_symex.claim(msg, fail);
   }
-
 }

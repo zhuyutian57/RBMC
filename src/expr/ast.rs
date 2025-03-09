@@ -83,21 +83,40 @@ pub(super) enum NodeKind {
   AddressOf(NodeId),
   /// Aggregate value such as tuple and struct
   Aggregate(Vec<NodeId>),
+  /// Binary expression
   Binary(BinOp, NodeId, NodeId),
+  /// Unary expression
   Unary(UnOp, NodeId),
+  /// If cond { true_expresion } else { false_expression }
   Ite(NodeId, NodeId, NodeId),
+  /// Type casting
   Cast(NodeId, NodeId),
-  /// Unified form for object, including stack objects and heap objects.
+  /// Unified wrapper for objects, including array, slice,
+  /// struct, tuple, and so on. Moreover, heap objects and
+  /// stack objects are included.
   Object(NodeId),
+  /// `Slice(object, start, len)` represent a slice
+  Slice(NodeId, NodeId, NodeId),
   /// A pointer's value is the address of an object...
   SameObject(NodeId, NodeId),
-  /// `IndexOf` represents a load for an array or a struct.
+
+  /// `IndexOf(object, index)` represents a load from an array/slice
+  /// or a load of a field of a struct.
   Index(NodeId, NodeId),
-  /// `Store(obj, i, value)` updates the value of obj
+  /// `Store(object, index, value)` updates an array/slice or
+  /// a field of a struct.
   Store(NodeId, NodeId, NodeId),
+
   /// `PointerIdent(pt)` retrieve the ident of a pointer
   PointerIdent(NodeId),
-  // Predicates for symbolic execution. Not used in vcc.
+  /// `PointerOffset(pt)` retrieve the offset of a pointer
+  PointerOffset(NodeId),
+  /// `PtrMetaData`: used for retrieving slice len currently.
+  PointerMeta(NodeId),
+
+  // Predicates for symbolic execution. Before generating VCC,
+  // all predicates must be replaced to some expression.
+
   /// `Move(expr)`: move a value
   Move(NodeId),
   /// `Invalid(object)`: `object` is not alloced
@@ -141,6 +160,10 @@ impl NodeKind {
     matches!(self, NodeKind::Object(..))
   }
   
+  pub fn is_slice(&self) -> bool {
+    matches!(self, NodeKind::Slice(..))
+  }
+
   pub fn is_same_object(&self) -> bool {
     matches!(self, NodeKind::SameObject(..))
   }
@@ -155,6 +178,14 @@ impl NodeKind {
 
   pub fn is_pointer_ident(&self) -> bool {
     matches!(self, NodeKind::PointerIdent(..))
+  }
+
+  pub fn is_pointer_offset(&self) -> bool {
+    matches!(self, NodeKind::PointerOffset(..))
+  }
+
+  pub fn is_pointer_meta(&self) -> bool {
+    matches!(self, NodeKind::PointerMeta(..))
   }
 
   pub fn is_move(&self) -> bool {
@@ -201,13 +232,16 @@ impl Node {
       NodeKind::Unary(_, o) |
       NodeKind::Object(o)
         => Some(vec![*o]),
+      NodeKind::Slice(o, s, l)
+        => Some(vec![*o, *s, *l]),
       NodeKind::Ite(c, tv, fv)
         => Some(vec![*c, *tv, *fv]),
       NodeKind::Index(o, i)
         => Some(vec![*o, *i]),
       NodeKind::Store(o, i, v)
         => Some(vec![*o, *i, *v]),
-      NodeKind::PointerIdent(p)
+      NodeKind::PointerIdent(p) |
+      NodeKind::PointerMeta(p)
         => Some(vec![*p]),
       NodeKind::Move(o) |
       NodeKind::Invalid(o)

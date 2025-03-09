@@ -17,6 +17,10 @@ pub type FunctionDef = (FnDef, GenericArgs);
 pub struct Type(Ty);
 
 impl Type {
+  pub fn unit_type() -> Self {
+    Type::from(Ty::new_tuple(&[]))
+  }
+
   pub fn bool_type() -> Self {
     Type::from(Ty::bool_ty())
   }
@@ -41,8 +45,13 @@ impl Type {
     Type::array_type(elem_ty, 0)
   }
 
-  pub fn unit_type() -> Self {
-    Type::from(Ty::new_tuple(&[]))
+  pub fn slice_type(elem_ty: Type) -> Self {
+    Type::from(Ty::from_rigid_kind(RigidTy::Slice(elem_ty.0)))
+  }
+
+  pub fn slice_type_from_array_type(array_type: Type) -> Self {
+    assert!(array_type.is_array());
+    Type::slice_type(array_type.array_range())
   }
 
   pub fn ptr_type(pointee_type: Type, m: Mutability) -> Self {
@@ -75,8 +84,8 @@ impl Type {
     self.0.kind().is_array()
   }
 
-  pub fn is_const_array(&self) -> bool {
-    self.is_array() && self.array_size() == None
+  pub fn is_slice(&self) -> bool {
+    self.0.kind().is_slice()
   }
 
   pub fn is_fn(&self) -> bool { self.0.kind().is_fn() }
@@ -99,6 +108,10 @@ impl Type {
   pub fn is_ptr(&self) -> bool { self.0.kind().is_raw_ptr() }
 
   pub fn is_box(&self) -> bool { self.0.kind().is_box() }
+
+  pub fn is_slice_ref(&self) -> bool {
+    self.is_any_ptr() && self.pointee_ty().is_slice()
+  }
 
   /// `Box` is also a ptr by our semantic
   pub fn is_any_ptr(&self) -> bool {
@@ -159,6 +172,15 @@ impl Type {
     panic!("Wrong struct type");
   }
 
+  pub fn slice_elem_ty(&self) -> Type {
+    if let TyKind::RigidTy(r) = self.0.kind() {
+      if let RigidTy::Slice(t) = r {
+        return Type::from(t);
+      }
+    }
+    panic!("Wrong struct type");
+  }
+
   pub fn struct_name(&self) -> NString {
     assert!(self.is_struct());
     if let TyKind::RigidTy(r) = self.0.kind() {
@@ -173,9 +195,10 @@ impl Type {
     assert!(self.is_struct());
     let mut def = (self.struct_name(), Vec::new());
     if let TyKind::RigidTy(r) = self.0.kind() {
-      if let RigidTy::Adt(adt, _) = r {
+      if let RigidTy::Adt(adt, args) = r {
         for field in adt.variants()[0].fields() {
-          def.1.push((NString::from(field.name.clone()), Type::from(field.ty())));
+          let fty = field.ty_with_args(&args);
+          def.1.push((NString::from(field.name.clone()), Type::from(fty)));
         }
       }
     }
@@ -193,55 +216,7 @@ impl Type {
 
 impl Debug for Type {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    let kind = self.0.kind();
-    let rigid = kind.rigid().unwrap();
-    match rigid {
-      RigidTy::Bool => write!(f, "bool"),
-      RigidTy::Int(i) =>
-        write!(f, "{}", format!("{i:?}").to_lowercase()),
-      RigidTy::Uint(u) =>
-        write!(f, "{}", format!("{u:?}").to_lowercase()),
-      RigidTy::Adt(def, _) => {
-        let name = def.trimmed_name();
-        let mut fields = Vec::new();
-        if name != "Box" && name != "Layout" {
-          for field in def.variants()[0].fields() {
-            fields.push(Type::from(field.ty()));
-          }
-        }
-        let ftypes = 
-          fields
-            .iter()
-            .map(|t| format!("{t:?}"))
-            .collect::<Vec<String>>()
-            .join(", ");
-        if name != "Box" && name != "Layout" {
-          write!(f, "{name} {{ {ftypes} }}")
-        } else {
-          write!(f, "{name}")
-        }
-      },
-      RigidTy::Array(ty, _) => {
-        let t = Type::from(*ty);
-        write!(f, "Array({t:?})")
-      },
-      RigidTy::RawPtr(ty, m) => {
-        let t = Type::from(*ty);
-        write!(f, "RawPtr({t:?}, {m:?})")
-      },
-      RigidTy::Ref(_, ty, m) => {
-        let t = Type::from(*ty);
-        write!(f, "Ref({t:?}, {m:?})")
-      }
-      RigidTy::Tuple(data) => {
-        if data.is_empty() {
-          write!(f, "Unit")
-        } else {
-          Err(Error).expect("data must be empty")
-        }
-      }
-      _ => Err(Error).expect(format!("Do not support type {rigid:?}").as_str()),
-    }
+    write!(f, "{}", self.0)
   }
 }
 
