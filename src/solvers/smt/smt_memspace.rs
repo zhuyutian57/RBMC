@@ -68,8 +68,9 @@ impl<Ast: Clone> PointerLogic<Ast> {
 pub trait MemSpace<Sort, Ast> {
   fn set_pointer_logic(&mut self);
   
-  fn box_sort(&self) -> Sort;
   fn pointer_sort(&self) -> Sort;
+  fn box_sort(&self) -> Sort;
+  fn slice_ptr_sort(&self) -> Sort;
   
   fn create_object_space(&mut self, object: &Expr) -> Ast;
   fn init_pointer_space(&mut self, object: &Expr);
@@ -78,5 +79,8 @@ pub trait MemSpace<Sort, Ast> {
   fn mk_pointer_ident(&self, pt: &Ast) -> Ast;
   fn mk_pointer_offset(&self, pt: &Ast) -> Ast;
   fn mk_box(&self, inner_pt: &Ast) -> Ast;
-  fn mk_box_inner(&self, _box: &Ast) -> Ast;
+  fn mk_box_ptr(&self, _box: &Ast) -> Ast;
+  fn mk_slice(&self, pt: &Ast, meta: &Ast) -> Ast;
+  fn mk_slice_ptr(&self, slice: &Ast) -> Ast;
+  fn mk_slice_meta(&self, slice: &Ast) -> Ast; 
 }

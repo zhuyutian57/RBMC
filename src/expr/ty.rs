@@ -114,7 +114,7 @@ impl Type {
 
   pub fn is_box(&self) -> bool { self.0.kind().is_box() }
 
-  pub fn is_slice_ref(&self) -> bool {
+  pub fn is_slice_ptr(&self) -> bool {
     self.is_any_ptr() && self.pointee_ty().is_slice()
   }
 

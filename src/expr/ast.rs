@@ -122,6 +122,8 @@ pub(super) enum NodeKind {
 
   /// `Move(expr)`: move a value
   Move(NodeId),
+  /// `Valid(object)`: `object` is alloced
+  Valid(NodeId),
   /// `Invalid(object)`: `object` is not alloced
   Invalid(NodeId),
   /// Representing dereference of null
@@ -199,6 +201,10 @@ impl NodeKind {
     matches!(self, NodeKind::Move(..))
   }
 
+  pub fn is_valid(&self) -> bool {
+    matches!(self, NodeKind::Valid(..))
+  }
+
   pub fn is_invalid(&self) -> bool {
     matches!(self, NodeKind::Invalid(..))
   }
@@ -252,6 +258,7 @@ impl Node {
       NodeKind::PointerMeta(p)
         => Some(vec![*p]),
       NodeKind::Move(o) |
+      NodeKind::Valid(o) |
       NodeKind::Invalid(o)
         => Some(vec![*o]),
       NodeKind::NullObject | NodeKind::Unknown(_)

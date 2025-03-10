@@ -196,9 +196,11 @@ impl<'cfg> Symex<'cfg> {
             Err(Error)
           }
         }
-      }
+      },
+      ConstantKind::ZeroSized
+        => Ok(self.ctx.mk_type(mirconst.ty().into())),
       _ => Err(Error),
-    }.expect("Not support")
+    }.expect(format!("Not support {mirconst:?}").as_str())
   }
 
   /// Return `l1` expr
@@ -251,7 +253,7 @@ impl<'cfg> Symex<'cfg> {
       None => {},
     }
 
-    if expr.is_invalid() {
+    if expr.is_valid() || expr.is_invalid() {
       let object = expr.extract_object();
       let ptr_indent =
         self
@@ -264,15 +266,18 @@ impl<'cfg> Symex<'cfg> {
           );
       let alloc_array =
         self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
-      let not_alloced =
-        self.ctx.not(
+      let alloced =
           self.ctx.index(
             alloc_array,
             ptr_indent,
             Type::bool_type()
-          )
-        );
-      *expr = not_alloced;
+          );
+      *expr =
+          if expr.is_invalid() {
+            self.ctx.not(alloced)
+          } else {
+            alloced
+          };
       return;
     }
 

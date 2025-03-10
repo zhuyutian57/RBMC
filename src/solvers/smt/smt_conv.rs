@@ -30,6 +30,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     if ty.is_integer() { return self.mk_int_sort(); }
 
     if ty.is_box() { return self.mk_box_sort(); }
+    if ty.is_slice_ptr() { return self.mk_slice_sort()}
     if ty.is_primitive_ptr() { return self.mk_pointer_sort(ty); }
     
     if ty.is_array() {
@@ -76,6 +77,8 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
       a = 
         if expr.ty().is_struct() {
           Some(self.convert_struct(&args, expr.ty()))
+        } else if expr.ty().is_array() {
+          Some(self.convert_array(&args, expr.ty()))
         } else {
           Some(self.convert_tuple(&args, expr.ty()))
         };
@@ -156,9 +159,16 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     if expr.is_pointer_ident() {
       let mut pt = args[0].clone();
       if expr.extract_inner_pointer().ty().is_box() {
-        pt = self.convert_box_inner(&pt).clone();
+        pt = self.convert_box_ptr(&pt);
+      } else if expr.extract_inner_pointer().ty().is_slice_ptr() {
+        pt = self.convert_slice_ptr(&pt);
       }
       a = Some(self.convert_pointer_ident(&pt));
+    }
+
+    if expr.is_pointer_meta() {
+      let slice = &args[0];
+      a = Some(self.convert_slice_meta(slice));
     }
 
     match a {
@@ -211,11 +221,24 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
   }
 
   fn convert_null(&self, ty: Type) -> Ast;
-  fn convert_box(&self, inner_pt: &Ast) -> Ast;
-  fn convert_box_inner(&self, _box: &Ast) -> Ast;
   fn convert_pointer(&self, ident: &Ast, offset: &Ast) -> Ast;
   fn convert_pointer_ident(&self, pt: &Ast) -> Ast;
   fn convert_pointer_offset(&self, pt: &Ast) -> Ast;
+  fn convert_box(&self, inner_pt: &Ast) -> Ast;
+  fn convert_box_ptr(&self, _box: &Ast) -> Ast;
+  fn convert_slice(&self, inner_pt: &Ast, meta: &Ast) -> Ast;
+  fn convert_slice_ptr(&self, slice: &Ast) -> Ast;
+  fn convert_slice_meta(&self, slice: &Ast) -> Ast;
+
+  fn convert_array(&mut self, elem: &Vec<Ast>, ty: Type) -> Ast {
+    let mut array = self.mk_fresh("array".into(), ty);
+    for (i, val) in elem.iter().enumerate() {
+      let index = self.mk_smt_int(BigInt::from(i));
+      array = self.mk_store(&array, &index, val);
+    }
+    array
+  }
+
   fn convert_struct(&mut self, fields: &Vec<Ast>, ty: Type) -> Ast;
   fn convert_tuple(&mut self, fields: &Vec<Ast>, ty: Type) -> Ast;
 
@@ -261,9 +284,13 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
 
     if inner_expr.is_slice() {
       let inner_object = inner_expr.extract_object();
+      let ident = self.convert_object_space(&inner_object);
       let start = inner_expr.extract_slice_start();
-      let end = inner_expr.extract_slice_end();
-      todo!();
+      let offset = self.convert_ast(start);
+      let pt = self.convert_pointer(&ident, &offset);
+      let len = inner_expr.extract_slice_len();
+      let meta = self.convert_ast(len);
+      return self.convert_slice(&pt, &meta);
     }
 
     panic!("Do not support address_of {object:?}")
@@ -279,7 +306,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
 
     if expr.ty().is_box() && target_ty.is_primitive_ptr() {
       let _box = self.convert_ast(expr.clone());
-      return self.convert_box_inner(&_box);
+      return self.convert_box_ptr(&_box);
     }
 
     panic!("Do not support cast {:?} to {target_ty:?}", expr.ty())
@@ -338,12 +365,16 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
   fn convert_struct_update(&mut self, object: Expr, field: Expr, value: Expr) -> Ast;
   fn convert_tuple_update(&mut self, object: Expr, field: Expr, value: Expr) -> Ast;
 
+  // fresh variable
+  fn mk_fresh(&mut self, prefix: NString, ty: Type) -> Ast;
+
   // sort
   fn mk_bool_sort(&self) -> Sort;
   fn mk_int_sort(&self) -> Sort;
   fn mk_array_sort(&mut self, domain: &Sort, range: &Sort) -> Sort;
   fn mk_pointer_sort(&self, ty: Type) -> Sort;
   fn mk_box_sort(&self) -> Sort;
+  fn mk_slice_sort(&self) -> Sort;
 
   // constant
   fn mk_smt_bool(&self, b: bool) -> Ast;

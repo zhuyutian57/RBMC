@@ -207,6 +207,11 @@ impl Context {
     self.nodes[i].kind().is_move()
   }
 
+  pub fn is_valid(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_valid()
+  }
+
   pub fn is_invalid(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     self.nodes[i].kind().is_invalid()
@@ -568,9 +573,9 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn slice(&self, object: Expr, start: Expr, end: Expr) -> Expr {
+  fn slice(&self, object: Expr, start: Expr, len: Expr) -> Expr {
     assert!(object.unwrap_predicates().is_object() && object.ty().is_array());
-    let kind = NodeKind::Slice(object.id, start.id, end.id);
+    let kind = NodeKind::Slice(object.id, start.id, len.id);
     let ty = Type::slice_type_from_array_type(object.ty());
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
@@ -628,7 +633,7 @@ impl ExprBuilder for ExprCtx {
   }
 
   fn pointer_meta(&self, pt: Expr) -> Expr {
-    assert!(pt.ty().is_slice_ref());
+    assert!(pt.ty().is_slice_ptr());
     let kind = NodeKind::PointerMeta(pt.id);
     let ty = Type::unsigned_type(UintTy::Usize);
     let new_node = Node::new(kind, ty);
@@ -640,6 +645,15 @@ impl ExprBuilder for ExprCtx {
     assert!(object.unwrap_predicates().is_object());
     let kind = NodeKind::Move(object.id);
     let ty = object.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
+
+  fn valid(&self, object: Expr) -> Expr {
+    assert!(object.unwrap_predicates().is_object());
+    let kind = NodeKind::Valid(object.id);
+    let ty = Type::bool_type();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }

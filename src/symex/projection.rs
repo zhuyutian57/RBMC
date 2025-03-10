@@ -15,7 +15,7 @@ pub enum Mode {
   Read,
   Drop,
   Dealloc,
-  Slice(usize, usize),
+  Slice(Option<usize>, Option<usize>),
 }
 
 pub(super) struct Projection<'a, 'cfg> {
@@ -137,7 +137,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         self.valid_check(object.clone(), pointer_guard.clone());
       }
 
-      let new_object = self.build_object(object, mode);
+      let new_object =
+        self.build_object(object, mode, pointer_guard.clone());
       if new_object == None { continue; }
 
       ret =
@@ -179,7 +180,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     &mut self,
     object: Expr,
     index: Expr,
-    bound_check: bool
+    bound_check: bool,
   ) -> Expr {
     let ty = object.ty();
     assert!(ty.is_array() || ty.is_slice());
@@ -206,26 +207,49 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     }
   }
 
-  fn build_object(&mut self, object: Expr, mode: Mode) -> Option<Expr> {
+  fn build_object(
+    &mut self,
+    object: Expr,
+    mode: Mode,
+    guard: Expr
+  ) -> Option<Expr> {
     match mode {
-      Mode::Slice(l, r) => self.build_slice(object, l, r),
+      Mode::Slice(l, r)
+        => self.build_slice(object, l, r, guard),
       _ => Some(object),
     }
   }
 
-  fn build_slice(&mut self, object: Expr, l: usize, r: usize) -> Option<Expr> {
+  fn build_slice(
+    &mut self,
+    object: Expr,
+    l: Option<usize>,
+    r: Option<usize>,
+    guard: Expr
+  ) -> Option<Expr> {
     let ctx = object.ctx.clone();
     let new_slice =
       if object.ty().is_array() {
         let array_ty = object.ty();
-        let start = ctx.constant_usize(l);
-        let end = ctx.constant_usize(r);
-        // check len
-        ctx.slice(object.clone(), start, end)
+        let size =
+          array_ty.array_size().expect("array must has len");
+        let start = match l {
+          Some(s) => ctx.constant_usize(s),
+          None => ctx.constant_usize(0),
+        };
+        let end = match r {
+          Some(e) => ctx.constant_usize(e),
+          None => ctx.constant_usize(size as usize),
+        };
+        
+        let s = start.extract_constant().to_integer();
+        let e = end.extract_constant().to_integer();
+        
+        self.slicing(object.clone(), (s, e), guard)
       } else {
         todo!()
       };
-    Some(new_slice)
+    new_slice
   }
 
   fn make_invalid_object(&mut self, ty: Type) -> Expr {
@@ -264,8 +288,42 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         ctx.ge(index.clone(), ctx.constant_usize(len as usize));
       let msg =
         NString::from(format!("bound check: {object:?}[{index:?}] is out-of-bound"));
-      self._callback_symex.claim(msg, out_of_bound);
+      
+      let cond = ctx.valid(object.clone());
+      self._callback_symex.claim(msg, ctx.and(cond, out_of_bound));
     }
+  }
+
+  fn slicing(
+    &mut self,
+    object: Expr,
+    range: (BigInt, BigInt),
+    guard: Expr
+  ) -> Option<Expr> {
+    let ctx = object.ctx.clone();
+    if object.ty().is_array() {
+      let size = object.ty().array_size().unwrap();
+      
+      let start = bigint_to_usize(&range.0);
+      let end = bigint_to_usize(&range.1);
+
+      if start > end || end > size as usize {
+        let msg =
+          NString::from(
+            format!(
+              "slicing fail: [{:?}, {:?}) must be in {:?}[0, {:?}",
+              start, end, object, size
+            )
+          );
+        self._callback_symex.claim(msg, ctx.and(guard, ctx._false()));
+      }
+
+      let offset = ctx.constant_usize(start);
+      let len = ctx.constant_usize(end - start);
+      return Some(ctx.slice(object, offset, len));
+    }
+
+    todo!()
   }
 
   fn dereference_null(&mut self, pt: Expr, guard: Expr) {

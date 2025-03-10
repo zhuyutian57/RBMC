@@ -22,7 +22,8 @@ impl<'cfg> Symex<'cfg> {
     let mut cond = expr.clone();
     self.replace_predicates(&mut cond);
     self.rename(&mut cond);
-    if *expected == false {
+    // Make assert fail and continue check other assertions
+    if *expected == true {
       cond = self.ctx.not(cond);
     }
     self.vc_system.borrow_mut().assert(msg, cond);

@@ -7,6 +7,7 @@ use num_bigint::BigInt;
 use stable_mir::mir::Mutability;
 
 use crate::symbol::symbol::*;
+use crate::NString;
 use super::ast::*;
 use super::constant::*;
 use super::context::*;
@@ -51,6 +52,7 @@ impl Expr {
   pub fn is_pointer_meta(&self) -> bool { self.ctx.borrow().is_pointer_meta(self.id) }
 
   pub fn is_move(&self) -> bool { self.ctx.borrow().is_move(self.id) }
+  pub fn is_valid(&self) -> bool { self.ctx.borrow().is_valid(self.id) }
   pub fn is_invalid(&self) -> bool { self.ctx.borrow().is_invalid(self.id) }
   pub fn is_null_object(&self) -> bool { self.ctx.borrow().is_null_object(self.id) }
   pub fn is_unknown(&self) -> bool { self.ctx.borrow().is_unknown(self.id) }
@@ -150,7 +152,7 @@ impl Expr {
     self.sub_exprs().unwrap().remove(1)
   }
 
-  pub fn extract_slice_end(&self) -> Expr {
+  pub fn extract_slice_len(&self) -> Expr {
     assert!(self.is_slice());
     self.sub_exprs().unwrap().remove(2)
   }
@@ -411,10 +413,12 @@ impl Debug for Expr {
       if self.is_aggregate() {
         let ty = self.ty();
         let type_info =
-          if ty.is_struct() {
-            ty.struct_def().0
+          if ty.is_struct() || ty.is_array() {
+            ty.name()
+          } else if ty.is_tuple() {
+            NString::from("Tuple")
           } else {
-            todo!()
+            todo!("{ty:?}")
           };
         return write!(f, "{type_info:?} {sub_exprs:?}");
       }
@@ -548,7 +552,7 @@ pub trait ExprBuilder {
   fn cast(&self, operand: Expr, target_ty: Expr) -> Expr;
 
   fn object(&self, inner_expr: Expr) -> Expr;
-  fn slice(&self, object: Expr, start: Expr, end: Expr) -> Expr;
+  fn slice(&self, object: Expr, start: Expr, len: Expr) -> Expr;
   fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr;
   fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
@@ -558,6 +562,7 @@ pub trait ExprBuilder {
   fn pointer_meta(&self, pt: Expr) -> Expr;
 
   fn _move(&self, object: Expr) -> Expr;
+  fn valid(&self, object: Expr) -> Expr;
   fn invalid(&self, object: Expr) -> Expr;
   fn null_object(&self, ty: Type) -> Expr;
   fn unknown(&self, ty: Type) -> Expr;
