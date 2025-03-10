@@ -32,12 +32,17 @@ impl<'cfg> Symex<'cfg> {
   }
 
   fn symex_alloc(&mut self, dest: &Place, args: &Vec<Operand>) {
-    let ty = self.make_type(&args[0]);
-    let object =  self.exec_state.new_object(ty);
-    let pt = self.make_project(dest);
-    let address_of = self.ctx.address_of(object.clone(), pt.ty());
+    let mut layout = self.make_operand(&args[0]);
+    self.replace_predicates(&mut layout);
+    self.rename(&mut layout);
+    layout = layout.extract_inner_expr();
+    assert!(layout.is_type());
+    let object =  self.exec_state.new_object(layout.extract_type());
+
+    let lhs = self.make_project(dest);
+    let address_of = self.ctx.address_of(object.clone(), lhs.ty());
     
-    self.assign(pt, address_of, self.ctx._true());
+    self.assign(lhs, address_of, self.ctx._true());
 
     self.track_new_object(object.clone());
 

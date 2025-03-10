@@ -30,7 +30,8 @@ impl<'cfg> Symex<'cfg> {
   }
 
   fn symex_box_new(&mut self, dest: &Place, args: &Vec<Operand>) {
-    let ty = self.make_type(&args[0]);
+    let lhs = self.make_project(dest);
+    let ty = lhs.ty().pointee_ty();
     let object = self.exec_state.new_object(ty);
 
     // Assign value
@@ -38,7 +39,6 @@ impl<'cfg> Symex<'cfg> {
     self.assign(object.clone(), value, self.ctx._true());
     
     // Return box pointer
-    let lhs = self.make_project(dest);
     let address_of =
       self.ctx.address_of(object.clone(), object.extract_address_type());
     let _box = self.ctx._box(address_of);
