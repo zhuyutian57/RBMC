@@ -19,33 +19,32 @@ use crate::solvers::solver::PResult;
 use crate::NString;
 
 pub struct Z3Conv<'ctx> {
-  z3_ctx: &'ctx z3::Context,
+  pub(super) z3_ctx: &'ctx z3::Context,
   z3_solver: z3::Solver<'ctx>,
-  tuple_sorts: HashMap<Type, z3::DatatypeSort<'ctx>>,
-  /// Use for making pointer tuple
-  pointer_type: Type,
-  pointer_logic: PointerLogic<z3::ast::Dynamic<'ctx>>,
+  pub(super) tuple_sorts: HashMap<NString, z3::DatatypeSort<'ctx>>,
+  pub(super) pointer_logic: PointerLogic<z3::ast::Dynamic<'ctx>>,
   /// Cache Ast
   cache: HashMap<Expr, z3::ast::Dynamic<'ctx>>,
   /// Cache current alloc.
-  cur_alloc_expr: Option<z3::ast::Dynamic<'ctx>>,
+  pub(super) cur_alloc_expr: Option<z3::ast::Dynamic<'ctx>>,
 }
 
 impl<'ctx> Z3Conv<'ctx> {
   pub fn new(z3_ctx: &'ctx z3::Context) -> Self {
     let z3_solver = z3::Solver::new(z3_ctx);
+    let pointer_type =
+      Type::ptr_type(Type::unit_type(), Mutability::Not);
     Z3Conv {
       z3_ctx,
       z3_solver,
       tuple_sorts: HashMap::new(),
-      pointer_type: Type::ptr_type(Type::unit_type(), Mutability::Not),
       pointer_logic: PointerLogic::new(),
       cache: HashMap::new(),
       cur_alloc_expr: None,
     }
   }
 
-  fn assert(&self, e: z3::ast::Dynamic<'ctx>) {
+  pub(super) fn assert(&self, e: z3::ast::Dynamic<'ctx>) {
     self.z3_solver.assert(&e.as_bool().expect("the assertion is not bool"));
   }
 }
@@ -121,15 +120,41 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     self.cur_alloc_expr = Some(ast);
   }
 
-  fn convert_tuple_sort(&mut self, ty: Type) -> z3::Sort<'ctx> {
-    self.create_tuple_sort(ty)
+  fn convert_struct_sort(&mut self, ty: Type) -> z3::Sort<'ctx> {
+    self.mk_struct_sort(ty)
   }
 
-  fn convert_null(&self) -> z3::ast::Dynamic<'ctx> {
-    self.mk_pointer(
-      &self.mk_smt_int(BigInt::ZERO),
-      &self.mk_smt_int(BigInt::ZERO)
-    )
+  fn convert_tuple_sort(&mut self, ty: Type) -> z3::Sort<'ctx> {
+    self.mk_tuple_sort(ty)
+  }
+
+  fn convert_null(&self, ty: Type) -> z3::ast::Dynamic<'ctx> {
+    let null_pt =
+      self.mk_pointer(
+        &self.mk_smt_int(BigInt::ZERO),
+        &self.mk_smt_int(BigInt::ZERO)
+      );
+    if ty.is_primitive_ptr() {
+      null_pt
+    } else if ty.is_box() {
+      self.mk_box(&null_pt)
+    } else {
+      panic!("Not support null({ty:?})")
+    }
+  }
+
+  fn convert_box(
+    &self,
+    inner_pt: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
+    self.mk_box(inner_pt)  
+  }
+
+  fn convert_box_inner(
+    &self,
+    _box: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
+    self.mk_box_inner(_box)
   }
 
   fn convert_pointer(
@@ -154,17 +179,34 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     self.mk_pointer_offset(pt)
   }
 
+  fn convert_struct(
+    &mut self,
+    fields: &Vec<z3::ast::Dynamic<'ctx>>,
+    ty: Type
+  ) -> z3::ast::Dynamic<'ctx> {
+    self.mk_struct(fields, ty)
+  }
+
   fn convert_tuple(
     &mut self,
     fields: &Vec<z3::ast::Dynamic<'ctx>>,
     ty: Type
   ) -> z3::ast::Dynamic<'ctx> {
-    self.create_tuple(fields, ty)
+    self.mk_tuple(fields, ty)
   }
 
   fn convert_object_space(&mut self, object: &Expr) -> z3::ast::Dynamic<'ctx> {
     assert!(object.is_object() && object.extract_inner_expr().is_symbol());
     self.create_object_space(&object.extract_inner_expr())
+  }
+
+  fn convert_struct_load(
+    &mut self,
+    object: Expr,
+    field: Expr
+  ) -> z3::ast::Dynamic<'ctx> {
+    let i = field.extract_integer();
+    self.mk_tuple_select(object, i)
   }
 
   fn convert_tuple_load(
@@ -174,6 +216,16 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   ) -> z3::ast::Dynamic<'ctx> {
     let i = field.extract_integer();
     self.mk_tuple_select(object, i)
+  }
+
+  fn convert_struct_update(
+    &mut self,
+    object: Expr,
+    field: Expr,
+    value: Expr
+  ) -> z3::ast::Dynamic<'ctx> {
+    let i = field.extract_constant().to_integer();
+    self.mk_tuple_store(object, i, value)
   }
 
   fn convert_tuple_update(
@@ -194,14 +246,20 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     z3::Sort::int(&self.z3_ctx)
   }
 
-  fn mk_pointer_sort(&self) -> z3::Sort<'ctx> { self.pointer_sort() }
-
   fn mk_array_sort(
     &mut self,
     domain: &z3::Sort<'ctx>,
     range: &z3::Sort<'ctx>
   ) -> z3::Sort<'ctx> {
     z3::Sort::array(&self.z3_ctx, domain, range)
+  }
+
+  fn mk_pointer_sort(&self, ty: Type) -> z3::Sort<'ctx> {
+    self.pointer_sort()
+  }
+
+  fn mk_box_sort(&self) -> z3::Sort<'ctx> {
+    self.box_sort()
   }
 
   fn mk_smt_bool(&self, b: bool) -> z3::ast::Dynamic<'ctx> {
@@ -446,229 +504,5 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
       .as_bool()
       .expect("condition must be bool")
       .ite(true_value, false_value)
-  }
-}
-
-impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
-  fn create_tuple_sort(&mut self, ty: Type) -> z3::Sort<'ctx> {
-    assert!(ty.is_struct() || ty.is_tuple());
-    let prefix =
-      if ty.is_struct() { "_struct_" } else { "_tuple_" }.to_string();
-
-    if self.tuple_sorts.contains_key(&ty) {
-      return self.tuple_sorts.get(&ty).unwrap().sort.clone();
-    }
-
-    let def = ty.struct_def();
-    let name = prefix + def.0.to_string().as_str();
-    let mut cache_field_names = Vec::new();
-    for (i, def) in def.1.iter().enumerate() {
-      let field_name =
-        name.clone() + "_" +
-        if def.0.is_empty() { i.to_string().into() }
-        else { def.0 }.as_str();
-      cache_field_names.push(field_name);
-    }
-    let mut fields = Vec::new();
-    for (i, (_, ty)) in def.1.iter().enumerate() {
-      let accessor =
-        DatatypeAccessor::Sort(self.convert_sort(*ty));
-      fields.push((cache_field_names[i].as_str(), accessor));
-    }
-
-    let dtsort =
-      z3::DatatypeBuilder
-        ::new(&self.z3_ctx, name.clone())
-        .variant(name.as_str(), fields)
-        .finish();
-    let sort = dtsort.sort.clone();
-    self.tuple_sorts.insert(ty, dtsort);
-    sort
-  }
-  
-  fn create_tuple(
-    &mut self,
-    fields: &Vec<z3::ast::Dynamic<'ctx>>,
-    ty: Type
-  ) -> z3::ast::Dynamic<'ctx> {
-    if !self.tuple_sorts.contains_key(&ty) { self.create_tuple_sort(ty); }
-    let dtsort = self.tuple_sorts.get(&ty).unwrap();
-    let f = &dtsort.variants[0].constructor;
-    let mut args = Vec::new();
-    for arg in fields.iter() { 
-      args.push(arg as &dyn Ast<'_>);
-    }
-    f.apply(args.as_slice())
-  }
-
-  fn mk_tuple_select(
-    &mut self,
-    object: Expr,
-    field: BigInt
-  ) -> z3::ast::Dynamic<'ctx> {
-    let args = 
-      &[&self.convert_ast(object.clone()) as &dyn Ast];
-    let dtsort =
-      self.tuple_sorts.get(&object.ty())
-      .expect(format!("{object:?} is not struct").as_str());
-    assert!(field >= BigInt::ZERO);
-    assert!(field < dtsort.variants[0].accessors.len().into());
-    dtsort
-      .variants[0]
-      .accessors[bigint_to_usize(&field)]
-      .apply(args)
-  }
-  
-  fn mk_tuple_store(
-    &mut self,
-    object: Expr,
-    field: BigInt,
-    value: Expr
-  ) -> z3::ast::Dynamic<'ctx> {
-    let n = self.tuple_sorts.get(&object.ty()).unwrap().variants[0].accessors.len();
-    let mut fields_values = Vec::with_capacity(n);
-    let update_value = self.convert_ast(value);
-    for i in 0..n {
-      if field != i.into() {
-        fields_values.push(self.mk_tuple_select(object.clone(), i.into()));
-      } else {
-        fields_values.push(update_value.clone());
-      }
-    }
-    let args =
-      fields_values
-        .iter()
-        .map(|x| x as &dyn Ast)
-        .collect::<Vec<_>>();
-    self
-      .tuple_sorts
-      .get(&object.ty())
-      .unwrap()
-      .variants[0]
-      .constructor
-      .apply(&args.as_slice())
-  }
-}
-
-impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
-  fn set_pointer_logic(&mut self) {
-    // A pointer is a tuple (base, offset)
-    let pointer_tuple_sort =
-      z3::DatatypeBuilder
-        ::new(&self.z3_ctx, "pointer")
-        .variant(
-          "pointer",
-          vec![
-            ("ident", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx))),
-            ("offset", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx)))
-            ]
-          )
-        .finish();
-    self.tuple_sorts.insert(self.pointer_type, pointer_tuple_sort);
-  }
-
-  fn pointer_sort(&self) -> z3::Sort<'ctx> {
-    self
-      .tuple_sorts
-      .get(&self.pointer_type)
-      .expect("Pointer tuple is not initialized")
-      .sort
-      .clone()
-  }
-
-  fn create_object_space(&mut self, object: &Expr) -> z3::ast::Dynamic<'ctx> {
-    assert!(object.is_symbol());
-    if self.pointer_logic.contains(object) {
-      return self.pointer_logic.get_object_space_ident(object);
-    }
-    self.init_pointer_space(object);
-    self.pointer_logic.get_object_space_ident(object)
-  }
-
-  fn init_pointer_space(&mut self, object: &Expr) {
-    assert!(!self.pointer_logic.contains(object));
-    assert!(object.is_symbol());
-
-    // Use l0 as identifier
-    let space_ident = NString::from(object.extract_symbol().ident());
-    let space_base = space_ident + "_base";
-    // The size is field-level
-    let space_len =
-      if object.ty().is_struct() {
-        object.ty().struct_def().1.len()
-      } else { 1 };
-
-    let ident = self.mk_int_symbol(space_ident);
-    let base = self.mk_int_symbol(space_base);
-    let len = self.mk_smt_int(BigInt::from(space_len));
-
-    // Ident is greater than 0
-    self.assert(self.mk_gt(&ident, &self.mk_smt_int(BigInt::ZERO)));
-    // base is also greater than 0
-    self.assert(self.mk_gt(&base, &self.mk_smt_int(BigInt::ZERO)));
-    // disjoint relationship
-    for (i, (b, l))
-      in self.pointer_logic.object_spaces().values() {
-      if space_ident == NString::from(i.to_string()) { continue; }
-      
-      assert!(self.cur_alloc_expr != None);
-      let alloc_array_ast = self.cur_alloc_expr.as_ref().unwrap();
-      let alive = alloc_array_ast.as_array().unwrap().select(i);
-      
-      let not_eq = self.mk_ne(&ident, i);
-      let l1 = base.clone();
-      let r1 = self.mk_add(&l1, &len);
-      let l2 = b.clone();
-      let r2 = self.mk_add(&l2, &l);
-      let no_overlap =
-        self.mk_or(
-          &self.mk_le(&r1, &l2),
-          &self.mk_le(&r2, &l1)
-        );
-      
-      let disj =
-        self.mk_implies(
-          &alive, 
-          &self.mk_and(&not_eq, &no_overlap),
-          );
-      
-      self.assert(disj);
-    }
-    
-    self.pointer_logic.set_object_space(object.clone(), (ident, (base, len)));
-  }
-
-  fn mk_pointer(
-    &self,
-    base: &z3::ast::Dynamic<'ctx>,
-    offset: &z3::ast::Dynamic<'ctx>
-  ) -> z3::ast::Dynamic<'ctx> {
-    self
-      .tuple_sorts
-      .get(&self.pointer_type)
-      .unwrap()
-      .variants[0]
-      .constructor
-      .apply(&[base as &dyn Ast, offset as &dyn Ast])
-  }
-
-  fn mk_pointer_ident(&self, pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
-    self
-      .tuple_sorts
-      .get(&self.pointer_type)
-      .unwrap()
-      .variants[0]
-      .accessors[0]
-      .apply(&[pt as &dyn Ast])
-  }
-
-  fn mk_pointer_offset(&self, pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
-    self
-      .tuple_sorts
-      .get(&self.pointer_type)
-      .unwrap()
-      .variants[0]
-      .accessors[1]
-      .apply(&[pt as &dyn Ast])
   }
 }

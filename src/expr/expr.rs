@@ -44,6 +44,8 @@ impl Expr {
   pub fn is_same_object(&self) -> bool { self.ctx.borrow().is_same_object(self.id) }
   pub fn is_index(&self) -> bool { self.ctx.borrow().is_index(self.id) }
   pub fn is_store(&self) -> bool { self.ctx.borrow().is_store(self.id) }
+
+  pub fn is_box(&self) -> bool { self.ctx.borrow().is_box(self.id) }
   pub fn is_pointer_ident(&self) -> bool { self.ctx.borrow().is_pointer_ident(self.id) }
   pub fn is_pointer_offset(&self) -> bool { self.ctx.borrow().is_pointer_offset(self.id) }
   pub fn is_pointer_meta(&self) -> bool { self.ctx.borrow().is_pointer_meta(self.id) }
@@ -83,10 +85,7 @@ impl Expr {
 
   pub fn extract_address_type(&self) -> Type {
     assert!(self.is_object());
-    Type::ptr_type(
-      self.ty(),
-      Mutability::Not
-    )
+    Type::ptr_type(self.ty(), Mutability::Not)
   }
 
   pub fn extract_object(&self) -> Expr {
@@ -166,8 +165,12 @@ impl Expr {
     self.sub_exprs().unwrap().remove(2)
   }
 
-  pub fn extract_pointer(&self) -> Expr {
-    assert!(self.is_pointer_meta());
+  pub fn extract_inner_pointer(&self) -> Expr {
+    assert!(
+      self.is_box() ||
+      self.is_pointer_ident() ||
+      self.is_pointer_meta()
+    );
     self.sub_exprs().unwrap().remove(0)
   }
 
@@ -354,9 +357,21 @@ impl Expr {
       return;
     }
 
-    if self.is_pointer_ident() || self.is_pointer_meta() {
+    if self.is_box() {
+      let pt = sub_exprs[0].clone();
+      *self = self.ctx._box(pt);
+      return;
+    }
+
+    if self.is_pointer_ident() {
       let pt = sub_exprs[0].clone();
       *self = self.ctx.pointer_ident(pt);
+      return;
+    }
+
+    if self.is_pointer_meta() {
+      let pt = sub_exprs[0].clone();
+      *self = self.ctx.pointer_meta(pt);
       return;
     }
 
@@ -462,6 +477,11 @@ impl Debug for Expr {
         return write!(f, "store({object:?}, {index:?}, {value:?})");
       }
 
+      if self.is_box() {
+        let pt = &sub_exprs[0];
+        return write!(f, "Box({pt:?})");
+      }
+
       if self.is_pointer_ident() {
         let pt = &sub_exprs[0];
         return write!(f, "{pt:?}");
@@ -533,6 +553,7 @@ pub trait ExprBuilder {
   fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr;
   fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
 
+  fn _box(&self, pt: Expr) -> Expr;
   fn pointer_ident(&self, pt: Expr) -> Expr;
   fn pointer_meta(&self, pt: Expr) -> Expr;
 

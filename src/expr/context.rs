@@ -182,6 +182,11 @@ impl Context {
     self.nodes[i].kind().is_store()
   }
 
+  pub fn is_box(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_box()
+  }
+
   pub fn is_pointer_ident(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     self.nodes[i].kind().is_pointer_ident()
@@ -320,7 +325,7 @@ impl ExprBuilder for ExprCtx {
 
   /// `ty` indicates the pointer type
   fn null(&self, ty: Type) -> Expr {
-    let terminal = Terminal::Constant(Constant::Null);
+    let terminal = Terminal::Constant(Constant::Null(ty));
     let terminal_id = self.borrow_mut().add_terminal(terminal);
     let kind = NodeKind::Terminal(terminal_id);
     let new_node = Node::new(kind, ty);
@@ -602,6 +607,15 @@ impl ExprBuilder for ExprCtx {
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
+  }
+
+  fn _box(&self, pt: Expr) -> Expr {
+    assert!(pt.ty().is_ptr());
+    let kind = NodeKind::Box(pt.id);
+    let ty =  Type::box_type(pt.ty().pointee_ty());
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id } 
   }
   
   fn pointer_ident(&self, pt: Expr) -> Expr {

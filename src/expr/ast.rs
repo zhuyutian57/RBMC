@@ -91,6 +91,7 @@ pub(super) enum NodeKind {
   Ite(NodeId, NodeId, NodeId),
   /// Type casting
   Cast(NodeId, NodeId),
+
   /// Unified wrapper for objects, including array, slice,
   /// struct, tuple, and so on. Moreover, heap objects and
   /// stack objects are included.
@@ -107,11 +108,13 @@ pub(super) enum NodeKind {
   /// a field of a struct.
   Store(NodeId, NodeId, NodeId),
 
+  /// `Box(*const T)` encodes Box pointer,a one-field tuple 
+  Box(NodeId),
   /// `PointerIdent(pt)` retrieve the ident of a pointer
   PointerIdent(NodeId),
   /// `PointerOffset(pt)` retrieve the offset of a pointer
   PointerOffset(NodeId),
-  /// `PtrMetaData`: used for retrieving slice len currently.
+  /// `PtrMetaData(pt)` retrieve pointer meta data, such as slice len
   PointerMeta(NodeId),
 
   // Predicates for symbolic execution. Before generating VCC,
@@ -174,6 +177,10 @@ impl NodeKind {
 
   pub fn is_store(&self) -> bool {
     matches!(self, NodeKind::Store(..))
+  }
+
+  pub fn is_box(&self) -> bool {
+    matches!(self, NodeKind::Box(..))
   }
 
   pub fn is_pointer_ident(&self) -> bool {
@@ -240,6 +247,7 @@ impl Node {
         => Some(vec![*o, *i]),
       NodeKind::Store(o, i, v)
         => Some(vec![*o, *i, *v]),
+      NodeKind::Box(p) |
       NodeKind::PointerIdent(p) |
       NodeKind::PointerMeta(p)
         => Some(vec![*p]),

@@ -10,7 +10,7 @@ pub type StructFieldDef = (Constant, Type);
 pub enum Constant {
   Bool(bool),
   Integer(BigInt),
-  Null,
+  Null(Type),
   Array(Box<Constant>, Type),
   Struct(Vec<StructFieldDef>),
 }
@@ -25,7 +25,7 @@ impl Constant {
   }
   
   pub fn is_null(&self) -> bool {
-    matches!(self, Constant::Null)
+    matches!(self, Constant::Null(..))
   }
   
   pub fn is_array(&self) -> bool {
@@ -65,7 +65,7 @@ impl Debug for Constant {
         => write!(f, "{b}"),
       Constant::Integer(i)
         => write!(f, "{i:?}"),
-      Constant::Null
+      Constant::Null(..)
         => write!(f, "null"),
       Constant::Array(v, _)
         => write!(f, "as-const {:?}", *v),

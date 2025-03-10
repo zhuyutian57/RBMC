@@ -2,7 +2,7 @@
 use std::alloc::*;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::ops::Add;
+use std::ops::{Add, AddAssign};
 
 /// Used to manage String. Reduce allocation for String
 struct StringManager {
@@ -109,6 +109,28 @@ impl Add<&str> for NString {
     NString(string_m().get_id(&new_string))
   }
 }
+
+impl AddAssign for NString {
+  fn add_assign(&mut self, rhs: Self) {
+    self.0 =
+      NString::from(
+        *self + string_m().get_string(rhs.0).as_str()
+      ).0
+  }
+}
+
+impl AddAssign<String> for NString {
+  fn add_assign(&mut self, rhs: String) {
+    self.0 = (*self + rhs).0
+  }
+}
+
+impl AddAssign<&str> for NString {
+  fn add_assign(&mut self, rhs: &str) {
+    self.0 = (*self + rhs).0
+  }
+}
+
 
 impl Debug for NString {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

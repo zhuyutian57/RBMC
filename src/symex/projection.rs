@@ -159,8 +159,9 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
   /// Visit a field of a struct. Return `Index(object, i)`.
   /// Note that the special visit for box pointer.
   fn project_field(&mut self, object: Expr, field: usize, ty: Type) -> Expr {
-    if object.ty().is_box() && field == 0 {
-      // `box` performs as a special raw pointer. Use it directly.
+    if object.ty().is_box() {
+      // `box` performs as a special pointer. Use it directly.
+      assert!(field == 0);
       return object;
     }
 

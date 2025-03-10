@@ -32,14 +32,22 @@ impl<'cfg> Symex<'cfg> {
   fn symex_box_new(&mut self, dest: &Place, args: &Vec<Operand>) {
     let ty = self.make_type(&args[0]);
     let object = self.exec_state.new_object(ty);
-    let pt = self.make_project(dest);
-    let address_of = self.ctx.address_of(object.clone(), pt.ty());
-    
-    self.assign(pt, address_of, self.ctx._true());
 
+    // Assign value
     let value = self.make_operand(&args[0]);
     self.assign(object.clone(), value, self.ctx._true());
+    
+    // Return box pointer
+    let lhs = self.make_project(dest);
+    let address_of =
+      self.ctx.address_of(object.clone(), object.extract_address_type());
+    let _box = self.ctx._box(address_of);
+    self.assign(lhs, _box, self.ctx._true());
 
+    // Track new object
+    self.track_new_object(object.clone());
+
+    // The newly object is owned by the box pointer
     let place_state = PlaceState::Own;
     self.exec_state.update_place_state(object, place_state);
   }

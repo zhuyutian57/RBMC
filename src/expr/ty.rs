@@ -10,6 +10,7 @@ use crate::NString;
 
 pub type FieldDef = (NString, Type);
 pub type StructDef = (NString, Vec<FieldDef>);
+pub type TupleDef = Vec<Type>;
 pub type FunctionDef = (FnDef, GenericArgs);
 
 /// A wrapper for `Ty` in MIR
@@ -62,6 +63,10 @@ impl Type {
     Type::from(Ty::new_ref(reg, pointee_type.0, mutability))
   }
 
+  pub fn box_type(inner_type: Type) -> Self {
+    Ty::new_box(inner_type.0).into()
+  }
+
   pub fn is_bool(&self) -> bool { self.0.kind().is_bool() }
 
   pub fn is_signed(&self) -> bool {
@@ -90,7 +95,7 @@ impl Type {
 
   pub fn is_fn(&self) -> bool { self.0.kind().is_fn() }
 
-  pub fn is_layout(&self) -> bool { format!("{self:?}") == "Layout" }
+  pub fn is_layout(&self) -> bool { self.name() == "Layout" }
   
   pub fn is_struct(&self) -> bool {
     self.0.kind().is_struct() && !self.is_box() && !self.is_layout()
@@ -116,6 +121,10 @@ impl Type {
   /// `Box` is also a ptr by our semantic
   pub fn is_any_ptr(&self) -> bool {
     self.is_ref() || self.is_ptr() || self.is_box()
+  }
+
+  pub fn is_primitive_ptr(&self) -> bool {
+    self.is_ptr() || self.is_ref()
   }
 
   pub fn pointee_ty(&self) -> Self {
@@ -206,11 +215,54 @@ impl Type {
     def
   }
 
+  pub fn tuple_def(&self) -> TupleDef {
+    match self.0.kind().rigid() {
+      Some(r) => {
+        match r {
+          RigidTy::Tuple(fields) =>
+            fields
+              .iter()
+              .map(|t| Type::from(t))
+              .collect::<Vec<_>>(),
+          _ => panic!("Not tuple"),
+        }
+      },
+      None => panic!("Not tuple"),
+    }
+  }
+
   pub fn fn_def(&self) -> FunctionDef {
     assert!(self.is_fn());
     let kind = self.0.kind();
     let _def = kind.fn_def().unwrap();
     (_def.0, _def.1.clone())
+  }
+
+  pub fn name(&self) -> NString {
+    match self.0.kind().rigid().unwrap() {
+      RigidTy::Bool => "bool".into(),
+      RigidTy::Char => "char".into(),
+      RigidTy::Int(i) => format!("{i:?}").to_lowercase().into(),
+      RigidTy::Uint(i) => format!("{i:?}").to_lowercase().into(),
+      RigidTy::Adt(def, ..) => def.trimmed_name().into(),
+      RigidTy::Array(ty, ..) => format!("Array({:?})", Type(*ty).name()).into(),
+      RigidTy::Slice(ty) => format!("Slice({:?})", Type(*ty).name()).into(),
+      RigidTy::RawPtr(ty, ..) => format!("Ptr({:?})", Type(*ty).name()).into(),
+      RigidTy::Ref(_, ty, _) => format!("Ref({:?})", Type(*ty).name()).into(),
+      RigidTy::Never => "never".into(),
+      RigidTy::Tuple(f) => {
+        if f.is_empty() {
+          "unit".into()
+        } else {
+          let mut name = NString::from("_tuple");
+          for ty in f {
+            name += format!("_{:?}", Type(*ty).name());
+          }
+          name
+        }
+      },
+      _ => todo!(),
+    }
   }
 }
 
@@ -230,11 +282,5 @@ impl From<Ty> for Type {
 impl From<&Ty> for Type {
   fn from(value: &Ty) -> Self {
     Type::from(*value)
-  }
-}
-
-impl ToString for Type {
-  fn to_string(&self) -> String {
-    format!("{self:?}")
   }
 }

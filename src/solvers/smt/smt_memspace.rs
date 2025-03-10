@@ -1,7 +1,8 @@
 
 use std::collections::HashMap;
 
-use crate::expr::expr::Expr;
+use crate::expr::expr::*;
+use crate::expr::ty::*;
 
 pub type ObjectSpace<Ast> = (Ast, (Ast, Ast));
 
@@ -67,6 +68,7 @@ impl<Ast: Clone> PointerLogic<Ast> {
 pub trait MemSpace<Sort, Ast> {
   fn set_pointer_logic(&mut self);
   
+  fn box_sort(&self) -> Sort;
   fn pointer_sort(&self) -> Sort;
   
   fn create_object_space(&mut self, object: &Expr) -> Ast;
@@ -75,4 +77,6 @@ pub trait MemSpace<Sort, Ast> {
   fn mk_pointer(&self, ident: &Ast, offset: &Ast) -> Ast;
   fn mk_pointer_ident(&self, pt: &Ast) -> Ast;
   fn mk_pointer_offset(&self, pt: &Ast) -> Ast;
+  fn mk_box(&self, inner_pt: &Ast) -> Ast;
+  fn mk_box_inner(&self, _box: &Ast) -> Ast;
 }
