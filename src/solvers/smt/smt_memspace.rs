@@ -23,6 +23,8 @@ impl<Ast: Clone> PointerLogic<Ast> {
     self._object_spaces.contains_key(object)
   }
 
+  pub fn clear(&mut self) { self._object_spaces.clear(); }
+
   pub fn set_object_space(
     &mut self,
     object: Expr,

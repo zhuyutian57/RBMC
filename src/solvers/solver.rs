@@ -31,7 +31,7 @@ impl<'ctx> Solver<'ctx> {
     self.smt_solver.check()
   }
 
-  pub fn reset(&self) {
+  pub fn reset(&mut self) {
     self.smt_solver.reset();
   }
 

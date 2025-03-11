@@ -69,7 +69,7 @@ impl<'ctx> SmtSolver<'ctx> for Z3Conv<'ctx> {
 
   fn assert_assign(&mut self, lhs: Expr, rhs: Expr) {
     let a = self.convert_ast(lhs.clone());
-    let b = self.convert_ast(rhs);
+    let b = self.convert_ast(rhs.clone());
 
     let res = a._eq(&b);
 
@@ -83,7 +83,14 @@ impl<'ctx> SmtSolver<'ctx> for Z3Conv<'ctx> {
     self.assert(e);
   }
   
-  fn reset(&self) { self.z3_solver.reset(); }
+  fn reset(&mut self) {
+    // Clear solver assertions
+    self.z3_solver.reset();
+    // Clear cache
+    self.cache.clear();;
+    // Clear memory space
+    self.pointer_logic.clear();
+  }
 
   fn check(&self) -> PResult {
     match self.z3_solver.check() {

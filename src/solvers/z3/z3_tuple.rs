@@ -57,7 +57,7 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_tuple_sort(&mut self, ty: Type) -> z3::Sort<'ctx> {
     assert!(ty.is_tuple() && !ty.is_unit());
     let def = ty.tuple_def();
-    let mut tuple_name = ty.name();
+    let tuple_name = ty.name();
     
     if self.tuple_sorts.contains_key(&tuple_name) {
       return self.tuple_sorts.get(&tuple_name).unwrap().sort.clone();
