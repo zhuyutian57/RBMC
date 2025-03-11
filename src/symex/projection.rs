@@ -227,29 +227,47 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     r: Option<usize>,
     guard: Expr
   ) -> Option<Expr> {
+    let inner_expr = object.extract_inner_expr();
+    assert!(object.ty().is_array() || inner_expr.is_slice());
     let ctx = object.ctx.clone();
-    let new_slice =
+    let (root_object, start, len) =
       if object.ty().is_array() {
-        let array_ty = object.ty();
-        let size =
-          array_ty.array_size().expect("array must has len");
-        let start = match l {
-          Some(s) => ctx.constant_usize(s),
-          None => ctx.constant_usize(0),
-        };
-        let end = match r {
-          Some(e) => ctx.constant_usize(e),
-          None => ctx.constant_usize(size as usize),
-        };
-        
-        let s = start.extract_constant().to_integer();
-        let e = end.extract_constant().to_integer();
-        
-        self.slicing(object.clone(), (s, e), guard)
+        let len = object.ty().array_size().expect("array must has len");
+        (object, BigInt::from(0 as usize), BigInt::from(len))
       } else {
-        todo!()
+        let root_object = inner_expr.extract_object();
+        let start =
+          inner_expr.extract_slice_start().extract_constant().to_integer();
+        let len =
+          inner_expr.extract_slice_len().extract_constant().to_integer();
+        (root_object, start, len)
       };
-    new_slice
+    
+    let end = start.clone() + len.clone();
+    let new_start =
+      start.clone() + BigInt::from(match l { Some(s) => s, _ => 0 });
+    let new_end =
+      match r {
+        Some(e) => start.clone() + BigInt::from(e),
+        None => end.clone(),
+      };
+    let new_len = new_end.clone() - new_start.clone();
+
+    if new_start > new_end || new_end > end || new_len < BigInt::ZERO {
+      let msg =
+        NString::from(
+          format!(
+            "slicing fail: [{:?}, {:?}) must be in {:?}[{:?}, {:?})",
+            &new_start, &new_end, root_object, &start, &end
+          )
+        );
+      self._callback_symex.claim(msg, ctx.and(guard, ctx._false()));
+      None
+    } else {
+      let slice_start = ctx.constant_integer(new_start, Type::usize_type());
+      let slice_len = ctx.constant_integer(new_len, Type::usize_type());
+      Some(ctx.slice(root_object, slice_start, slice_len))
+    }
   }
 
   fn make_invalid_object(&mut self, ty: Type) -> Expr {
@@ -292,38 +310,6 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
       let cond = ctx.valid(object.clone());
       self._callback_symex.claim(msg, ctx.and(cond, out_of_bound));
     }
-  }
-
-  fn slicing(
-    &mut self,
-    object: Expr,
-    range: (BigInt, BigInt),
-    guard: Expr
-  ) -> Option<Expr> {
-    let ctx = object.ctx.clone();
-    if object.ty().is_array() {
-      let size = object.ty().array_size().unwrap();
-      
-      let start = bigint_to_usize(&range.0);
-      let end = bigint_to_usize(&range.1);
-
-      if start > end || end > size as usize {
-        let msg =
-          NString::from(
-            format!(
-              "slicing fail: [{:?}, {:?}) must be in {:?}[0, {:?}",
-              start, end, object, size
-            )
-          );
-        self._callback_symex.claim(msg, ctx.and(guard, ctx._false()));
-      }
-
-      let offset = ctx.constant_usize(start);
-      let len = ctx.constant_usize(end - start);
-      return Some(ctx.slice(object, offset, len));
-    }
-
-    todo!()
   }
 
   fn dereference_null(&mut self, pt: Expr, guard: Expr) {

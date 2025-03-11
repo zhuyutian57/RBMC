@@ -48,10 +48,10 @@ impl<'ctx> Z3Conv<'ctx> {
 
   pub(super) fn fresh_symbol(&mut self, prefix: NString) -> NString {
     self
-    .fresh_count
-    .entry(prefix)
-    .and_modify(|c| *c += 1)
-    .or_insert(1);
+      .fresh_count
+      .entry(prefix)
+      .and_modify(|c| *c += 1)
+      .or_insert(1);
     prefix + "-" + self.fresh_count.get(&prefix).unwrap().to_string()
   }
 

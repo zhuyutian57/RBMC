@@ -34,6 +34,10 @@ impl Type {
     Type::from(Ty::unsigned_ty(ty))
   }
 
+  pub fn usize_type() -> Self {
+    Type::unsigned_type(UintTy::Usize)
+  }
+
   pub fn array_type(elem_ty: Type, len: u64) -> Self {
     Type::from(
       Ty::try_new_array(elem_ty.0, len)
