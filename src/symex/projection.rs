@@ -133,7 +133,9 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
           .cur_state
           .place_states
           .place_state(&root_object);
-      if !place_state.is_own() && !place_state.is_alloced() {
+      if !place_state.is_own() &&
+         !place_state.is_alloced() &&
+         !place_state.is_uninitialized() {
         self.valid_check(object.clone(), pointer_guard.clone());
       }
 

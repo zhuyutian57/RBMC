@@ -5,6 +5,7 @@ use std::fmt::Debug;
 
 use crate::expr::context::*;
 use crate::expr::expr::*;
+use crate::program::program::bigint_to_usize;
 use crate::NString;
 use super::place_state::*;
 use super::renaming::Renaming;
@@ -32,6 +33,10 @@ impl State {
   }
 
   pub fn guard(&self) -> Expr { self.guard.clone() }
+
+  pub fn move_value(&mut self, place: NPlace) {
+    self.update_place_state(place, PlaceState::Uninitilized);
+  }
 
   pub fn update_place_state(&mut self, place: NPlace, state: PlaceState) {
     self.place_states.update(place, state);
@@ -194,22 +199,45 @@ impl State {
     if expr.is_index() {
       let inner_expr = expr.extract_object().extract_inner_expr();
       let index_str = format!("{:?}", expr.extract_index());
-      let i = index_str.parse::<usize>().expect("Not integer index");
+      let i = bigint_to_usize(
+          &expr
+            .extract_index()
+            .extract_constant()
+            .to_integer()
+        );
+      let new_suffix = 
+        suffix + 
+          if expr.ty().is_array() {
+            format!("[{i}]")
+          } else {
+            format!(".{i}")
+          };
       if inner_expr.is_symbol() {
-        let new_suffix = 
-          suffix + 
-            if expr.ty().is_array() {
-              format!("[{i}]")
-            } else {
-              format!(".{i}")
-            };
         self.get_value_set_rec(inner_expr.clone(), new_suffix, values);
       } else if inner_expr.is_aggregate() {
         let fields = inner_expr.extract_fields();
         assert!(i < fields.len());
         self.get_value_set_rec(fields[i].clone(), suffix, values);
+      } else if inner_expr.is_store() {
+        let inner_object = inner_expr.extract_object();
+        let update_index = inner_expr.extract_index();
+        let j = bigint_to_usize(
+          &inner_expr
+            .extract_index()
+            .extract_constant()
+            .to_integer()
+        );
+        let update_value = inner_expr.extract_update_value();
+        if i == j {
+          let new_object =
+            if update_value.is_object() { update_value }
+            else { expr.ctx.object(update_value) };
+          values.insert(new_object);
+        } else {
+          self.get_value_set_rec(inner_object, new_suffix, values);
+        }
       } else {
-        panic!("Wrong object?");
+        panic!("Wrong object? {inner_expr:?}");
       }
       return;
     }

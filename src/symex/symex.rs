@@ -131,7 +131,7 @@ impl<'cfg> Symex<'cfg> {
 
   fn symex_storagedead(&mut self, local: Local) {
     let var = self.exec_state.current_local(local, Level::Level1);
-    self.top_mut().cur_state.remove_place(NPlace::from(var.clone()));
+    self.top_mut().cur_state.move_value(NPlace::from(var.clone()));
     if var.ty().is_any_ptr() {
       self.exec_state.cur_state_mut().remove_pointer(var);
     }

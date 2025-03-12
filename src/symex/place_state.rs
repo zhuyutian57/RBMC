@@ -16,6 +16,8 @@ pub enum PlaceState {
   Dealloced,
   /// The place is owned by some variables or in stack
   Own,
+  /// The place is owned, but not initialized
+  Uninitilized
 }
 
 impl PlaceState {
@@ -34,8 +36,13 @@ impl PlaceState {
   pub fn is_own(&self) -> bool {
     matches!(self, PlaceState::Own)
   }
+
+  pub fn is_uninitialized(&self) -> bool {
+    matches!(self, PlaceState::Uninitilized)
+  }
   
   pub fn merge(s1: PlaceState, s2: PlaceState) -> Self {
+    // TODO
     if s1 != s2 { PlaceState::Unknown } else { s1 }
   }
 }
@@ -69,8 +76,7 @@ impl PlaceStates {
     self
       ._place_states_map
       .get(&nplace)
-      .expect(format!("Do not contains {nplace:?}").as_str())
-      .to_owned()
+      .map_or(PlaceState::Unknown, |x| *x)
   }
 
   pub fn update(&mut self, place: NPlace, state: PlaceState) {
