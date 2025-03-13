@@ -65,17 +65,6 @@ impl <'cfg> Symex<'cfg> {
     self
       .exec_state
       .push_frame(i, Some(dest.clone()), *target);
-    // init namspace
-    for i in 0..self.top().function().locals().len() {
-      self.exec_state.l0_local(i);
-    }
-    // mark palce states of variables that are
-    // not labeled with storagelive.
-    for local in self.top().function().local_without_storage() {
-      let l1_local = self.exec_state.new_local(local, Level::Level1);
-      let nplace = NPlace::from(l1_local);
-      self.top_mut().cur_state.update_place_state(nplace, PlaceState::Own);
-    }
     // set arguements
     let args = self.top_mut().function().args();
     if !args.is_empty() {

@@ -19,16 +19,6 @@ use super::state::State;
 use super::symex::*;
 
 impl<'cfg> Symex<'cfg> {
-  pub(super) fn is_stack_symbol(&self, expr: Expr) -> bool {
-    assert!(expr.is_symbol());
-    let ident = expr.extract_symbol().ident();
-    let mut res = false;
-    for frame in self.exec_state.frames().iter().rev() {
-      res |= ident == frame.function_id()
-    }
-    res
-  }
-
   pub(super) fn merge_states(&mut self, pc: Pc) -> bool {
     let state_vec = self.top_mut().states_from(pc);
   
@@ -112,7 +102,7 @@ impl<'cfg> Symex<'cfg> {
       let mut l1_object = object.clone();
       self.exec_state.rename(&mut l1_object, Level::Level1);
       let place_state =
-        self.top().cur_state.place_states.place_state(&l1_object);
+        self.exec_state.get_place_state(&l1_object);
       if place_state.is_own() { continue; }
 
       let msg = 

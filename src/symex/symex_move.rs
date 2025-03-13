@@ -1,5 +1,5 @@
 
-use crate::expr::expr::*;
+use crate::{expr::expr::*, symbol::symbol::Level};
 use super::symex::*;
 
 impl<'cfg> Symex<'cfg> {
@@ -18,9 +18,15 @@ impl<'cfg> Symex<'cfg> {
   }
 
   fn move_rec(&mut self, expr: Expr) {
-    if expr.ty().is_box() {
+    if expr.ty().is_any_ptr() {
       self.top_mut().cur_state.remove_pointer(expr);
       return; 
+    }
+
+    if expr.is_symbol() {
+      // A new l2 variable in SSA means fresh value
+      self.exec_state.new_symbol(&expr, Level::Level2);
+      return;
     }
 
     if expr.ty().is_struct() {

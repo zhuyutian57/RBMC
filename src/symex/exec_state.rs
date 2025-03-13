@@ -113,6 +113,8 @@ impl<'cfg> ExecutionState<'cfg> {
       frame.cur_state = self.cur_state().clone();
     }
     self.frames.push(frame);
+    // init namspace
+    for i in 0..self.top().function().locals().len() { self.l0_local(i); }
   }
 
   pub fn pop_frame(&mut self) -> Frame<'cfg> {
@@ -194,11 +196,28 @@ impl<'cfg> ExecutionState<'cfg> {
     self.renaming.borrow_mut().constant_propagate(lhs, rhs);
   }
 
+  pub fn get_place_state(&self, place: &Expr) -> PlaceState {
+    let ident = NString::from(format!("{place:?}"));
+    if ident.contains("heap".into()) {
+      let nplace = NPlace(ident);
+      self.top().cur_state.get_place_state(nplace)
+    } else {
+      // A stack place is owned by some frames.
+      for frame in self.frames.iter().rev() {
+        if ident.contains(frame.function_id()) {
+          return PlaceState::Own
+        }
+      }
+      PlaceState::Unknown
+    }
+  }
+
   pub fn update_place_state(&mut self, place: Expr, state: PlaceState) {
     if place.is_symbol() {
       let mut l1_place = place;
       self.rename(&mut l1_place, Level::Level1);
       let ident = l1_place.extract_symbol().l1_name();
+      assert!(ident.contains("heap".into()));
       let nplace = NPlace(ident);
       self.cur_state_mut().update_place_state(nplace, state);
       return;

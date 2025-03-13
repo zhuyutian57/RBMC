@@ -51,7 +51,7 @@ impl<'cfg> Symex<'cfg> {
   }
 
   fn symex_dealloc(&mut self, operand: &Operand) {
-    let mut pt = self.make_operand(operand);
+    let pt = self.make_operand(operand);
     assert!(pt.ty().is_ptr());
     // Generate assertions
     self.make_deref(pt.clone(), Mode::Dealloc, self.ctx._true());

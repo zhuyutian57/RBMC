@@ -115,10 +115,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
       let place_state =
         self
           ._callback_symex
-          .top()
-          .cur_state
-          .place_states
-          .place_state(&root_object);
+          .exec_state
+          .get_place_state(&root_object);
       if place_state.is_unknown() {
         self.valid_check(object.clone(), pointer_guard.clone());
       }

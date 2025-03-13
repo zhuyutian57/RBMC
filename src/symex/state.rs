@@ -15,7 +15,7 @@ use super::value_set::*;
 #[derive(Clone)]
 pub struct State {
   pub(super) guard: Expr,
-  pub(super) place_states: PlaceStates,
+  pub(super) place_states: HeapPlaceStates,
   pub(super) value_set: ValueSet,
   /// Renaming at some program pointer. Used for
   /// doing phi function while merging states.
@@ -26,13 +26,17 @@ impl State {
   pub fn new(ctx: ExprCtx) -> Self {
     State {
       guard: ctx._true(),
-      place_states: PlaceStates::default(),
+      place_states: HeapPlaceStates::default(),
       value_set: ValueSet::default(),
       renaming: None,
     }
   }
 
   pub fn guard(&self) -> Expr { self.guard.clone() }
+
+  pub fn get_place_state(&self, nplace: NPlace) -> PlaceState {
+    self.place_states.place_state(nplace)
+  }
 
   pub fn update_place_state(&mut self, nplace: NPlace, state: PlaceState) {
     self.place_states.update(nplace, state);
@@ -43,7 +47,6 @@ impl State {
   }
 
   pub fn remove_stack_places(&mut self, function_id: NString) {
-    self.place_states.remove_stack_places(function_id);
     self.value_set.remove_stack_places(function_id);
     if let Some(renaming) = &self.renaming {
       renaming.borrow_mut().cleanr_locals(function_id);

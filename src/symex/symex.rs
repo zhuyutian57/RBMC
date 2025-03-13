@@ -122,22 +122,15 @@ impl<'cfg> Symex<'cfg> {
   }
 
   fn symex_storagelive(&mut self, local: Local) {
-    let var = self.exec_state.new_local(local, Level::Level1);
-    self.top_mut().cur_state.update_place_state(
-      NPlace::from(var),
-      PlaceState::Own
-    );
+    // Set a new l1 local variable
+    self.exec_state.new_local(local, Level::Level1);
   }
 
   fn symex_storagedead(&mut self, local: Local) {
     let var = self.exec_state.current_local(local, Level::Level1);
-    // Reset to unknow
-    let unknown_value = self.ctx.unknown(var.ty());
-    self.assign(var.clone(), unknown_value, self.ctx._true());
-    // Clear points to set
-    if var.ty().is_any_ptr() {
-      self.exec_state.cur_state_mut().remove_pointer(var);
-    }
+    let move_expr = self.ctx._move(self.ctx.object(var));
+    // Remove the pointer in value set and set a fresh value
+    self.symex_move(move_expr);
   }
 
   fn symex_terminator(&mut self, terminator: &Terminator) {
