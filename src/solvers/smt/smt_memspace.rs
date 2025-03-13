@@ -4,12 +4,10 @@ use std::collections::HashMap;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
 
-pub type ObjectSpace<Ast> = (Ast, (Ast, Ast));
+pub type ObjectSpace<Ast> = (Ast, Ast);
 
-/// The space of an object is identified by `(ident, (base, len))`,
-/// where `ident` is a natural variable for identification and
-/// `(base, len)` is used to model the size of the space.
-/// Moreover, it's not neccessary th make `ident = base`.
+/// The space of an object is identified by `(base, len)`,
+/// where `base > 0`.
 pub struct PointerLogic<Ast: Clone> {
   _object_spaces: HashMap<Expr, ObjectSpace<Ast>>,
 }
@@ -37,21 +35,11 @@ impl<Ast: Clone> PointerLogic<Ast> {
     &self._object_spaces
   }
 
-  pub fn get_object_space_ident(&self, object: &Expr) -> Ast {
-    self
-      ._object_spaces
-      .get(object)
-      .expect(format!("Object space dose not have {object:?}").as_str())
-      .0
-      .clone()
-  }
-
   pub fn get_object_space_base(&self, object: &Expr) -> Ast {
     self
       ._object_spaces
       .get(object)
       .expect(format!("Object space dose not have {object:?}").as_str())
-      .1
       .0
       .clone()
   }
@@ -61,7 +49,6 @@ impl<Ast: Clone> PointerLogic<Ast> {
       ._object_spaces
       .get(object)
       .expect(format!("Object space dose not have {object:?}").as_str())
-      .1
       .1
       .clone()
   }

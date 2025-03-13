@@ -171,6 +171,7 @@ impl Expr {
     assert!(
       self.is_box() ||
       self.is_pointer_ident() ||
+      self.is_pointer_offset() ||
       self.is_pointer_meta()
     );
     self.sub_exprs().unwrap().remove(0)
@@ -367,7 +368,7 @@ impl Expr {
 
     if self.is_pointer_ident() {
       let pt = sub_exprs[0].clone();
-      *self = self.ctx.pointer_ident(pt);
+      *self = self.ctx.pointer_base(pt);
       return;
     }
 
@@ -558,7 +559,8 @@ pub trait ExprBuilder {
   fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
 
   fn _box(&self, pt: Expr) -> Expr;
-  fn pointer_ident(&self, pt: Expr) -> Expr;
+  fn pointer_base(&self, pt: Expr) -> Expr;
+  fn pointer_offset(&self, pt: Expr) -> Expr;
   fn pointer_meta(&self, pt: Expr) -> Expr;
 
   fn _move(&self, object: Expr) -> Expr;

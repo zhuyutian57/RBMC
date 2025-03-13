@@ -163,7 +163,17 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
       } else if expr.extract_inner_pointer().ty().is_slice_ptr() {
         pt = self.convert_slice_ptr(&pt);
       }
-      a = Some(self.convert_pointer_ident(&pt));
+      a = Some(self.convert_pointer_base(&pt));
+    }
+
+    if expr.is_pointer_offset() {
+      let mut pt = args[0].clone();
+      if expr.extract_inner_pointer().ty().is_box() {
+        pt = self.convert_box_ptr(&pt);
+      } else if expr.extract_inner_pointer().ty().is_slice_ptr() {
+        pt = self.convert_slice_ptr(&pt);
+      }
+      a = Some(self.convert_pointer_offset(&pt));
     }
 
     if expr.is_pointer_meta() {
@@ -222,7 +232,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
 
   fn convert_null(&self, ty: Type) -> Ast;
   fn convert_pointer(&self, ident: &Ast, offset: &Ast) -> Ast;
-  fn convert_pointer_ident(&self, pt: &Ast) -> Ast;
+  fn convert_pointer_base(&self, pt: &Ast) -> Ast;
   fn convert_pointer_offset(&self, pt: &Ast) -> Ast;
   fn convert_box(&self, inner_pt: &Ast) -> Ast;
   fn convert_box_ptr(&self, _box: &Ast) -> Ast;
@@ -299,17 +309,41 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
   fn convert_object_space(&mut self, object: &Expr) -> Ast;
 
   fn convert_cast(&mut self, expr: Expr, target_ty: Type) -> Ast {
-    if (expr.ty().is_integer() && target_ty.is_integer()) ||
-       (expr.ty().is_primitive_ptr() && target_ty.is_primitive_ptr()) {
+    if expr.ty().is_integer() && target_ty.is_integer() {
       return self.convert_ast(expr.clone());
     }
 
-    if expr.ty().is_box() && target_ty.is_primitive_ptr() {
-      let _box = self.convert_ast(expr.clone());
-      return self.convert_box_ptr(&_box);
+    if expr.ty().is_any_ptr() {
+      return self.convert_cast_from_ptr(expr, target_ty);
     }
 
     panic!("Do not support cast {:?} to {target_ty:?}", expr.ty())
+  }
+
+  fn convert_cast_from_ptr(&mut self, pt: Expr, target_ty: Type) -> Ast {
+    if pt.ty().is_box() {
+      if target_ty.is_primitive_ptr() {
+        let _box = self.convert_ast(pt);
+        return self.convert_box_ptr(&_box);
+      }
+    }
+
+    if pt.ty().is_primitive_ptr() {
+      if target_ty.is_primitive_ptr() {
+        return self.convert_ast(pt);
+      }
+
+      // cast pointer to integer
+      if target_ty.is_integer() {
+        let pointer_base = pt.ctx.pointer_base(pt.clone());
+        let pointer_offset = pt.ctx.pointer_offset(pt.clone());
+        let base = self.convert_ast(pointer_base);
+        let offset = self.convert_ast(pointer_offset);
+        return self.mk_add(&base, &offset);
+      }
+    }
+    
+    panic!("Do not support cast {:?} to {target_ty:?}", pt.ty())
   }
 
   fn convert_load(&mut self, object: Expr, index: Expr) -> Ast {

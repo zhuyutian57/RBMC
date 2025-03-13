@@ -12,11 +12,10 @@ pub struct Slicer {
 impl Slicer {
   pub fn slice_nth(&mut self, vc_system: VCSysPtr, n: usize) {
     assert!(n < vc_system.borrow().num_asserts());
-    for vc in vc_system.borrow_mut().iter_mut() {
-      vc.is_sliced = true;
-    }
     let m = *vc_system.borrow().asserts_map.get(&n).unwrap();
-    vc_system.borrow_mut().vcs[m].is_sliced = false;
+    for i in 0..m {
+      vc_system.borrow_mut().vcs[i].is_sliced = true;
+    }
     for i in (0..m + 1).rev() {
       self.slice(&mut vc_system.borrow_mut().vcs[i]);
     }
@@ -36,7 +35,9 @@ impl Slicer {
 
     if expr.is_symbol() {
       res |= self.cache_expr.contains(expr);
-      self.cache_expr.insert(expr.clone());
+      if is_cached {
+        self.cache_expr.insert(expr.clone());
+      }
     }
 
     if let Some(sub_exprs) = expr.sub_exprs() {

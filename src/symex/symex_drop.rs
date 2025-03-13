@@ -55,11 +55,11 @@ impl<'cfg> Symex<'cfg> {
     self.top_mut().cur_state.dealloc_objects(_box.clone());
     self.top_mut().cur_state.remove_pointer(_box.clone());
 
-    let pointer_ident = self.ctx.pointer_ident(_box);
+    let pointer_base = self.ctx.pointer_base(_box);
     let alloc_array =
       self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
     let index =
-      self.ctx.index(alloc_array, pointer_ident, Type::bool_type());
+      self.ctx.index(alloc_array, pointer_base, Type::bool_type());
     self.assign(index, self.ctx._false(), guard.clone());
   }
 

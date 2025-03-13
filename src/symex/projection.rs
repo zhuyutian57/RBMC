@@ -90,33 +90,19 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     let ctx = pt.ctx.clone();
     
     let mut ret = None;
-
-    // Dereferencing a null pointer
-    if objects.contains(&ctx.null_object(pt.ty().pointee_ty())) {
-      // box(smart) pointer is not null
-      assert!(mode == Mode::Read);
-      self.dereference_null(pt.clone(), guard.clone());
-    }
-    
-    // The pointer contains nothing. Returning invalid object
-    if objects
-        .iter()
-        .fold(false, |acc, x| acc | x.is_unknown()) {
-      self.dereference_invalid_ptr(pt.clone(), mode, guard.clone());
-      ret = 
-        match mode {
-          Mode::Read => Some(self.make_invalid_object(pt.ty().pointee_ty())),
-          _ => None,
-        };
-    }
-
-    if mode == Mode::Drop || mode == Mode::Dealloc { return ret; }
     
     for object in objects{
       // An object is valid if it is owned by some variable
       // according to the Ownership rule of Rust.
-      if object.is_null_object() ||
-         object.is_unknown() { continue; }
+      if object.is_null_object() {
+        self.dereference_null(pt.clone(), guard.clone(), mode);
+        continue;
+      }
+
+      if object.is_unknown() {
+        self.dereference_invalid_ptr(pt.clone(), mode, guard.clone());
+        continue;
+      }
 
       let pointer_guard =
         ctx.same_object(
@@ -136,6 +122,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
       if place_state.is_unknown() {
         self.valid_check(object.clone(), pointer_guard.clone());
       }
+      
+      if mode == Mode::Drop || mode == Mode::Dealloc { continue; }
 
       let new_object =
         self.build_object(object, mode, pointer_guard.clone());
@@ -312,8 +300,9 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     }
   }
 
-  fn dereference_null(&mut self, pt: Expr, guard: Expr) {
+  fn dereference_null(&mut self, pt: Expr, guard: Expr, mode: Mode) {
     assert!(pt.ty().is_any_ptr());
+    assert!(mode == Mode::Read);
     let ctx = pt.ctx.clone();
     let null = ctx.null(pt.ty());
     let msg =
@@ -325,7 +314,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
   fn dereference_invalid_ptr(&mut self, pt: Expr, mode: Mode, guard: Expr) {
     // Check the pointer is invalid
     let ctx = pt.ctx.clone();
-    let pointer_ident = ctx.pointer_ident(pt.clone());
+    let pointer_base = ctx.pointer_base(pt.clone());
     let ne = ctx.ne(pt.clone(), ctx.null(pt.ty()));
     let alloc_array =
       self
@@ -334,7 +323,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         .ns
         .lookup_object(NString::ALLOC_SYM);
     let index =
-      ctx.index(alloc_array, pointer_ident, Type::bool_type());
+      ctx.index(alloc_array, pointer_base, Type::bool_type());
     let msg =
       match mode {
         Mode::Read => NString::from("dereference failure: invalid pointer"),

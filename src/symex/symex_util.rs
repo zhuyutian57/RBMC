@@ -121,7 +121,7 @@ impl<'cfg> Symex<'cfg> {
         self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
       let address_of =
         self.ctx.address_of(object.clone(), object.extract_address_type());
-      let ident = self.ctx.pointer_ident(address_of);
+      let ident = self.ctx.pointer_base(address_of);
       let is_leak = 
         self.ctx.index(
           alloac_array,
@@ -258,7 +258,7 @@ impl<'cfg> Symex<'cfg> {
       let ptr_indent =
         self
           .ctx
-          .pointer_ident(
+          .pointer_base(
               self.ctx.address_of(
                 object.clone(),
                 object.extract_address_type()

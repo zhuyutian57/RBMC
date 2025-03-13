@@ -127,7 +127,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn cache_ast(&mut self, expr: Expr, ast: z3::ast::Dynamic<'ctx>) {
     self
       .cache
-      .entry(expr.clone())
+      .entry(expr)
       .and_modify(|x| *x = ast.clone())
       .or_insert(ast);
   }
@@ -171,7 +171,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     self.mk_pointer(ident, offset)
   }
 
-  fn convert_pointer_ident(
+  fn convert_pointer_base(
     &self,
     pt: &z3::ast::Dynamic<'ctx>
   ) -> z3::ast::Dynamic<'ctx> {

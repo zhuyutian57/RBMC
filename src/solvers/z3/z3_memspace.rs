@@ -19,7 +19,7 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         .variant(
           "pointer",
           vec![
-            ("ident", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx))),
+            ("base", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx))),
             ("offset", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx)))
             ]
           )
@@ -87,10 +87,10 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn create_object_space(&mut self, object: &Expr) -> z3::ast::Dynamic<'ctx> {
     assert!(object.is_symbol());
     if self.pointer_logic.contains(object) {
-      return self.pointer_logic.get_object_space_ident(object);
+      return self.pointer_logic.get_object_space_base(object);
     }
     self.init_pointer_space(object);
-    self.pointer_logic.get_object_space_ident(object)
+    self.pointer_logic.get_object_space_base(object)
   }
 
   fn init_pointer_space(&mut self, object: &Expr) {
@@ -98,32 +98,30 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     assert!(object.is_symbol());
 
     // Use l0 as identifier
-    let space_ident = NString::from(object.extract_symbol().ident());
-    let space_base = space_ident + "_base";
+    let space_base =
+      NString::from(object.extract_symbol().ident()) + "_base";
     // The size is field-level
     let space_len =
       if object.ty().is_struct() {
         object.ty().struct_def().1.len()
+      } else if object.ty().is_array() {
+        object.ty().array_size().expect("Array must have size") as usize
       } else { 1 };
 
-    let ident = self.mk_int_symbol(space_ident);
     let base = self.mk_int_symbol(space_base);
     let len = self.mk_smt_int(BigInt::from(space_len));
 
-    // Ident is greater than 0
-    self.assert(self.mk_gt(&ident, &self.mk_smt_int(BigInt::ZERO)));
-    // base is also greater than 0
+    // base is greater than 0
     self.assert(self.mk_gt(&base, &self.mk_smt_int(BigInt::ZERO)));
     // disjoint relationship
-    for (i, (b, l))
+    for (b, l)
       in self.pointer_logic.object_spaces().values() {
-      if space_ident == NString::from(i.to_string()) { continue; }
+      if space_base == NString::from(b.to_string()) { continue; }
       
       assert!(self.cur_alloc_expr != None);
       let alloc_array_ast = self.cur_alloc_expr.as_ref().unwrap();
-      let alive = alloc_array_ast.as_array().unwrap().select(i);
+      let alive = alloc_array_ast.as_array().unwrap().select(b);
       
-      let not_eq = self.mk_ne(&ident, i);
       let l1 = base.clone();
       let r1 = self.mk_add(&l1, &len);
       let l2 = b.clone();
@@ -133,17 +131,11 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
           &self.mk_le(&r1, &l2),
           &self.mk_le(&r2, &l1)
         );
-      
-      let disj =
-        self.mk_implies(
-          &alive, 
-          &self.mk_and(&not_eq, &no_overlap),
-        );
-      
+      let disj = self.mk_implies(&alive,&no_overlap);
       self.assert(disj);
     }
     
-    self.pointer_logic.set_object_space(object.clone(), (ident, (base, len)));
+    self.pointer_logic.set_object_space(object.clone(), (base, len));
   }
 
   fn mk_pointer(

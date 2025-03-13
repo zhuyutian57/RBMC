@@ -110,8 +110,8 @@ pub(super) enum NodeKind {
 
   /// `Box(*const T)` encodes Box pointer,a one-field tuple 
   Box(NodeId),
-  /// `PointerIdent(pt)` retrieve the ident of a pointer
-  PointerIdent(NodeId),
+  /// `PointerBase(pt)` retrieve the ident of a pointer
+  PointerBase(NodeId),
   /// `PointerOffset(pt)` retrieve the offset of a pointer
   PointerOffset(NodeId),
   /// `PtrMetaData(pt)` retrieve pointer meta data, such as slice len
@@ -185,8 +185,8 @@ impl NodeKind {
     matches!(self, NodeKind::Box(..))
   }
 
-  pub fn is_pointer_ident(&self) -> bool {
-    matches!(self, NodeKind::PointerIdent(..))
+  pub fn is_pointer_base(&self) -> bool {
+    matches!(self, NodeKind::PointerBase(..))
   }
 
   pub fn is_pointer_offset(&self) -> bool {
@@ -254,7 +254,8 @@ impl Node {
       NodeKind::Store(o, i, v)
         => Some(vec![*o, *i, *v]),
       NodeKind::Box(p) |
-      NodeKind::PointerIdent(p) |
+      NodeKind::PointerBase(p) |
+      NodeKind::PointerOffset(p) |
       NodeKind::PointerMeta(p)
         => Some(vec![*p]),
       NodeKind::Move(o) |
