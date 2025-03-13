@@ -197,10 +197,10 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     }
     
     if expr.is_symbol() {
-      let name = expr.extract_symbol().name();
-      let s = self.convert_symbol(name, expr.ty());
+      let symbol = expr.extract_symbol();
+      let s = self.convert_symbol(symbol.name(), expr.ty());
 
-      if name.contains(NString::ALLOC_SYM) {
+      if symbol.ident() == NString::ALLOC_SYM {
         self.cache_alloc_ast(s.clone());
       }
 

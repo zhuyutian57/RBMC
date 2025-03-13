@@ -242,10 +242,7 @@ impl State {
         );
         let update_value = inner_expr.extract_update_value();
         if i == j {
-          let new_object =
-            if update_value.is_object() { update_value }
-            else { expr.ctx.object(update_value) };
-          values.insert(new_object);
+          self.get_value_set_rec(update_value, suffix, values);
         } else {
           self.get_value_set_rec(inner_object, new_suffix, values);
         }

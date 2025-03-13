@@ -134,7 +134,7 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     field: BigInt,
     value: Expr
   ) -> z3::ast::Dynamic<'ctx> {
-    assert!(object.ty().is_tuple());
+    assert!(object.ty().is_tuple() || object.ty().is_struct());
     let mut name = object.ty().name();
     if object.ty().is_struct() { name = NString::from("_struct_") + name; }
     let n = self.tuple_sorts.get(&name).unwrap().variants[0].accessors.len();
