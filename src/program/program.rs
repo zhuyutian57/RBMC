@@ -1,5 +1,7 @@
 
+use std::cmp::max;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::io::*;
 
 use num_bigint::BigInt;
@@ -21,15 +23,33 @@ pub struct Function {
   name: NString,
   args: Args,
   body: Body,
+  locals_without_storage: Vec<Local>,
 }
 
 impl Function {
   pub fn new(item: CrateItem) -> Self {
     assert!(item.kind() == ItemKind::Fn);
+    let mut locals_with_storage = HashSet::new();
+    for bb in item.body().blocks {
+      for s in bb.statements {
+        match s.kind {
+          StatementKind::StorageLive(l) => {
+            locals_with_storage.insert(l);
+          },
+          _ => {},
+        }
+      }
+    }
+    let mut locals_without_storage = Vec::new();
+    for i in (1..item.body().locals().len()) {
+      if locals_with_storage.contains(&i) { continue; }
+      locals_without_storage.push(i);
+    }
     Function {
       name: NString::from(item.trimmed_name()),
       args: (1..item.body().arg_locals().len() + 1).collect(),
       body: item.body(),
+      locals_without_storage,
     }
   }
 
@@ -42,6 +62,10 @@ impl Function {
   pub fn local_decl(&self, local: Local) -> &LocalDecl {
     assert!(local < self.locals().len());
     self.body.local_decl(local).unwrap()
+  }
+
+  pub fn local_without_storage(&self) -> Vec<Local> {
+    self.locals_without_storage.clone()
   }
 
   pub fn local_type(&self, local: Local) -> Type {

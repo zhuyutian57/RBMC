@@ -113,7 +113,7 @@ impl<'cfg> Symex<'cfg> {
       self.exec_state.rename(&mut l1_object, Level::Level1);
       let place_state =
         self.top().cur_state.place_states.place_state(&l1_object);
-      if place_state.is_own() || place_state.is_dealloced() { continue; }
+      if place_state.is_own() { continue; }
 
       let msg = 
         NString::from(format!("memory leak: {object:?} is not dealloced"));

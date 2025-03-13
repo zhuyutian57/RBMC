@@ -1,23 +1,23 @@
 
+use std::cmp::min;
 use std::collections::HashMap;
 use std::fmt::Debug;
 
 use crate::expr::expr::Expr;
 use crate::symbol::nstring::*;
 
-/// `Place State` is the abstraction of a piece of memory(an object).
+/// `Place State` is the abstraction of the ownership of
+/// a piece of memory(an object).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PlaceState {
-  /// We don't know the state
+  /// We don't know whether the place is alloced, owned
+  /// or dropped(dealloced). Let SMT solve the puzzle.
   Unknown,
-  /// The (dynamic)place is alloced
+  /// The place is alloced(valid) in memory, but not owned
+  /// by any variable.
   Alloced,
-  /// The (dynamic)place is dealloced
-  Dealloced,
-  /// The place is owned by some variables or in stack
+  /// The place is owned by some variables or in stack.
   Own,
-  /// The place is owned, but not initialized
-  Uninitilized
 }
 
 impl PlaceState {
@@ -29,21 +29,17 @@ impl PlaceState {
     matches!(self, PlaceState::Alloced)
   }
 
-  pub fn is_dealloced(&self) -> bool {
-    matches!(self, PlaceState::Dealloced)
-  }
-
   pub fn is_own(&self) -> bool {
     matches!(self, PlaceState::Own)
   }
-
-  pub fn is_uninitialized(&self) -> bool {
-    matches!(self, PlaceState::Uninitilized)
-  }
   
+  /// The meet operation. A place is owned by some variables(or frame)
+  /// only if two program states own the place. Otherwise, we mark its
+  /// state `alloced`.
+  /// 
+  /// TODO: design carefully.
   pub fn merge(s1: PlaceState, s2: PlaceState) -> Self {
-    // TODO
-    if s1 != s2 { PlaceState::Unknown } else { s1 }
+    min(s1, s2)
   }
 }
 
@@ -79,16 +75,16 @@ impl PlaceStates {
       .map_or(PlaceState::Unknown, |x| *x)
   }
 
-  pub fn update(&mut self, place: NPlace, state: PlaceState) {
+  pub fn update(&mut self, nplace: NPlace, state: PlaceState) {
     self
       ._place_states_map
-      .entry(place)
+      .entry(nplace)
       .and_modify(|s| *s = state)
       .or_insert(state);
   }
 
-  pub fn remove(&mut self, place: NPlace) {
-    self._place_states_map.remove(&place);
+  pub fn remove(&mut self, nplace: NPlace) {
+    self._place_states_map.remove(&nplace);
   }
 
   pub fn merge(&mut self, rhs: &PlaceStates) {

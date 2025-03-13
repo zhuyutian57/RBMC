@@ -262,7 +262,7 @@ impl Expr {
   }
 
   pub fn replace_sub_exprs(&mut self, sub_exprs: Vec<Expr>) {
-    if self.is_terminal() { return; }
+    if self.is_terminal() || self.is_unknown() { return; }
 
     if self.is_address_of() {
       let object = sub_exprs[0].clone();

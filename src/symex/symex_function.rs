@@ -8,6 +8,7 @@ use stable_mir::CrateDef;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::program::program::*;
+use crate::symbol::symbol::Level;
 use crate::NString;
 use super::place_state::*;
 use super::symex::*;
@@ -64,7 +65,18 @@ impl <'cfg> Symex<'cfg> {
     self
       .exec_state
       .push_frame(i, Some(dest.clone()), *target);
-    // Set arguements
+    // init namspace
+    for i in 0..self.top().function().locals().len() {
+      self.exec_state.l0_local(i);
+    }
+    // mark palce states of variables that are
+    // not labeled with storagelive.
+    for local in self.top().function().local_without_storage() {
+      let l1_local = self.exec_state.new_local(local, Level::Level1);
+      let nplace = NPlace::from(l1_local);
+      self.top_mut().cur_state.update_place_state(nplace, PlaceState::Own);
+    }
+    // set arguements
     let args = self.top_mut().function().args();
     if !args.is_empty() {
       for arg_local in args.iter() {

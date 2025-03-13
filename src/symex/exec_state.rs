@@ -113,8 +113,6 @@ impl<'cfg> ExecutionState<'cfg> {
       frame.cur_state = self.cur_state().clone();
     }
     self.frames.push(frame);
-    // init namspace
-    for i in 0..self.top().function().locals().len() { self.l0_local(i); }
   }
 
   pub fn pop_frame(&mut self) -> Frame<'cfg> {

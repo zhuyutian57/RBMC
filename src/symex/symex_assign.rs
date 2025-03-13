@@ -48,12 +48,6 @@ impl<'cfg> Symex<'cfg> {
     // New l2 symbol
     lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
 
-    // update new lhs place state
-    if self.is_stack_symbol(lhs.clone()) {
-      let nplace = NPlace(lhs.extract_symbol().l1_name());
-      self.top_mut().cur_state.update_place_state(nplace, PlaceState::Own);
-    }
-
     self.exec_state.assign(lhs.clone(), rhs.clone());
 
     if rhs.is_type() { return; }

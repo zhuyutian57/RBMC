@@ -34,16 +34,12 @@ impl State {
 
   pub fn guard(&self) -> Expr { self.guard.clone() }
 
-  pub fn move_value(&mut self, place: NPlace) {
-    self.update_place_state(place, PlaceState::Uninitilized);
+  pub fn update_place_state(&mut self, nplace: NPlace, state: PlaceState) {
+    self.place_states.update(nplace, state);
   }
 
-  pub fn update_place_state(&mut self, place: NPlace, state: PlaceState) {
-    self.place_states.update(place, state);
-  }
-
-  pub fn remove_place(&mut self, place: NPlace) {
-    self.place_states.remove(place);
+  pub fn remove_place(&mut self, nplace: NPlace) {
+    self.place_states.remove(nplace);
   }
 
   pub fn remove_stack_places(&mut self, function_id: NString) {
@@ -61,7 +57,7 @@ impl State {
     for object in objects {
       if object.is_unknown() { continue; }
       let place = NPlace::from(object);
-      self.update_place_state(place, PlaceState::Dealloced);
+      self.update_place_state(place, PlaceState::Unknown);
     }
   }
 
@@ -71,8 +67,12 @@ impl State {
     self.value_set.remove(ident);
   }
 
-  pub fn assign(&mut self, expr: Expr, values: ObjectSet) {
+  pub fn assign(&mut self, expr: Expr, mut values: ObjectSet) {
     assert!(expr.ty().is_any_ptr());
+    if values.len() == 1 &&
+       values.iter().fold(true, |acc, x| acc & x.is_unknown()) {
+      values.clear();
+    }
     self.assign_rec(expr, NString::EMPTY, values);
   }
 
@@ -80,7 +80,12 @@ impl State {
     if expr.is_symbol() {
       let symbol = expr.extract_symbol();
       let ident = symbol.l1_name() + suffix;
-      self.value_set.insert(ident, values.clone());
+      if values.is_empty() {
+        // just clear
+        self.value_set.remove(ident);
+      } else {
+        self.value_set.insert(ident, values);
+      }
       return;
     }
 
@@ -104,7 +109,7 @@ impl State {
           } else {
             format!(".{i}")
           },
-        values.clone());
+        values);
       return;
     }
 
@@ -159,6 +164,11 @@ impl State {
     suffix: NString,
     values: &mut ObjectSet
   ) {
+    if expr.is_unknown() {
+      values.insert(expr.ctx.unknown(expr.ty().pointee_ty()));
+      return;
+    }
+
     if expr.is_null() {
       values.insert(expr.ctx.null_object(expr.ty().pointee_ty()));
       return;
@@ -236,6 +246,8 @@ impl State {
         } else {
           self.get_value_set_rec(inner_object, new_suffix, values);
         }
+      } else if inner_expr.is_unknown() {
+        values.insert(expr.ctx.unknown(expr.ty().pointee_ty()));
       } else {
         panic!("Wrong object? {inner_expr:?}");
       }
