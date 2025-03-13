@@ -61,16 +61,25 @@ pub struct Cli {
   /// SMT solver
   #[arg(long, default_value_t = NString::from("z3"))]
   pub solver: NString,
+
+  /// Close warnings [default: true]
+  #[arg(long, default_value_t = false)]
+  pub show_warnings: bool,
 }
 
 impl Cli {
   pub fn rustc_args(&self) -> Vec<String> {
-    vec![
-      std::env::current_exe().expect("").to_str().unwrap().to_string(),
-      self.file.to_string(),
-      "-Copt-level=1".to_string(),
-      "-Zmir-enable-passes=+ReorderBasicBlocks".to_string()
-    ]
+    let mut args =
+      vec![
+        std::env::current_exe().expect("").to_str().unwrap().to_string(),
+        self.file.to_string(),
+        "-Copt-level=1".to_string(),
+        "-Zmir-enable-passes=+ReorderBasicBlocks".to_string()
+      ];
+    if !self.show_warnings {
+      args.push("-Awarnings".to_string());
+    }
+    args
   }
 
   pub fn enable_display_state_bb(&self) -> bool {
