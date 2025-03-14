@@ -536,9 +536,9 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn minus(&self, operand: Expr) -> Expr {
+  fn neg(&self, operand: Expr) -> Expr {
     assert!(operand.ty().is_signed());
-    let kind = NodeKind::Unary(UnOp::Minus, operand.id);
+    let kind = NodeKind::Unary(UnOp::Neg, operand.id);
     let ty = operand.ty();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);

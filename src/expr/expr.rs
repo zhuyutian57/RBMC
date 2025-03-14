@@ -185,55 +185,6 @@ impl Expr {
     }
   }
 
-  pub fn simplify(&mut self) {
-    if let Some(mut sub_exprs) = self.sub_exprs() {
-      for sub_expr in sub_exprs.iter_mut() { sub_expr.simplify(); }
-      if self.is_binary() {
-        let lhs = &sub_exprs[0];
-        let rhs = &sub_exprs[1];
-        match self.extract_bin_op() {
-          BinOp::And => {
-            if lhs.is_true() {
-              self.id = rhs.id;
-            } else if rhs.is_true() {
-              self.id = lhs.id;
-            } else if lhs.is_false() || rhs.is_false() {
-              self.id = Context::FALSE_ID;
-            } else {
-              *self = self.ctx.and(lhs.clone(), rhs.clone());
-            }
-          },
-          BinOp::Or => {
-            if lhs.is_false() {
-              self.id = rhs.id;
-            } else if rhs.is_false() {
-              self.id = lhs.id;
-            } else if lhs.is_true() || rhs.is_true() {
-              self.id = Context::TRUE_ID;
-            } else {
-              *self = self.ctx.or(lhs.clone(), rhs.clone());
-            }
-          },
-          _ => {},
-        }
-      }
-
-      if self.is_unary() {
-        let operand = &sub_exprs[0];
-        match self.extract_un_op() {
-          UnOp::Not => {
-            if operand.is_unary() && operand.extract_un_op() == UnOp::Not {
-              self.id = operand.extract_inner_expr().id;
-            }
-          },
-          _ => panic!(),
-        }
-      }
-
-      // TODO: do more simplify
-    }
-  }
-
   /// Construct sub-exprs from AST
   pub fn sub_exprs(&self) -> Option<Vec<Expr>>{
     match self.ctx.borrow().sub_nodes(self.id) {
@@ -303,7 +254,7 @@ impl Expr {
       *self =
         match self.extract_un_op() {
           UnOp::Not => self.ctx.not(operand),
-          UnOp::Minus => self.ctx.minus(operand),
+          UnOp::Neg => self.ctx.neg(operand),
           UnOp::Meta => self.ctx.pointer_meta(operand),
         };
       return;
@@ -548,7 +499,7 @@ pub trait ExprBuilder {
   fn or(&self, lhs: Expr, rhs: Expr) -> Expr;
   fn implies(&self, cond: Expr, conseq: Expr) -> Expr;
   fn not(&self, operand: Expr) -> Expr;
-  fn minus(&self, operand: Expr) -> Expr;
+  fn neg(&self, operand: Expr) -> Expr;
   fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr;
   fn cast(&self, operand: Expr, target_ty: Expr) -> Expr;
 

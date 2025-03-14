@@ -151,7 +151,7 @@ impl<'cfg> Symex<'cfg> {
         let expr =
           match op {
             UnOp::Not => self.ctx.not(operand),
-            UnOp::Minus => self.ctx.minus(operand),
+            UnOp::Neg => self.ctx.neg(operand),
             UnOp::Meta => self.ctx.pointer_meta(operand),
           };
         expr
