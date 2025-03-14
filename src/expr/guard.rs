@@ -118,7 +118,7 @@ impl BitOrAssign<&Guard> for Guard {
       let g1 = self.to_expr();
       let g2 = rhs.to_expr();
       self._expr_set.clear();
-      self._expr_set.insert(self._ctx.and(g1, g2));
+      self._expr_set.insert(self._ctx.or(g1, g2));
       return;
     } else {
       let mut s1 = self._expr_set.clone();

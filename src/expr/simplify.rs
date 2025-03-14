@@ -193,7 +193,10 @@ impl Expr {
         } else if lhs == rhs {
           self.id = lhs.id;
         } else {
-          *self = self.ctx.and(lhs, rhs);
+          let mut not_rhs = self.ctx.not(rhs.clone());
+          not_rhs.simplify();
+          if lhs == not_rhs { *self = self.ctx._false(); }
+          else { *self = self.ctx.and(lhs, rhs); }
         }
       },
       BinOp::Or => {
@@ -206,7 +209,10 @@ impl Expr {
         } else if lhs == rhs {
           self.id = lhs.id;
         } else {
-          *self = self.ctx.or(lhs, rhs);
+          let mut not_rhs = self.ctx.not(rhs.clone());
+          not_rhs.simplify();
+          if lhs == not_rhs { *self = self.ctx._true(); }
+          else { *self = self.ctx.or(lhs, rhs); }
         }
       },
       BinOp::Implies => {
