@@ -41,7 +41,7 @@ impl Function {
       }
     }
     let mut locals_without_storage = Vec::new();
-    for i in (1..item.body().locals().len()) {
+    for i in 1..item.body().locals().len() {
       if locals_with_storage.contains(&i) { continue; }
       locals_without_storage.push(i);
     }

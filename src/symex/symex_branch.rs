@@ -20,11 +20,9 @@ impl<'cfg> Symex<'cfg> {
     for (i, bb) in targets.branches() {
       let mut state = self.top_mut().cur_state().clone();
       // branches
-      let branch_guard = self.make_branch_guard(discr_expr.clone(), i);
-      state.guard =
-        self.ctx.and(state.guard(), branch_guard.clone());
-      state.guard.simplify();
-      self.rename(&mut state.guard);
+      let mut branch_guard = self.make_branch_guard(discr_expr.clone(), i);
+      self.rename(&mut branch_guard);
+      state.guard.add(branch_guard.clone());
       self.register_state(bb, state.clone());
       otherwise_guard = 
         self.ctx.and(
@@ -33,11 +31,9 @@ impl<'cfg> Symex<'cfg> {
         );
     }
     // otherwise
+    otherwise_guard.simplify();;
     let mut otherwise_state = self.top_mut().cur_state().clone();
-    otherwise_state.guard =
-      self.ctx.and(otherwise_state.guard(), otherwise_guard);
-    otherwise_state.guard.simplify();
-    self.rename(&mut otherwise_state.guard);
+    otherwise_state.guard.add(otherwise_guard);
     self.register_state(targets.otherwise(), otherwise_state);
 
     self.top_mut().inc_pc();

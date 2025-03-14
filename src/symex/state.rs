@@ -5,6 +5,7 @@ use std::fmt::Debug;
 
 use crate::expr::context::*;
 use crate::expr::expr::*;
+use crate::expr::guard::Guard;
 use crate::program::program::bigint_to_usize;
 use crate::NString;
 use super::place_state::*;
@@ -14,7 +15,8 @@ use super::value_set::*;
 /// Abstract program state for each program point
 #[derive(Clone)]
 pub struct State {
-  pub(super) guard: Expr,
+  pub ctx: ExprCtx,
+  pub(super) guard: Guard,
   pub(super) place_states: HeapPlaceStates,
   pub(super) value_set: ValueSet,
   /// Renaming at some program pointer. Used for
@@ -25,14 +27,15 @@ pub struct State {
 impl State {
   pub fn new(ctx: ExprCtx) -> Self {
     State {
-      guard: ctx._true(),
+      ctx: ctx.clone(),
+      guard: Guard::new(ctx.clone()),
       place_states: HeapPlaceStates::default(),
       value_set: ValueSet::default(),
       renaming: None,
     }
   }
 
-  pub fn guard(&self) -> Expr { self.guard.clone() }
+  pub fn guard(&self) -> Guard { self.guard.clone() }
 
   pub fn get_place_state(&self, nplace: NPlace) -> PlaceState {
     self.place_states.place_state(nplace)
@@ -120,7 +123,6 @@ impl State {
   }
 
   pub fn merge(&mut self, other: &State) {
-    let ctx = self.guard.ctx.clone();
     if self.guard.is_false() {
       self.place_states = other.place_states.clone();
       self.value_set = other.value_set.clone();
@@ -143,13 +145,12 @@ impl State {
         // the pointer is uninitialized.
         if !self.value_set.contains(pt) || !other.value_set.contains(pt) {
           let ty = new_objects.iter().next().unwrap().ty();
-          new_objects.insert(ctx.unknown(ty));
+          new_objects.insert(self.ctx.unknown(ty));
         }
         self.value_set.insert(pt, new_objects);
       }
     }
-    self.guard = ctx.or(self.guard.clone(), other.guard.clone());
-    self.guard.simplify();
+    self.guard |= &other.guard;
   }
 
   pub fn get_value_set(&self, expr: Expr, values: &mut ObjectSet) {

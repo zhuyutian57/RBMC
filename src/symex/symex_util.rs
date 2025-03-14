@@ -25,7 +25,7 @@ impl<'cfg> Symex<'cfg> {
     // We have put all states that reach current pc in the
     // queue. Thus, we first construct an empty state.
     // That is, make `gurad` of current state be `false`.
-    self.top_mut().cur_state.guard = self.ctx._false();
+    self.top_mut().cur_state.guard.make_false();
 
     if let Some(states) = state_vec {
       for mut state in states {
@@ -45,11 +45,7 @@ impl<'cfg> Symex<'cfg> {
     if let None = nstate.renaming { return; }
 
     let mut new_guard =
-      self.ctx.and(
-        nstate.guard(),
-        self.ctx.not(self.exec_state.cur_state().guard())
-      );
-    new_guard.simplify();
+      nstate.guard.clone() - self.top().cur_state.guard.clone();
 
     let mut nrenaming =
       nstate.renaming.as_ref().unwrap().borrow_mut();
@@ -82,7 +78,7 @@ impl<'cfg> Symex<'cfg> {
           new_rhs
         } else {
           self.ctx.ite(
-            new_guard.clone(),
+            new_guard.to_expr(),
             new_rhs,
             cur_rhs
           )
@@ -283,7 +279,7 @@ impl<'cfg> Symex<'cfg> {
     self.rename(&mut expr);
     expr.simplify();
     let guard = self.exec_state.cur_state().guard();
-    let cond = self.ctx.implies(guard, expr);
+    let cond = guard.guard(expr);
     self.vc_system.borrow_mut().assert(msg, cond);
   }
 }

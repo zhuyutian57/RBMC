@@ -13,10 +13,73 @@ use super::op::*;
 
 impl Expr {
   pub fn simplify(&mut self) {
+    if self.ty().is_bool() { self.to_nnf(false); }
+
     if self.is_binary() { self.simplify_binary(); }
     if self.is_unary() { self.simplify_unary(); }
     if self.is_ite() { self.simplify_ite(); }
     if self.is_same_object() { self.simplify_same_object(); }
+  }
+
+  fn has_implies(&self) -> bool {
+    if self.is_binary() &&
+      self.extract_bin_op() == BinOp::Implies {
+      return true;
+    }
+    match self.sub_exprs() {
+      Some(sub_exprs) =>
+        sub_exprs
+          .iter()
+          .fold(false, |acc, e| acc | e.has_implies()),
+      None => false,
+    }
+  }
+
+  fn to_nnf(&mut self, is_not: bool) {
+    if self.is_binary() {
+      if self.extract_bin_op() == BinOp::Implies { return; }
+      let sub_exprs = self.sub_exprs().unwrap();
+      let mut lhs = sub_exprs[0].clone();
+      let mut rhs = sub_exprs[1].clone();
+      lhs.to_nnf(is_not);
+      rhs.to_nnf(is_not);
+      if is_not {
+        *self = 
+          match self.extract_bin_op() {
+            BinOp::Eq => self.ctx.ne(lhs, rhs),
+            BinOp::Ne => self.ctx.eq(lhs, rhs),
+            BinOp::Ge => self.ctx.lt(lhs, rhs),
+            BinOp::Gt => self.ctx.le(lhs, rhs),
+            BinOp::Le => self.ctx.gt(lhs, rhs),
+            BinOp::Lt => self.ctx.ge(lhs, rhs),
+            BinOp::And => self.ctx.or(lhs, rhs),
+            BinOp::Or => self.ctx.and(lhs, rhs),
+            _ => panic!("Impossible"),
+          };
+      } else {
+        *self = 
+          match self.extract_bin_op() {
+            BinOp::Eq => self.ctx.eq(lhs, rhs),
+            BinOp::Ne => self.ctx.ne(lhs, rhs),
+            BinOp::Ge => self.ctx.ge(lhs, rhs),
+            BinOp::Gt => self.ctx.gt(lhs, rhs),
+            BinOp::Le => self.ctx.le(lhs, rhs),
+            BinOp::Lt => self.ctx.lt(lhs, rhs),
+            BinOp::And => self.ctx.and(lhs, rhs),
+            BinOp::Or => self.ctx.or(lhs, rhs),
+            _ => panic!("Impossible"),
+          };
+      }
+    } else if self.is_unary() {
+      let mut operand = self.extract_inner_expr();
+      match self.extract_un_op() {
+        UnOp::Not => operand.to_nnf(!is_not),
+        _ => panic!("Impossible"),
+      };
+      *self = operand;
+    } else if is_not {
+      *self = self.ctx.not(self.clone());
+    }
   }
 
   fn simplify_args(&mut self) -> Vec<Expr> {
