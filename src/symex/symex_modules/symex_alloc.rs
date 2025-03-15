@@ -42,7 +42,7 @@ impl<'cfg> Symex<'cfg> {
     let lhs = self.make_project(dest);
     let address_of = self.ctx.address_of(object.clone(), lhs.ty());
     
-    self.assign(lhs, address_of, self.ctx._true());
+    self.assign(lhs, address_of, self.ctx._true().into());
 
     self.track_new_object(object.clone());
 
@@ -54,7 +54,7 @@ impl<'cfg> Symex<'cfg> {
     let pt = self.make_operand(operand);
     assert!(pt.ty().is_ptr());
     // Generate assertions
-    self.make_deref(pt.clone(), Mode::Dealloc, self.ctx._true());
+    self.make_deref(pt.clone(), Mode::Dealloc, self.ctx._true().into());
 
     self.top_mut().cur_state.dealloc_objects(pt.clone());
     self.top_mut().cur_state.remove_pointer(pt.clone());
@@ -64,7 +64,7 @@ impl<'cfg> Symex<'cfg> {
       self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
     let index =
       self.ctx.index(alloc_array, pointer_base, Type::bool_type());
-    self.assign(index, self.ctx._false(), self.ctx._true());
+    self.assign(index, self.ctx._false(), self.ctx._true().into());
   }
 
   fn symex_layout_new(&mut self, dest: &Place, fndef: &FunctionDef) {

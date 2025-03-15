@@ -36,13 +36,13 @@ impl<'cfg> Symex<'cfg> {
 
     // Assign value
     let value = self.make_operand(&args[0]);
-    self.assign(object.clone(), value, self.ctx._true());
+    self.assign(object.clone(), value, self.ctx._true().into());
     
     // Return box pointer
     let address_of =
       self.ctx.address_of(object.clone(), object.extract_address_type());
     let _box = self.ctx._box(address_of);
-    self.assign(lhs, _box, self.ctx._true());
+    self.assign(lhs, _box, self.ctx._true().into());
 
     // Track new object
     self.track_new_object(object.clone());

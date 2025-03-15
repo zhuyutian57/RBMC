@@ -176,6 +176,14 @@ impl BitOrAssign<&Guard> for Guard {
   }
 }
 
+impl From<Expr> for Guard {
+  fn from(value: Expr) -> Self {
+    let mut guard = Guard::new(value.ctx.clone());
+    guard.add(value);
+    guard
+  }
+}
+
 impl Debug for Guard {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{:?}", self.to_expr())

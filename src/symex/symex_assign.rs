@@ -2,6 +2,7 @@
 use stable_mir::mir::*;
 
 use crate::expr::expr::*;
+use crate::expr::guard::*;
 use crate::expr::ty::*;
 use crate::program::program::bigint_to_u64;
 use crate::program::program::bigint_to_usize;
@@ -18,28 +19,33 @@ impl<'cfg> Symex<'cfg> {
     // construct lhs expr and rhs expr from MIR
     let lhs = self.make_project(place);
     let rhs = self.make_rvalue(rvalue);
-    self.assign(lhs, rhs.clone(), self.ctx._true());
+    self.assign(lhs, rhs.clone(), self.ctx._true().into());
   }
 
   pub(super) fn symex_assign_layout(&mut self, place: &Place, ty: Type) {
     // Use l2 symbol to do assignment
     let l2_var = self.make_project(place);
     let layout = self.ctx.mk_type(ty);
-    self.assign(l2_var, layout, self.ctx._true());
+    self.assign(l2_var, layout, self.ctx._true().into());
   }
 
-  pub(super) fn assign(&mut self, lhs: Expr, rhs: Expr, guard: Expr) {
+  pub(super) fn assign(&mut self, lhs: Expr, rhs: Expr, guard: Guard) {
     assert!(lhs.ty().is_layout() || lhs.ty() == rhs.ty());
     self.assign_rec(lhs, rhs.clone(), guard);
     // move semantic
     self.symex_move(rhs);
   }
 
-  fn assign_symbol(&mut self, mut lhs: Expr, mut rhs: Expr, guard: Expr) {
+  fn assign_symbol(&mut self, mut lhs: Expr, mut rhs: Expr, guard: Guard) {
     assert!(lhs.is_symbol());
     
     if !guard.is_true() {
-      rhs = self.ctx.ite(guard, rhs, lhs.clone());
+      rhs =
+        self.ctx.ite(
+          guard.to_expr(),
+          rhs,
+          lhs.clone()
+        );
     }
 
     // Rename to l2 rhs
@@ -56,7 +62,7 @@ impl<'cfg> Symex<'cfg> {
     self.vc_system.borrow_mut().assign(lhs, rhs);
   }
 
-  fn assign_rec(&mut self, lhs: Expr, rhs: Expr, guard: Expr) {
+  fn assign_rec(&mut self, lhs: Expr, rhs: Expr, guard: Guard) {
     if lhs.is_symbol() {
       self.assign_symbol(lhs, rhs, guard);
       return;
@@ -74,16 +80,16 @@ impl<'cfg> Symex<'cfg> {
       let true_value = sub_exprs[1].clone();
       let false_value = sub_exprs[2].clone();
       
-      let mut true_guard = self.ctx.and(guard.clone(), cond.clone());
-      true_guard.simplify();
+      let mut true_guard = guard.clone();
+      let mut true_cond = cond.clone();
+      self.rename(&mut true_cond);
+      true_guard.add(true_cond);
       self.assign_rec(true_value, rhs.clone(), true_guard);
       
-      let mut false_guard =
-        self.ctx.and(
-          guard.clone(),
-          self.ctx.not(cond.clone())
-        );
-      false_guard.simplify();
+      let mut false_guard = guard.clone();
+      let mut false_cond = self.ctx.not(cond.clone());
+      self.rename(&mut false_cond);
+      false_guard.add(false_cond);
       self.assign_rec(false_value, rhs.clone(), false_guard);
 
       return;

@@ -71,7 +71,7 @@ impl <'cfg> Symex<'cfg> {
       for arg_local in args.iter() {
         let lhs = self.exec_state.l0_local(*arg_local);
         let rhs = arg_exprs[*arg_local - 1].clone();
-        self.assign(lhs, rhs, self.ctx._true());
+        self.assign(lhs, rhs, self.ctx._true().into());
       }
     }
     let state = self.top_mut().cur_state().clone();
@@ -102,7 +102,7 @@ impl <'cfg> Symex<'cfg> {
         let rhs_ident = frame.local_ident(0);
         let rhs_ty = frame.function().local_type(0);
         let rhs = self.exec_state.l0_symbol(rhs_ident, rhs_ty);
-        self.assign(lhs, rhs, self.ctx._true());
+        self.assign(lhs, rhs, self.ctx._true().into());
       }
     }
 

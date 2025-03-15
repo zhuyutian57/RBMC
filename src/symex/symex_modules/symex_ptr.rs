@@ -36,12 +36,12 @@ impl<'cfg> Symex<'cfg> {
     let mut rhs = self.ctx.eq(p1, p2);
     self.replace_predicates(&mut rhs);
 
-    self.assign(lhs, rhs, self.ctx._true());
+    self.assign(lhs, rhs, self.ctx._true().into());
   }
 
   fn symex_ptr_null(&mut self, dest: &Place) {
     let lhs = self.make_project(dest);
     let rhs = self.ctx.null(lhs.ty());
-    self.assign(lhs, rhs, self.ctx._true());
+    self.assign(lhs, rhs, self.ctx._true().into());
   }
 }

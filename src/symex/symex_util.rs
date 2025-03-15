@@ -9,6 +9,7 @@ use stable_mir::ty::*;
 
 use crate::expr::expr::*;
 use crate::expr::constant::*;
+use crate::expr::guard::*;
 use crate::expr::ty::*;
 use crate::program::program::*;
 use crate::symbol::symbol::*;
@@ -114,7 +115,7 @@ impl<'cfg> Symex<'cfg> {
           ident,
           Type::bool_type()
         );
-      self.claim(msg, is_leak);
+      self.claim(msg, is_leak.into());
     }
   }
 
@@ -126,7 +127,7 @@ impl<'cfg> Symex<'cfg> {
     &mut self,
     pt: Expr,
     mode: Mode,
-    guard: Expr
+    guard: Guard
   ) -> Option<Expr> {
     Projection::new(self).project_deref(pt, mode, guard)
   }
@@ -274,12 +275,13 @@ impl<'cfg> Symex<'cfg> {
 
   }
 
-  pub(super) fn claim(&self, msg: NString, mut expr: Expr) {
+  pub(super) fn claim(&self, msg: NString, guard: Guard) {
+    let mut expr = guard.to_expr();
     self.replace_predicates(&mut expr);
     self.rename(&mut expr);
     expr.simplify();
-    let guard = self.exec_state.cur_state().guard();
-    let cond = guard.guard(expr);
+    let state_guard = self.exec_state.cur_state().guard();
+    let cond = state_guard.guard(expr);
     self.vc_system.borrow_mut().assert(msg, cond);
   }
 }

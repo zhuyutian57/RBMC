@@ -3,6 +3,7 @@ use num_bigint::BigInt;
 use stable_mir::mir::*;
 
 use crate::expr::expr::*;
+use crate::expr::guard::*;
 use crate::expr::ty::Type;
 use crate::program::program::bigint_to_usize;
 use crate::symbol::symbol::*;
@@ -42,7 +43,10 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         match elem {
           ProjectionElem::Deref
             => self
-                .project_deref(ret.clone(), Mode::Read, ctx._true()).unwrap(),
+                .project_deref(
+                  ret.clone(),
+                  Mode::Read,
+                  Guard::new(ctx.clone())).unwrap(),
           ProjectionElem::Field(i, ty)
             => self.project_field(ret.clone(), *i, Type::from(*ty)),
           ProjectionElem::Index(local)
@@ -76,7 +80,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     &mut self,
     pt: Expr,
     mode: Mode,
-    guard: Expr,
+    guard: Guard,
   ) -> Option<Expr> {
     assert!(pt.ty().is_any_ptr());
     
@@ -91,7 +95,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     
     let mut ret = None;
     
-    for object in objects{
+    for object in objects {
       // An object is valid if it is owned by some variable
       // according to the Ownership rule of Rust.
       if object.is_null_object() {
@@ -104,11 +108,13 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         continue;
       }
 
-      let pointer_guard =
+      let mut pointer_cond =
         ctx.same_object(
           pt.clone(),
           ctx.address_of(object.clone(), pt.ty())
         );
+      self._callback_symex.rename(&mut pointer_cond);
+      let pointer_guard = Guard::from(pointer_cond);
 
       // Valid check
       let root_object = self.get_root_object(&object);
@@ -130,7 +136,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
       ret =
         match ret {
           Some(x) => {
-            let cond = pointer_guard.clone();
+            let cond = pointer_guard.to_expr();
             Some(ctx.ite(cond, new_object.unwrap(), x))
           },
           None => new_object,
@@ -197,7 +203,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     &mut self,
     object: Expr,
     mode: Mode,
-    guard: Expr
+    guard: Guard
   ) -> Option<Expr> {
     match mode {
       Mode::Slice(l, r)
@@ -211,7 +217,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     object: Expr,
     l: Option<usize>,
     r: Option<usize>,
-    guard: Expr
+    guard: Guard
   ) -> Option<Expr> {
     let inner_expr = object.extract_inner_expr();
     assert!(object.ty().is_array() || inner_expr.is_slice());
@@ -247,7 +253,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
             &new_start, &new_end, root_object, &start, &end
           )
         );
-      self._callback_symex.claim(msg, ctx.and(guard, ctx._false()));
+      self._callback_symex.claim(msg, ctx._false().into());
       None
     } else {
       let slice_start = ctx.constant_integer(new_start, Type::usize_type());
@@ -271,13 +277,15 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     ctx.object(l1_symbol)
   }
 
-  fn valid_check(&mut self, object: Expr, guard: Expr) {
+  fn valid_check(&mut self, object: Expr, mut guard: Guard) {
     assert!(object.is_object());
     let ctx = object.ctx.clone();
-    let invalid = ctx.invalid(object.clone());
+    let mut invalid = ctx.invalid(object.clone());
+    self._callback_symex.rename(&mut invalid);
+    guard.add(invalid);
     let msg =
       NString::from(format!("dereference failure: {object:?} is not alloced"));
-    self._callback_symex.claim(msg, ctx.and(guard, invalid));
+    self._callback_symex.claim(msg, guard);
   }
 
   fn bound_check(&mut self, object: Expr, index: Expr) {
@@ -292,24 +300,28 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         ctx.ge(index.clone(), ctx.constant_usize(len as usize));
       let msg =
         NString::from(format!("bound check: {object:?}[{index:?}] is out-of-bound"));
-      
-      let cond = ctx.valid(object.clone());
-      self._callback_symex.claim(msg, ctx.and(cond, out_of_bound));
+
+      let mut cond = ctx.and(ctx.valid(object.clone()), out_of_bound);
+      self._callback_symex.rename(&mut cond);
+      let mut new_guard = Guard::from(cond);
+      self._callback_symex.claim(msg, new_guard);
     }
   }
 
-  fn dereference_null(&mut self, pt: Expr, guard: Expr, mode: Mode) {
+  fn dereference_null(&mut self, pt: Expr, mut guard: Guard, mode: Mode) {
     assert!(pt.ty().is_any_ptr());
     assert!(mode == Mode::Read);
     let ctx = pt.ctx.clone();
     let null = ctx.null(pt.ty());
     let msg =
       NString::from(format!("dereference failure: null pointer dereference"));
-    let is_deref_null = ctx.and(guard, ctx.eq(pt, null));
-    self._callback_symex.claim(msg, is_deref_null);
+    let mut is_null = ctx.eq(pt, null);
+    self._callback_symex.rename(&mut is_null);
+    guard.add(is_null);
+    self._callback_symex.claim(msg, guard);
   }
 
-  fn dereference_invalid_ptr(&mut self, pt: Expr, mode: Mode, guard: Expr) {
+  fn dereference_invalid_ptr(&mut self, pt: Expr, mode: Mode, mut guard: Guard) {
     // Check the pointer is invalid
     let ctx = pt.ctx.clone();
     let pointer_base = ctx.pointer_base(pt.clone());
@@ -320,7 +332,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         .exec_state
         .ns
         .lookup_object(NString::ALLOC_SYM);
-    let index =
+    let is_alloced =
       ctx.index(alloc_array, pointer_base, Type::bool_type());
     let msg =
       match mode {
@@ -329,8 +341,10 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         Mode::Dealloc => NString::from("dealloc failure: invalid pointer"),
         _ => todo!(),
       };
-    let fail =
-      ctx.and(ctx.and(guard, ne), ctx.not(index));
-    self._callback_symex.claim(msg, fail);
+    
+    let mut is_not_alloced = ctx.and(ne, ctx.not(is_alloced));
+    self._callback_symex.rename(&mut is_not_alloced);
+    guard.add(is_not_alloced);
+    self._callback_symex.claim(msg, guard);
   }
 }

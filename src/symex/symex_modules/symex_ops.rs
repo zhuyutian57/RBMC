@@ -41,12 +41,12 @@ impl<'cfg> Symex<'cfg> {
       // Maybe a bug for stable mir: the operands for Range do not
       // follow the endian.
       let slice =
-        self.make_deref(pt.clone(), Mode::Slice(l, r), self.ctx._true());
+        self.make_deref(pt.clone(), Mode::Slice(l, r), self.ctx._true().into());
       
       // Build success
       if let Some(s) = slice {
         let rhs = self.ctx.address_of(self.ctx.object(s), ty);
-        self.assign(lhs, rhs, self.ctx._true());
+        self.assign(lhs, rhs, self.ctx._true().into());
         self.symex_move(pt);
       }
       return;

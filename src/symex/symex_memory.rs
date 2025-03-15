@@ -21,6 +21,6 @@ impl<'cfg> Symex<'cfg> {
       );
     let store =
       ctx.store(alloc_array.clone(), pointer_base, ctx._true());
-    self.assign(alloc_array, store, self.ctx._true());
+    self.assign(alloc_array, store, self.ctx._true().into());
   }
 }

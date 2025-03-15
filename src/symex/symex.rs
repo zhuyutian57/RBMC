@@ -44,7 +44,7 @@ impl<'cfg> Symex<'cfg> {
       symex.exec_state.ns.lookup_object(NString::ALLOC_SYM);
     let const_array =
       ctx.constant_array(ctx.constant_bool(false), None);
-    symex.assign(alloc_array, const_array, ctx._true());
+    symex.assign(alloc_array, const_array, ctx._true().into());
     symex
   }
 
