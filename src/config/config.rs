@@ -21,10 +21,7 @@ impl Config {
   pub fn new(cli: Cli) -> Self {
     // Get stable mir
     let program =
-      Program::new(
-        NString::from(stable_mir::local_crate().name),
-        stable_mir::all_local_items()
-      );
+      Program::new(stable_mir::local_crate());
     
     // Context for managing Expr
     let expr_ctx =

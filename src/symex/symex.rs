@@ -1,5 +1,6 @@
 
 use stable_mir::mir::*;
+use stable_mir::CrateDef;
 
 use crate::expr::context::*;
 use crate::expr::constant::*;
@@ -40,12 +41,34 @@ impl<'cfg> Symex<'cfg> {
         exec_state,
         vc_system
       };
-    let alloc_array =
-      symex.exec_state.ns.lookup_object(NString::ALLOC_SYM);
-    let const_array =
-      ctx.constant_array(ctx.constant_bool(false), None);
-    symex.assign(alloc_array, const_array, ctx._true().into());
+    symex.init();
     symex
+  }
+
+  fn init(&mut self) {
+    // Init static variable
+    for def in self.program.static_variables() {
+      let name = NString::from(def.trimmed_name());
+      let ty = Type::from(def.ty());
+      let symbol = self.exec_state.l0_symbol(name, ty);
+      let object = self.ctx.object(symbol);
+      self.exec_state.ns.insert_object(object.clone());
+      
+      let init_value =
+        match def.eval_initializer() {
+          Ok(allocation)
+            => self.make_constant_from_allocation(&allocation, ty),
+          _ => panic!("Some thing wrong?"),
+        };
+      self.assign(object, init_value, self.ctx._true().into());
+    }
+
+    // Global varialbes for Encoding
+    let alloc_array =
+      self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
+    let const_array =
+      self.ctx.constant_array(self.ctx.constant_bool(false), None);
+    self.assign(alloc_array, const_array, self.ctx._true().into());
   }
 
   pub fn run(&mut self) {
@@ -108,15 +131,12 @@ impl<'cfg> Symex<'cfg> {
 
   fn symex_statement(&mut self, statement: &Statement) {
     match &statement.kind {
-      StatementKind::Assign(place, rvalue) => {
-        self.symex_assign(place, rvalue);
-      },
-      StatementKind::StorageLive(local) => {
-        self.symex_storagelive(*local);
-      },
-      StatementKind::StorageDead(local) => {
-        self.symex_storagedead(*local);
-      },
+      StatementKind::Assign(place, rvalue)
+        => self.symex_assign(place, rvalue),
+      StatementKind::StorageLive(local) 
+        => self.symex_storagelive(*local),
+      StatementKind::StorageDead(local) 
+        => self.symex_storagedead(*local),
       _ => {},
     }
   }

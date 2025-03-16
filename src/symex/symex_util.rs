@@ -2,10 +2,12 @@
 use std::fmt::Error;
 
 use num_bigint::BigInt;
+use stable_mir::mir::alloc::GlobalAlloc;
 use stable_mir::mir::Operand;
 use stable_mir::mir::Place;
 use stable_mir::target::*;
 use stable_mir::ty::*;
+use stable_mir::CrateDef;
 
 use crate::expr::expr::*;
 use crate::expr::constant::*;
@@ -133,61 +135,99 @@ impl<'cfg> Symex<'cfg> {
   }
 
   pub(super) fn make_mirconst(&mut self, mirconst: &MirConst) -> Expr {
+    let ty = Type::from(mirconst.ty());
     match mirconst.kind() {
       ConstantKind::Ty(tyconst)
-        => Ok(self.make_tyconst(tyconst)),
+        => self.make_tyconst(tyconst),
       ConstantKind::Allocated(allocation) => {
-        let ty = Type::from(mirconst.ty());
-        let fields =
-          if ty.is_struct() { ty.struct_def().1 }
-          else { vec![(NString::EMPTY, ty)] };
-        let mut value_vec = Vec::new();
-        let bytes = &allocation.bytes;
-        for i in 0..fields.len() {
-          let l = 
-            if MachineInfo::target().endian == Endian::Little {
-              bytes.len() - allocation.align as usize * (i + 1)
-            } else {
-              allocation.align as usize * i
-            };
-          let r = l + allocation.align as usize;
-          let mut raw_bytes = Vec::new();
-          for j in l..r {
-            if let Some(x) = bytes[j] {
-              raw_bytes.push(x);
-            }
-          }
-          if fields[i].1.is_bool() {
-            assert!(raw_bytes.len() == 1);
-            value_vec.push(Constant::Bool(raw_bytes[0] == 1));
-            continue;
-          }
-          let value = read_target_integer(raw_bytes.as_slice());
-          value_vec.push(Constant::Integer(value));
-        }
-
-        if ty.is_struct() {
-          let mut struct_fields = Vec::new();
-          for i in 0..fields.len() {
-            struct_fields.push((value_vec[i].clone(), fields[i].1.clone()));
-          }
-          Ok(self.ctx.constant_struct(struct_fields, ty))
+        if allocation.provenance.ptrs.is_empty() {
+          self.make_constant_from_allocation(allocation, ty)
         } else {
-          assert!(value_vec.len() == 1);
-          if ty.is_bool() {
-            Ok(self.ctx.constant_bool(value_vec[0].to_bool()))
-          } else if ty.is_integer() {
-            let i = value_vec[0].to_integer();
-            Ok(self.ctx.constant_integer(i, ty))
-          } else {
-            Err(Error)
-          }
+          assert!(allocation.provenance.ptrs.len() == 1);
+          let (_, prov) = &allocation.provenance.ptrs[0];
+          self.make_global_alloc(prov, ty)
         }
       },
+      ConstantKind::Unevaluated(uneval_const) => {
+        todo!("{uneval_const:?}")
+      },
       ConstantKind::ZeroSized
-        => Ok(self.ctx.mk_type(mirconst.ty().into())),
-      _ => Err(Error),
-    }.expect(format!("Not support {mirconst:?}").as_str())
+        => self.ctx.mk_type(ty),
+      _ => panic!("Not support {:?}", mirconst.kind()),
+    }
+  }
+
+  fn make_global_alloc(&mut self, prov: &Prov, ty: Type) -> Expr {
+    let global_alloc = GlobalAlloc::from(prov.0);
+    match global_alloc {
+      GlobalAlloc::Static(def) => {
+        // Since accessing global variables through pointers,
+        // return its address.
+        let ident = def.trimmed_name().into();
+        let object = self.exec_state.ns.lookup_object(ident);
+        self.ctx.address_of(object.clone(), ty)
+      },
+      _ => panic!("Do not support global alloc {global_alloc:?}"),
+    }
+  }
+
+  pub(super) fn make_constant_from_allocation(
+    &mut self,
+    allocation: &Allocation,
+    ty : Type
+  ) -> Expr {
+    if ty.is_ptr() {
+      let is_null = allocation.is_null().expect("Must exists");
+      // TODO: maybe none-null pointer?
+      assert!(is_null);
+      return self.ctx.null(ty);
+    }
+
+    let fields =
+      if ty.is_struct() { ty.struct_def().1 }
+      else { vec![(NString::EMPTY, ty)] };
+    let mut value_vec = Vec::new();
+    let bytes = &allocation.bytes;
+    for i in 0..fields.len() {
+      let l = 
+        if MachineInfo::target().endian == Endian::Little {
+          bytes.len() - allocation.align as usize * (i + 1)
+        } else {
+          allocation.align as usize * i
+        };
+      let r = l + allocation.align as usize;
+      let mut raw_bytes = Vec::new();
+      for j in l..r {
+        if let Some(x) = bytes[j] {
+          raw_bytes.push(x);
+        }
+      }
+      if fields[i].1.is_bool() {
+        assert!(raw_bytes.len() == 1);
+        value_vec.push(Constant::Bool(raw_bytes[0] == 1));
+        continue;
+      }
+      let value = read_target_integer(raw_bytes.as_slice());
+      value_vec.push(Constant::Integer(value));
+    }
+
+    if ty.is_struct() {
+      let mut struct_fields = Vec::new();
+      for i in 0..fields.len() {
+        struct_fields.push((value_vec[i].clone(), fields[i].1.clone()));
+      }
+      self.ctx.constant_struct(struct_fields, ty)
+    } else {
+      assert!(value_vec.len() == 1);
+      if ty.is_bool() {
+        self.ctx.constant_bool(value_vec[0].to_bool())
+      } else if ty.is_integer() {
+        let i = value_vec[0].to_integer();
+        self.ctx.constant_integer(i, ty)
+      } else {
+        panic!("Not support construct {ty:?} from Allocation")
+      }
+    }
   }
 
   /// Return `l1` expr

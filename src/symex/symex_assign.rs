@@ -16,6 +16,7 @@ type UnOp = crate::expr::op::UnOp;
 
 impl<'cfg> Symex<'cfg> {
   pub(super) fn symex_assign(&mut self, place: &Place, rvalue: &Rvalue) {
+    // println!("{place:?} - {rvalue:?}");
     // construct lhs expr and rhs expr from MIR
     let lhs = self.make_project(place);
     let rhs = self.make_rvalue(rvalue);
@@ -175,7 +176,7 @@ impl<'cfg> Symex<'cfg> {
         let address_of = self.ctx.address_of(object, ty);
         address_of
       },
-      Rvalue::Use(operand) => self.make_operand(operand),
+      Rvalue::Use(operand) =>self.make_operand(operand),
       Rvalue::Repeat(operand, tyconst) => {
         let value = self.make_operand(operand);
         let len_expr = self.make_tyconst(tyconst);

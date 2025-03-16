@@ -6,6 +6,7 @@ use stable_mir::mir::*;
 use crate::expr::context::*;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
+use crate::program::function::FunctionIdx;
 use crate::program::program::*;
 use crate::symbol::symbol::*;
 use crate::symbol::nstring::*;

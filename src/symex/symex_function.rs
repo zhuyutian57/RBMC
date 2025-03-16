@@ -7,6 +7,7 @@ use stable_mir::CrateDef;
 
 use crate::expr::expr::*;
 use crate::expr::ty::*;
+use crate::program::function::FunctionIdx;
 use crate::program::program::*;
 use crate::symbol::symbol::Level;
 use crate::NString;

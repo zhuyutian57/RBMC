@@ -6,6 +6,8 @@ use std::io::*;
 
 use num_bigint::BigInt;
 use num_bigint::Sign;
+use stable_mir::mir::mono::StaticDef;
+use stable_mir::ty::FnDef;
 use stable_mir::ty::UintTy;
 use stable_mir::*;
 use stable_mir::mir::*;
@@ -13,118 +15,43 @@ use stable_mir::target::*;
 
 use crate::expr::ty::*;
 use crate::symbol::nstring::NString;
-
-pub type FunctionIdx = usize;
-pub type Args = Vec<Local>;
-
-/// A wrapper for functiom item in MIR
-#[derive(Debug)]
-pub struct Function {
-  name: NString,
-  args: Args,
-  body: Body,
-  locals_without_storage: Vec<Local>,
-}
-
-impl Function {
-  pub fn new(item: CrateItem) -> Self {
-    assert!(item.kind() == ItemKind::Fn);
-    let mut locals_with_storage = HashSet::new();
-    for bb in item.body().blocks {
-      for s in bb.statements {
-        match s.kind {
-          StatementKind::StorageLive(l) => {
-            locals_with_storage.insert(l);
-          },
-          _ => {},
-        }
-      }
-    }
-    let mut locals_without_storage = Vec::new();
-    for i in 1..item.body().locals().len() {
-      if locals_with_storage.contains(&i) { continue; }
-      locals_without_storage.push(i);
-    }
-    Function {
-      name: NString::from(item.trimmed_name()),
-      args: (1..item.body().arg_locals().len() + 1).collect(),
-      body: item.body(),
-      locals_without_storage,
-    }
-  }
-
-  pub fn name(&self) -> NString { self.name }
-
-  pub fn args(&self) -> &Args { &self.args }
-
-  pub fn locals(&self) -> &[LocalDecl] { self.body.locals() }
-  
-  pub fn local_decl(&self, local: Local) -> &LocalDecl {
-    assert!(local < self.locals().len());
-    self.body.local_decl(local).unwrap()
-  }
-
-  pub fn local_without_storage(&self) -> Vec<Local> {
-    self.locals_without_storage.clone()
-  }
-
-  pub fn local_type(&self, local: Local) -> Type {
-    Type::from(self.local_decl(local).ty)
-  }
-
-  pub fn body(&self) -> &Body { &self.body }
-
-  pub fn size(&self) -> usize { self.body.blocks.len() }
-
-  pub fn basicblock(&self, i: usize) -> &BasicBlock {
-    assert!(i < self.body.blocks.len());
-    &self.body.blocks[i]
-  }
-
-  pub fn operand_type(&self, operand: &Operand) -> Type {
-    Type::from(operand.ty(self.body.locals()).expect("Wrong operand"))
-  }
-
-  pub fn rvalue_type(&self, rvalue: &Rvalue) -> Type {
-    Type::from(rvalue.ty(self.body.locals()).expect("Wrong rvalue"))
-  }
-
-}
-
-impl PartialEq for Function {
-  fn eq(&self, other: &Self) -> bool {
-    self.name == other.name
-  }
-}
-
-impl Eq for Function {}
+use super::function::*;
 
 pub struct Program {
-  _crate: NString,
+  crate_name: NString,
+  static_variables: Vec<StaticDef>,
   functions: Vec<Function>,
   idx: HashMap<NString, FunctionIdx>,
 }
 
 impl Program {
-  pub fn new(_crate: NString, items: CrateItems) -> Self {
+  pub fn new(_crate: Crate) -> Self {
     let mut functions = Vec::new();
     let mut idx = HashMap::new();
-    for item in items.iter() {
-      if item.trimmed_name() == "main" {
-        functions.push(Function::new(item.clone()));
+    for def in _crate.fn_defs() {
+      if def.trimmed_name() == "main" {
+        functions.push(Function::new(def.clone()));
       }
     }
     assert!(!functions.is_empty());
-    for item in items {
-      if item.trimmed_name() == "main" { continue; }
-      if !matches!(item.kind(), ItemKind::Fn) { continue; }
-      functions.push(Function::new(item));
+    for def in _crate.fn_defs() {
+      if def.trimmed_name() == "main" { continue; }
+      functions.push(Function::new(def));
     }
     for (i, function)
       in functions.iter_mut().enumerate() {
-      idx.insert(function.name.clone(), i);
+      idx.insert(function.name().clone(), i);
     }
-    Program { _crate, functions, idx }
+    Program {
+      crate_name: _crate.name.clone().into(),
+      static_variables: _crate.statics(),
+      functions,
+      idx
+    }
+  }
+
+  pub fn static_variables(&self) -> &Vec<StaticDef> {
+    &self.static_variables
   }
 
   pub fn function(&self, i: FunctionIdx) -> &Function {
@@ -146,7 +73,7 @@ impl Program {
     let target = MachineInfo::target();
     println!(
       "Crate:{:?}, Endian:{}, MachineSize:{}",
-      self._crate,
+      self.crate_name,
       match target.endian {
         Endian::Little => "Little",
         _ => "Big",
