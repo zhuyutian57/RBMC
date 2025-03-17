@@ -8,6 +8,7 @@ use crate::expr::ty::*;
 use crate::symbol::nstring::*;
 use crate::symex::place_state::PlaceState;
 use crate::symex::projection::Mode;
+use crate::symex::value_set::ObjectSet;
 use super::super::symex::*;
 
 /// This mod defines symbolic execution of api in std::alloc
@@ -53,6 +54,7 @@ impl<'cfg> Symex<'cfg> {
     let pt = self.make_operand(operand);
     assert!(pt.ty().is_ptr());
     // Generate assertions
+    let internal_objects = ObjectSet::new();
     self.make_deref(pt.clone(), Mode::Dealloc, self.ctx._true().into());
 
     self.top_mut().cur_state.dealloc_objects(pt.clone());

@@ -84,7 +84,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     &mut self,
     pt: Expr,
     mode: Mode,
-    guard: Guard,
+    guard: Guard
   ) -> Option<Expr> {
     assert!(pt.ty().is_any_ptr());
     
@@ -128,10 +128,21 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
           .exec_state
           .get_place_state(&root_object);
       if place_state.is_unknown() {
-        self.valid_check(root_object.clone(), pointer_guard.clone());
+        self.valid_check(object.clone(), pointer_guard.clone());
       }
       
-      if mode == Mode::Drop || mode == Mode::Dealloc { continue; }
+      if mode == Mode::Drop || mode == Mode::Dealloc {
+        if let Some(x) = offset {
+          if x == 0 { continue; }
+          let msg = 
+            format!(
+              "{} fail: the offset is {x} != 0",
+              format!("{mode:?}").to_lowercase()
+            ).into();
+          self._callback_symex.claim(msg, ctx._true().into());
+        }
+        continue;
+      }
 
       let new_ret =
         self.build_ret(object, offset, mode, pointer_guard.clone());
