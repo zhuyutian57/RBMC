@@ -5,7 +5,8 @@ use std::fmt::Debug;
 use crate::expr::expr::Expr;
 use crate::symbol::nstring::NString;
 
-pub type ObjectSet = HashSet<Expr>;
+pub type Object = (Expr, Option<usize>);
+pub type ObjectSet = HashSet<Object>;
 
 #[derive(Default, Clone)]
 pub(super) struct ValueSet {
@@ -22,9 +23,7 @@ impl ValueSet {
   }
 
   pub fn remove(&mut self, pt: NString) {
-    self
-      ._points_to_map
-      .remove(&pt);
+    self._points_to_map.remove(&pt);
   }
 
   pub fn pointers(&self) -> HashSet<NString> {

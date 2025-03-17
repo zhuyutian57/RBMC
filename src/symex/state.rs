@@ -60,7 +60,7 @@ impl State {
     assert!(pt.ty().is_any_ptr());
     let mut objects = HashSet::new();
     self.get_value_set(pt.clone(), &mut objects);
-    for object in objects {
+    for (object, _) in objects {
       if object.is_unknown() { continue; }
       let place = NPlace::from(object);
       self.update_place_state(place, PlaceState::Unknown);
@@ -76,7 +76,11 @@ impl State {
   pub fn assign(&mut self, expr: Expr, mut values: ObjectSet) {
     assert!(expr.ty().is_any_ptr());
     if values.len() == 1 &&
-       values.iter().fold(true, |acc, x| acc & x.is_unknown()) {
+       values
+        .iter()
+        .fold(
+          true,
+          |acc, x| acc & x.0.is_unknown()) {
       values.clear();
     }
     self.assign_rec(expr, NString::EMPTY, values);
@@ -144,8 +148,8 @@ impl State {
         // If any of state does not contain the pointer,
         // the pointer is uninitialized.
         if !self.value_set.contains(pt) || !other.value_set.contains(pt) {
-          let ty = new_objects.iter().next().unwrap().ty();
-          new_objects.insert(self.ctx.unknown(ty));
+          let ty = new_objects.iter().next().unwrap().0.ty();
+          new_objects.insert((self.ctx.unknown(ty), None));
         }
         self.value_set.insert(pt, new_objects);
       }
@@ -158,7 +162,7 @@ impl State {
     self.get_value_set_rec(expr.clone(), NString::EMPTY, values);
     if values.is_empty() {
       // The pointer points to nothing
-      values.insert(expr.ctx.unknown(expr.ty().pointee_ty()));
+      values.insert((expr.ctx.unknown(expr.ty().pointee_ty()), None));
     }
   }
 
@@ -169,12 +173,12 @@ impl State {
     values: &mut ObjectSet
   ) {
     if expr.is_unknown() {
-      values.insert(expr.ctx.unknown(expr.ty().pointee_ty()));
+      values.insert((expr.ctx.unknown(expr.ty().pointee_ty()), None));
       return;
     }
 
     if expr.is_null() {
-      values.insert(expr.ctx.null_object(expr.ty().pointee_ty()));
+      values.insert((expr.ctx.null_object(expr.ty().pointee_ty()), None));
       return;
     }
 
@@ -186,7 +190,38 @@ impl State {
     }
 
     if expr.is_address_of() {
-      values.insert(expr.extract_object());
+      let object = expr.extract_object();
+      let inner_expr = object.extract_inner_expr();
+      if inner_expr.is_symbol() {
+        values.insert((object, None));
+      } else if inner_expr.is_index() {
+        let root_object = inner_expr.extract_object();
+        let index = inner_expr.extract_index().extract_constant();
+        let offset = bigint_to_usize(&index.to_integer());
+        values.insert((root_object, Some(offset)));
+      } else {
+        todo!("get value set from addressof({object:?})");
+      }
+      return;
+    }
+
+    if expr.is_binary() {
+      let pt = expr.extract_root_pointer();
+      let off = expr.extract_offset();
+      // TODO: support dynamic offset
+      assert!(off.is_constant());
+      let offset = off.extract_constant().to_integer();
+      let mut objects = HashSet::new();
+      self.get_value_set_rec(pt, suffix, &mut objects);
+      // Compute new offset
+      for (object, o) in objects {
+        let new_offset =
+          match o {
+            Some(x) => offset.clone() + x,
+            None => offset.clone(),
+          };
+        values.insert((object, Some(bigint_to_usize(&new_offset))));
+      }
       return;
     }
 
@@ -248,7 +283,7 @@ impl State {
           self.get_value_set_rec(inner_object, new_suffix, values);
         }
       } else if inner_expr.is_unknown() {
-        values.insert(expr.ctx.unknown(expr.ty().pointee_ty()));
+        values.insert((expr.ctx.unknown(expr.ty().pointee_ty()), None));
       } else {
         panic!("Wrong object? {inner_expr:?}");
       }

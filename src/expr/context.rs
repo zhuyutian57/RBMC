@@ -182,11 +182,6 @@ impl Context {
     self.nodes[i].kind().is_store()
   }
 
-  pub fn is_box(&self, i: NodeId) -> bool {
-    assert!(i < self.nodes.len());
-    self.nodes[i].kind().is_box()
-  }
-
   pub fn is_pointer_ident(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     self.nodes[i].kind().is_pointer_base()
@@ -200,6 +195,11 @@ impl Context {
   pub fn is_pointer_meta(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     self.nodes[i].kind().is_pointer_meta()
+  }
+
+  pub fn is_box(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_box()
   }
 
   pub fn is_move(&self, i: NodeId) -> bool {
@@ -408,8 +408,13 @@ impl ExprBuilder for ExprCtx {
   }
 
   fn add(&self, lhs: Expr, rhs: Expr) -> Expr {
-    assert!(lhs.ty() == rhs.ty());
+    assert!(
+      lhs.ty() == rhs.ty() ||
+      // The offset must be rhs
+      lhs.ty().is_ptr() && rhs.ty().is_integer()
+    );
     let kind = NodeKind::Binary(BinOp::Add, lhs.id, rhs.id);
+    // Carefully, don't use rhs.ty()
     let ty = lhs.ty();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
@@ -613,15 +618,6 @@ impl ExprBuilder for ExprCtx {
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
-
-  fn _box(&self, pt: Expr) -> Expr {
-    assert!(pt.ty().is_ptr());
-    let kind = NodeKind::Box(pt.id);
-    let ty =  Type::box_type(pt.ty().pointee_ty());
-    let new_node = Node::new(kind, ty);
-    let id = self.borrow_mut().add_node(new_node);
-    Expr { ctx: self.clone(), id } 
-  }
   
   fn pointer_base(&self, pt: Expr) -> Expr {
     assert!(pt.ty().is_any_ptr());
@@ -648,6 +644,15 @@ impl ExprBuilder for ExprCtx {
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
+  }
+
+  fn _box(&self, pt: Expr) -> Expr {
+    assert!(pt.ty().is_ptr());
+    let kind = NodeKind::Box(pt.id);
+    let ty =  Type::box_type(pt.ty().pointee_ty());
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id } 
   }
 
   fn _move(&self, object: Expr) -> Expr {

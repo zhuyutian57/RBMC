@@ -41,8 +41,8 @@ impl Expr {
       let sub_exprs = self.sub_exprs().unwrap();
       let mut lhs = sub_exprs[0].clone();
       let mut rhs = sub_exprs[1].clone();
-      lhs.to_nnf(is_not);
-      rhs.to_nnf(is_not);
+      if lhs.ty().is_bool() { lhs.to_nnf(is_not); }
+      if rhs.ty().is_bool() { rhs.to_nnf(is_not); }
       if is_not {
         *self = 
           match self.extract_bin_op() {

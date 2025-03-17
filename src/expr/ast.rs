@@ -108,14 +108,16 @@ pub(super) enum NodeKind {
   /// a field of a struct.
   Store(NodeId, NodeId, NodeId),
 
-  /// `Box(*const T)` encodes Box pointer,a one-field tuple 
-  Box(NodeId),
+  // `Pointer(base, offset, meta)`: pointer/ref in a uniform.
+  // We currentlly support `usize` meta.
   /// `PointerBase(pt)` retrieve the ident of a pointer
   PointerBase(NodeId),
   /// `PointerOffset(pt)` retrieve the offset of a pointer
   PointerOffset(NodeId),
   /// `PtrMetaData(pt)` retrieve pointer meta data, such as slice len
   PointerMeta(NodeId),
+  /// `Box(*const T)` encodes Box pointer,a one-field tuple 
+  Box(NodeId),
 
   // Predicates for symbolic execution. Before generating VCC,
   // all predicates must be replaced to some expression.
@@ -181,10 +183,6 @@ impl NodeKind {
     matches!(self, NodeKind::Store(..))
   }
 
-  pub fn is_box(&self) -> bool {
-    matches!(self, NodeKind::Box(..))
-  }
-
   pub fn is_pointer_base(&self) -> bool {
     matches!(self, NodeKind::PointerBase(..))
   }
@@ -195,6 +193,10 @@ impl NodeKind {
 
   pub fn is_pointer_meta(&self) -> bool {
     matches!(self, NodeKind::PointerMeta(..))
+  }
+
+  pub fn is_box(&self) -> bool {
+    matches!(self, NodeKind::Box(..))
   }
 
   pub fn is_move(&self) -> bool {
@@ -253,10 +255,10 @@ impl Node {
         => Some(vec![*o, *i]),
       NodeKind::Store(o, i, v)
         => Some(vec![*o, *i, *v]),
-      NodeKind::Box(p) |
       NodeKind::PointerBase(p) |
       NodeKind::PointerOffset(p) |
-      NodeKind::PointerMeta(p)
+      NodeKind::PointerMeta(p) |
+      NodeKind::Box(p)
         => Some(vec![*p]),
       NodeKind::Move(o) |
       NodeKind::Valid(o) |

@@ -46,10 +46,10 @@ impl Expr {
   pub fn is_index(&self) -> bool { self.ctx.borrow().is_index(self.id) }
   pub fn is_store(&self) -> bool { self.ctx.borrow().is_store(self.id) }
 
-  pub fn is_box(&self) -> bool { self.ctx.borrow().is_box(self.id) }
   pub fn is_pointer_ident(&self) -> bool { self.ctx.borrow().is_pointer_ident(self.id) }
   pub fn is_pointer_offset(&self) -> bool { self.ctx.borrow().is_pointer_offset(self.id) }
   pub fn is_pointer_meta(&self) -> bool { self.ctx.borrow().is_pointer_meta(self.id) }
+  pub fn is_box(&self) -> bool { self.ctx.borrow().is_box(self.id) }
 
   pub fn is_move(&self) -> bool { self.ctx.borrow().is_move(self.id) }
   pub fn is_valid(&self) -> bool { self.ctx.borrow().is_valid(self.id) }
@@ -99,7 +99,7 @@ impl Expr {
       self.is_move() ||
       self.is_invalid()
     );
-    self.sub_exprs().unwrap().remove(0)
+    self.extract_sub_expr(0)
   }
 
   pub fn extract_fields(&self) -> Vec<Expr> {
@@ -112,6 +112,46 @@ impl Expr {
     self.ctx.borrow().extract_bin_op(self.id).unwrap()
   }
 
+  pub fn extract_lhs(&self) -> Expr {
+    assert!(self.is_binary());
+    self.extract_sub_expr(0)
+  }
+
+  pub fn extract_rhs(&self) -> Expr {
+    assert!(self.is_binary());
+    self.extract_sub_expr(1)
+  }
+
+  pub fn extract_root_pointer(&self) -> Expr {
+    assert!(self.ty().is_ptr());
+    if self.is_binary() {
+      self.extract_lhs().extract_root_pointer()
+    } else {
+      self.clone()
+    }
+  }
+
+  /// This function will compute the total offset expr.
+  pub fn extract_offset(&self) -> Expr {
+    assert!(self.ty().is_ptr() && self.is_binary());
+    let lhs = self.extract_lhs();
+    let r_offset = self.extract_rhs();
+    let l_offset = 
+      if lhs.is_binary() {
+        lhs.extract_offset()
+      } else {
+        self.ctx.constant_integer(BigInt::ZERO, r_offset.ty())
+      };
+    let mut offset = 
+      match self.extract_bin_op() {
+        BinOp::Add => self.ctx.add(l_offset, r_offset),
+        BinOp::Sub => self.ctx.sub(l_offset, r_offset),
+        _ => panic!("Wrong offset"),
+      };
+    offset.simplify();
+    offset
+  }
+
   pub fn extract_un_op(&self) -> UnOp {
     assert!(self.is_unary());
     self.ctx.borrow().extract_un_op(self.id).unwrap()
@@ -119,52 +159,52 @@ impl Expr {
 
   pub fn extract_src(&self) -> Expr {
     assert!(self.is_cast());
-    self.sub_exprs().unwrap().remove(0)
+    self.extract_sub_expr(0)
   }
   
   pub fn extract_target_type(&self) -> Type {
     assert!(self.is_cast());
-    self.sub_exprs().unwrap().remove(1).extract_type()
+    self.extract_sub_expr(1).extract_type()
   }
 
   pub fn extract_cond(&self) -> Expr {
     assert!(self.is_ite());
-    self.sub_exprs().unwrap().remove(0)
+    self.extract_sub_expr(0)
   }
 
   pub fn extract_true_value(&self) -> Expr {
     assert!(self.is_ite());
-    self.sub_exprs().unwrap().remove(1)
+    self.extract_sub_expr(1)
   }
 
   pub fn extract_false_value(&self) -> Expr {
     assert!(self.is_ite());
-    self.sub_exprs().unwrap().remove(2)
+    self.extract_sub_expr(2)
   }
 
   pub fn extract_inner_expr(&self) -> Expr {
     assert!(self.is_object() || self.is_unary());
-    self.sub_exprs().unwrap().remove(0)
+    self.extract_sub_expr(0)
   }
 
   pub fn extract_slice_start(&self) -> Expr {
     assert!(self.is_slice());
-    self.sub_exprs().unwrap().remove(1)
+    self.extract_sub_expr(1)
   }
 
   pub fn extract_slice_len(&self) -> Expr {
     assert!(self.is_slice());
-    self.sub_exprs().unwrap().remove(2)
+    self.extract_sub_expr(2)
   }
 
   pub fn extract_index(&self) -> Expr {
     assert!(self.is_index() || self.is_store());
-    self.sub_exprs().unwrap().remove(1)
+    self.extract_sub_expr(1)
   }
 
   pub fn extract_update_value(&self) -> Expr {
     assert!(self.is_store());
-    self.sub_exprs().unwrap().remove(2)
+    self.extract_sub_expr(2)
   }
 
   pub fn extract_inner_pointer(&self) -> Expr {
@@ -174,7 +214,7 @@ impl Expr {
       self.is_pointer_offset() ||
       self.is_pointer_meta()
     );
-    self.sub_exprs().unwrap().remove(0)
+    self.extract_sub_expr(0)
   }
 
   pub fn unwrap_predicates(&self) -> Expr {
@@ -183,6 +223,12 @@ impl Expr {
     } else {
       self.clone()
     }
+  }
+
+  fn extract_sub_expr(&self, i: usize) -> Expr {
+    let sub_exprs = self.sub_exprs().expect("Must be non-empty");
+    assert!(i < sub_exprs.len());
+    sub_exprs[i].clone()
   }
 
   /// Construct sub-exprs from AST
@@ -311,21 +357,27 @@ impl Expr {
       return;
     }
 
-    if self.is_box() {
-      let pt = sub_exprs[0].clone();
-      *self = self.ctx._box(pt);
-      return;
-    }
-
     if self.is_pointer_ident() {
       let pt = sub_exprs[0].clone();
       *self = self.ctx.pointer_base(pt);
+      return;
+    }
+  
+    if self.is_pointer_offset() {
+      let pt = sub_exprs[0].clone();
+      *self = self.ctx.pointer_offset(pt);
       return;
     }
 
     if self.is_pointer_meta() {
       let pt = sub_exprs[0].clone();
       *self = self.ctx.pointer_meta(pt);
+      return;
+    }
+
+    if self.is_box() {
+      let pt = sub_exprs[0].clone();
+      *self = self.ctx._box(pt);
       return;
     }
 
@@ -514,10 +566,10 @@ pub trait ExprBuilder {
   fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr;
   fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
 
-  fn _box(&self, pt: Expr) -> Expr;
   fn pointer_base(&self, pt: Expr) -> Expr;
   fn pointer_offset(&self, pt: Expr) -> Expr;
   fn pointer_meta(&self, pt: Expr) -> Expr;
+  fn _box(&self, pt: Expr) -> Expr;
 
   fn _move(&self, object: Expr) -> Expr;
   fn valid(&self, object: Expr) -> Expr;

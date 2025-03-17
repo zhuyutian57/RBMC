@@ -22,6 +22,8 @@ impl<'cfg> Symex<'cfg> {
     } else if name == NString::from("null_mut") ||
       name == NString::from("null") {
       self.symex_ptr_null(dest);
+    } else if name == "std::ptr::mut_ptr::<impl *mut T>::add" {
+      
     } else {
       panic!("Not support for {name:?}");
     }
@@ -42,6 +44,16 @@ impl<'cfg> Symex<'cfg> {
   fn symex_ptr_null(&mut self, dest: &Place) {
     let lhs = self.make_project(dest);
     let rhs = self.ctx.null(lhs.ty());
+    self.assign(lhs, rhs, self.ctx._true().into());
+  }
+
+  fn symex_ptr_add(&mut self, dest: &Place, args: &Vec<Operand>) {
+    let lhs = self.make_project(dest);
+    
+    let pt = self.make_operand(&args[0]);
+    let count = self.make_operand(&args[1]);
+    let rhs = self.ctx.add(pt, count);
+
     self.assign(lhs, rhs, self.ctx._true().into());
   }
 }

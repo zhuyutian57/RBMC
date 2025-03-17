@@ -46,9 +46,14 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
                 .project_deref(
                   ret.clone(),
                   Mode::Read,
-                  Guard::new(ctx.clone())).unwrap(),
+                  Guard::new(ctx.clone())
+                ).unwrap(),
           ProjectionElem::Field(i, ty)
-            => self.project_field(ret.clone(), *i, Type::from(*ty)),
+            => self.project_field(
+                ret.clone(), 
+                *i,
+                Type::from(*ty)
+              ),
           ProjectionElem::Index(local)
             => {
               let index =
@@ -61,8 +66,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
           ProjectionElem::ConstantIndex {
             offset,
             min_length,
-            from_end }
-            => {
+            from_end 
+          } => {
               let i = if *from_end { min_length - offset } else { *offset };
               let index = ctx.constant_usize(i as usize);
               self.project_index(ret.clone(), index, false)
@@ -95,7 +100,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     
     let mut ret = None;
     
-    for object in objects {
+    for (object, offset) in objects {
       // An object is valid if it is owned by some variable
       // according to the Ownership rule of Rust.
       if object.is_null_object() {
@@ -129,17 +134,17 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
       
       if mode == Mode::Drop || mode == Mode::Dealloc { continue; }
 
-      let new_object =
-        self.build_object(object, mode, pointer_guard.clone());
-      if new_object == None { continue; }
+      let new_ret =
+        self.build_ret(object, offset, mode, pointer_guard.clone());
+      if new_ret == None { continue; }
 
       ret =
         match ret {
           Some(x) => {
             let cond = pointer_guard.to_expr();
-            Some(ctx.ite(cond, new_object.unwrap(), x))
+            Some(ctx.ite(cond, new_ret.unwrap(), x))
           },
-          None => new_object,
+          None => new_ret,
         }
     }
 
@@ -159,12 +164,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     }
 
     assert!(object.ty().is_struct());
-
-    let ctx = object.ctx.clone();
-    let i = ctx.constant_usize(field);
-    
-    let index = ctx.index(object, i, Type::from(ty));
-    ctx.object(index)
+    let offset = self._callback_symex.ctx.constant_usize(field);
+    self.build_with_offset(object, offset)
   }
 
   /// Visit an array/slice. Return `Index(array/slice, i)`.
@@ -182,12 +183,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
       self.bound_check(object.clone(), index.clone());
     }
 
-    let ctx = object.ctx.clone();
-    let elem_ty =
-      if ty.is_array() { ty.array_range() }
-      else { ty.slice_elem_ty() };
-    let index = ctx.index(object, index, elem_ty);
-    ctx.object(index)
+    self.build_with_offset(object, index)
   }
 
   fn get_root_object(&mut self, object: &Expr) -> Expr {
@@ -199,22 +195,53 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     }
   }
 
-  fn build_object(
+  fn build_ret(
     &mut self,
     object: Expr,
+    offset: Option<usize>,
     mode: Mode,
     guard: Guard
   ) -> Option<Expr> {
     match mode {
+      Mode::Read => {
+        let ret =
+          match offset {
+            Some(x) =>
+              self.build_with_offset(
+                object,
+                self._callback_symex.ctx.constant_usize(x)
+              ),
+            None => object,
+          };
+        Some(ret)
+      },
       Mode::Slice(l, r)
-        => self.build_slice(object, l, r, guard),
-      _ => Some(object),
+        => self.build_slice(object, offset, l, r, guard),
+      _ => todo!(),
     }
+  }
+
+  fn build_with_offset(&mut self, object: Expr, offset: Expr) -> Expr {
+    let ty = 
+      if object.ty().is_array() {
+        object.ty().array_range()
+      } else if object.ty().is_slice() {
+        object.ty().slice_elem_ty()
+      } else if object.ty().is_struct() {
+        assert!(offset.is_constant());
+        let i =
+          bigint_to_usize(&offset.extract_constant().to_integer());
+        object.ty().struct_def().1[i].1
+      } else {
+        todo!("Not suport build {:?} with offset", object.ty())
+      };
+    self._callback_symex.ctx.index(object, offset, ty)
   }
 
   fn build_slice(
     &mut self,
     object: Expr,
+    offset: Option<usize>,
     l: Option<usize>,
     r: Option<usize>,
     guard: Guard
@@ -224,8 +251,9 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     let ctx = object.ctx.clone();
     let (root_object, start, len) =
       if object.ty().is_array() {
+        let start = match offset { Some(o) => o, None => 0, };
         let len = object.ty().array_size().expect("array must has len");
-        (object, BigInt::from(0 as usize), BigInt::from(len))
+        (object, BigInt::from(start), BigInt::from(len as usize))
       } else {
         let root_object = inner_expr.extract_object();
         let start =
