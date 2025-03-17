@@ -54,7 +54,6 @@ impl<'cfg> Symex<'cfg> {
     let pt = self.make_operand(operand);
     assert!(pt.ty().is_ptr());
     // Generate assertions
-    let internal_objects = ObjectSet::new();
     self.make_deref(pt.clone(), Mode::Dealloc, self.ctx._true().into());
 
     self.top_mut().cur_state.dealloc_objects(pt.clone());

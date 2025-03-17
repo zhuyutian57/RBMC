@@ -11,7 +11,8 @@ use super::symex::*;
 impl<'cfg> Symex<'cfg> {
   pub(super) fn symex_drop(&mut self, place: &Place, target: &BasicBlockIdx) {
     // Drop recursively
-    let object = self.make_project(place);
+    let place = self.make_project(place);
+    let object = self.ctx.object(place);
     self.symex_drop_rec(object, self.ctx._true().into());
 
     let state = self.top_mut().cur_state().clone();

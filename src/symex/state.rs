@@ -192,7 +192,7 @@ impl State {
     if expr.is_address_of() {
       let object = expr.extract_object();
       let inner_expr = object.extract_inner_expr();
-      if inner_expr.is_symbol() {
+      if inner_expr.is_symbol() || inner_expr.is_slice() {
         values.insert((object, None));
       } else if inner_expr.is_index() {
         let root_object = inner_expr.extract_object();

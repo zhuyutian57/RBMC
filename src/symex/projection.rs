@@ -137,16 +137,29 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
           if x == BigInt::ZERO { continue; }
           let msg = 
             format!(
-              "{} fail: the offset is {x} != 0",
+              "{} {object:?} fail: the offset is {x} != 0",
               format!("{mode:?}").to_lowercase()
             ).into();
-          self._callback_symex.claim(msg, ctx._true().into());
+          self._callback_symex.claim(msg, pointer_guard.to_expr());
         }
         continue;
       }
 
+      let final_offset =
+        match offset {
+          Some(x) => Some(x),
+          None => {
+            // The pointer only access a field of the object
+            if pt.ty().pointee_ty() != object.ty() {
+              Some(BigInt::ZERO)
+            } else {
+              None
+            }
+          },
+        };
+
       let new_ret =
-        self.build_ret(object, offset, mode, pointer_guard.clone());
+        self.build_ret(object, final_offset, mode, pointer_guard.clone());
       if new_ret == None { continue; }
 
       ret =
@@ -179,6 +192,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     self.build_with_const_offset(
       object,
       BigInt::from(field),
+      self._callback_symex.ctx._true().into(),
       false
     ).unwrap()
   }
@@ -194,7 +208,12 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
 
     if index.is_constant() {
       let offset = index.extract_constant().to_integer();
-      self.build_with_const_offset(object, offset, false).unwrap()
+      self.build_with_const_offset(
+        object,
+        offset,
+        self._callback_symex.ctx._true().into(),
+        false
+      ).unwrap()
     } else {
       todo!("Non-const index")
     }
@@ -232,9 +251,9 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     guard: Guard
   ) -> Option<Expr> {
     if let Some(x) = offset {
-      self.build_with_const_offset(object, x, true)
+      self.build_with_const_offset(object, x, guard, true)
     } else {
-      Some(object)
+      Some(object.extract_inner_expr())
     }
   }
 
@@ -242,6 +261,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     &mut self,
     object: Expr,
     offset: BigInt,
+    guard: Guard,
     bound_check: bool
   ) -> Option<Expr> {
     let index =
@@ -250,7 +270,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         .ctx
         .constant_integer(offset.clone(), Type::isize_type());
     if bound_check {
-      self.bound_check(object.clone(), index.clone());
+      self.bound_check(object.clone(), index.clone(), guard);
     }
     
     let ty = 
@@ -335,18 +355,18 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     ctx.object(l1_symbol)
   }
 
-  fn valid_check(&mut self, object: Expr, mut guard: Guard) {
+  fn valid_check(&mut self, object: Expr, guard: Guard) {
     assert!(object.is_object());
     let ctx = object.ctx.clone();
     let mut invalid = ctx.invalid(object.clone());
-    self._callback_symex.rename(&mut invalid);
-    guard.add(invalid);
     let msg =
       NString::from(format!("valid check: {object:?} is not alloced"));
-    self._callback_symex.claim(msg, guard);
+    let mut error = guard.clone();
+    error.add(invalid);
+    self._callback_symex.claim(msg, error.to_expr());
   }
 
-  fn bound_check(&mut self, object: Expr, index: Expr) {
+  fn bound_check(&mut self, object: Expr, index: Expr, guard: Guard) {
     assert!(object.is_object());
     let ctx = object.ctx.clone();
     let array_ty = object.ty();
@@ -357,15 +377,13 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
           ctx.lt(index.clone(), ctx.constant_isize(0)),
           ctx.ge(index.clone(), ctx.constant_isize(len as isize))
         );
-      let msg =
-        NString::from(format!("bound check: {object:?}[{index:?}] is out-of-bound"));
-
       self._callback_symex.rename(&mut out_of_bound);
       out_of_bound.simplify();
-      if !out_of_bound.is_false() {
-        let mut new_guard = Guard::from(out_of_bound);
-        self._callback_symex.claim(msg, new_guard);
-      }
+      let msg =
+        NString::from(format!("bound check: {object:?}[{index:?}] is out-of-bound"));
+      let mut error = guard.clone();
+      error.add(out_of_bound);
+      self._callback_symex.claim(msg, error.to_expr());
     }
   }
 
@@ -378,23 +396,31 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
       NString::from(format!("dereference failure: null pointer dereference"));
     let mut is_null = ctx.eq(pt, null);
     self._callback_symex.rename(&mut is_null);
-    guard.add(is_null);
-    self._callback_symex.claim(msg, guard);
+    let mut error = guard.clone();
+    error.add(is_null);
+    self._callback_symex.claim(msg, error.to_expr());
   }
 
   fn dereference_invalid_ptr(&mut self, pt: Expr, mode: Mode, mut guard: Guard) {
     // Check the pointer is invalid
     let ctx = pt.ctx.clone();
     let pointer_base = ctx.pointer_base(pt.clone());
-    let ne = ctx.ne(pt.clone(), ctx.null(pt.ty()));
+    let not_null = ctx.ne(pt.clone(), ctx.null(pt.ty()));
     let alloc_array =
       self
         ._callback_symex
         .exec_state
         .ns
         .lookup_object(NString::ALLOC_SYM);
-    let is_alloced =
-      ctx.index(alloc_array, pointer_base, Type::bool_type());
+    let mut not_alloced =
+      ctx.not(
+        ctx.index(
+          alloc_array,
+          pointer_base,
+          Type::bool_type()
+        )
+      );
+    self._callback_symex.rename(&mut not_alloced);
     let msg =
       match mode {
         Mode::Read => NString::from("dereference failure: invalid pointer"),
@@ -402,10 +428,9 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         Mode::Dealloc => NString::from("dealloc failure: invalid pointer"),
         _ => todo!(),
       };
-    
-    let mut is_not_alloced = ctx.and(ne, ctx.not(is_alloced));
-    self._callback_symex.rename(&mut is_not_alloced);
-    guard.add(is_not_alloced);
-    self._callback_symex.claim(msg, guard);
+    let mut error = guard.clone();
+    error.add(not_null);
+    error.add(not_alloced);
+    self._callback_symex.claim(msg, error.to_expr());
   }
 }

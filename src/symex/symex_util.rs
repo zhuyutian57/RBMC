@@ -317,14 +317,18 @@ impl<'cfg> Symex<'cfg> {
 
   }
 
-  pub(super) fn claim(&self, msg: NString, guard: Guard) {
-    let mut expr = guard.to_expr();
-    self.replace_predicates(&mut expr);
-    self.rename(&mut expr);
-    expr.simplify();
-    let state_guard = self.exec_state.cur_state().guard();
-    let mut cond = state_guard.guard(expr);
+  /// Generating assertion in form: `path /\ error`,
+  pub(super) fn claim(&self, msg: NString, mut error: Expr) {
+    self.replace_predicates(&mut error);
+    self.rename(&mut error);
+    error.simplify();
+    // The guard of current state is path condition.
+    let mut guard = self.exec_state.cur_state().guard();
+    guard.add(error);
+    if guard.is_false() { return; }
+    let mut cond = guard.to_expr();
     cond.simplify();
+    if cond.is_false() { return; }
     self.vc_system.borrow_mut().assert(msg, cond);
   }
 }

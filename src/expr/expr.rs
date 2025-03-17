@@ -387,16 +387,6 @@ impl Expr {
       return;
     }
 
-    if self.is_invalid() {
-      *self = self.ctx.invalid(sub_exprs[0].clone());
-      return;
-    }
-
-    if self.is_valid() {
-      *self = self.ctx.valid(sub_exprs[0].clone());
-      return;
-    }
-
     panic!("Need implementing for {self:?}");
   }
 }

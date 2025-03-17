@@ -101,14 +101,14 @@ impl<'cfg> Symex<'cfg> {
       let inner_object = lhs.extract_object();
       let mut new_lhs = inner_object.clone();
       let mut index = lhs.extract_index();
+      if !index.ty().is_unsigned() {
+        let usize_type = self.ctx.mk_type(Type::usize_type());
+        index = self.ctx.cast(index, usize_type);
+      }
       if inner_object.ty().is_slice() {
         let slice = inner_object.extract_inner_expr();
         new_lhs = slice.extract_object();
-        index =
-          self.ctx.add(
-            lhs.extract_index(),
-            slice.extract_slice_start()
-          );
+        index = self.ctx.add(index, slice.extract_slice_start());
       }
       let new_rhs =
         self.ctx.store(new_lhs.clone(), index, rhs.clone());
@@ -125,7 +125,8 @@ impl<'cfg> Symex<'cfg> {
     match rvalue {
       Rvalue::AddressOf(_, p) => {
         let place = self.make_project(p);
-        let address_of = self.ctx.address_of(place, ty);
+        let object = self.ctx.object(place);
+        let address_of = self.ctx.address_of(object, ty);
         address_of
       },
       Rvalue::Aggregate(k, operands) => {
@@ -172,8 +173,8 @@ impl<'cfg> Symex<'cfg> {
         cast
       },
       Rvalue::Ref(_, _, p) => {
-        let object = self.make_project(p);
-        // TODO: handle borrow kind.
+        let place = self.make_project(p);
+        let object = self.ctx.object(place);
         let address_of = self.ctx.address_of(object, ty);
         address_of
       },
