@@ -182,6 +182,11 @@ impl Context {
     self.nodes[i].kind().is_store()
   }
 
+  pub fn is_offset(&self, i: NodeId) -> bool {
+    assert!(i < self.nodes.len());
+    self.nodes[i].kind().is_offset()
+  }
+
   pub fn is_pointer_ident(&self, i: NodeId) -> bool {
     assert!(i < self.nodes.len());
     self.nodes[i].kind().is_pointer_base()
@@ -618,6 +623,15 @@ impl ExprBuilder for ExprCtx {
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
   }
+
+  fn offset(&self, pt: Expr, offset: Expr) -> Expr {
+    assert!(pt.ty().is_ptr() && offset.ty().is_integer());
+    let kind = NodeKind::Offset(pt.id, offset.id);
+    let ty = pt.ty();
+    let new_node = Node::new(kind, ty);
+    let id = self.borrow_mut().add_node(new_node);
+    Expr { ctx: self.clone(), id }
+  }
   
   fn pointer_base(&self, pt: Expr) -> Expr {
     assert!(pt.ty().is_any_ptr());
@@ -656,7 +670,6 @@ impl ExprBuilder for ExprCtx {
   }
 
   fn _move(&self, object: Expr) -> Expr {
-    assert!(object.unwrap_predicates().is_object());
     let kind = NodeKind::Move(object.id);
     let ty = object.ty();
     let new_node = Node::new(kind, ty);

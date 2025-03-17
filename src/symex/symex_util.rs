@@ -127,10 +127,11 @@ impl<'cfg> Symex<'cfg> {
 
   pub(super) fn make_deref(
     &mut self,
-    pt: Expr,
+    mut pt: Expr,
     mode: Mode,
     guard: Guard
   ) -> Option<Expr> {
+    self.replace_predicates(&mut pt);
     Projection::new(self).project_deref(pt, mode, guard)
   }
 

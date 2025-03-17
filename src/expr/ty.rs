@@ -71,6 +71,10 @@ impl Type {
     Ty::new_box(inner_type.0).into()
   }
 
+  pub fn is_unit(&self) -> bool {
+    self.0.kind().is_unit()
+  }
+
   pub fn is_bool(&self) -> bool { self.0.kind().is_bool() }
 
   pub fn is_signed(&self) -> bool {
@@ -85,8 +89,8 @@ impl Type {
     self.0.kind().is_integral()
   }
 
-  pub fn is_unit(&self) -> bool {
-    self.0.kind().is_unit()
+  pub fn is_enum(&self) -> bool {
+    self.0.kind().is_enum()
   }
 
   pub fn is_array(&self) -> bool {
@@ -194,19 +198,9 @@ impl Type {
     panic!("Wrong struct type");
   }
 
-  pub fn struct_name(&self) -> NString {
-    assert!(self.is_struct());
-    if let TyKind::RigidTy(r) = self.0.kind() {
-      if let RigidTy::Adt(adt, _) = r {
-        return NString::from(adt.trimmed_name());
-      }
-    }
-    panic!("Wrong struct type");
-  }
-
   pub fn struct_def(&self) -> StructDef {
     assert!(self.is_struct());
-    let mut def = (self.struct_name(), Vec::new());
+    let mut def = (self.name(), Vec::new());
     if let TyKind::RigidTy(r) = self.0.kind() {
       if let RigidTy::Adt(adt, args) = r {
         for field in adt.variants()[0].fields() {

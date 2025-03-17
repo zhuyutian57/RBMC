@@ -205,7 +205,7 @@ impl State {
       return;
     }
 
-    if expr.is_binary() {
+    if expr.is_offset() {
       let pt = expr.extract_root_pointer();
       let off = expr.extract_offset();
       // TODO: support dynamic offset

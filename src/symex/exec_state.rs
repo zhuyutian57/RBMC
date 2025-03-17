@@ -192,6 +192,16 @@ impl<'cfg> ExecutionState<'cfg> {
   }
 
   fn constant_propagate(&mut self, lhs: Expr, rhs: Expr) {
+    if rhs.is_cast() {
+      self.constant_propagate(lhs, rhs.extract_src());
+      return;
+    }
+
+    if rhs.is_object() {
+      self.constant_propagate(lhs, rhs.extract_inner_expr());
+      return;
+    }
+
     if !rhs.is_constant() && !rhs.is_type() { return; }
     assert!(lhs.is_symbol());
     self.renaming.borrow_mut().constant_propagate(lhs, rhs);

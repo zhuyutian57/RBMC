@@ -110,6 +110,8 @@ pub(super) enum NodeKind {
 
   // `Pointer(base, offset, meta)`: pointer/ref in a uniform.
   // We currentlly support `usize` meta.
+  /// `Offset(pt, offset)`
+  Offset(NodeId, NodeId),
   /// `PointerBase(pt)` retrieve the ident of a pointer
   PointerBase(NodeId),
   /// `PointerOffset(pt)` retrieve the offset of a pointer
@@ -181,6 +183,10 @@ impl NodeKind {
 
   pub fn is_store(&self) -> bool {
     matches!(self, NodeKind::Store(..))
+  }
+
+  pub fn is_offset(&self) -> bool {
+    matches!(self, NodeKind::Offset(..))
   }
 
   pub fn is_pointer_base(&self) -> bool {
@@ -255,6 +261,8 @@ impl Node {
         => Some(vec![*o, *i]),
       NodeKind::Store(o, i, v)
         => Some(vec![*o, *i, *v]),
+      NodeKind::Offset(p, o)
+        => Some(vec![*p, *o]),
       NodeKind::PointerBase(p) |
       NodeKind::PointerOffset(p) |
       NodeKind::PointerMeta(p) |

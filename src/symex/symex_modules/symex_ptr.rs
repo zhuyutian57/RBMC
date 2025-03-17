@@ -23,7 +23,9 @@ impl<'cfg> Symex<'cfg> {
       name == NString::from("null") {
       self.symex_ptr_null(dest);
     } else if name == "std::ptr::mut_ptr::<impl *mut T>::add" {
-      
+      self.symex_ptr_add(dest, args);
+    } else if name == "std::ptr::mut_ptr::<impl *mut T>::offset" {
+      self.symex_ptr_offset(dest, args);
     } else {
       panic!("Not support for {name:?}");
     }
@@ -51,8 +53,20 @@ impl<'cfg> Symex<'cfg> {
     let lhs = self.make_project(dest);
     
     let pt = self.make_operand(&args[0]);
-    let count = self.make_operand(&args[1]);
-    let rhs = self.ctx.add(pt, count);
+    let mut count = self.make_operand(&args[1]);
+    if count.is_object() { count = count.extract_inner_expr(); }
+    let rhs = self.ctx.offset(pt, count);
+
+    self.assign(lhs, rhs, self.ctx._true().into());
+  }
+
+  fn symex_ptr_offset(&mut self, dest: &Place, args: &Vec<Operand>) {
+    let lhs = self.make_project(dest);
+    
+    let pt = self.make_operand(&args[0]);
+    let mut count = self.make_operand(&args[1]);
+    if count.is_object() { count = count.extract_inner_expr(); }
+    let rhs = self.ctx.offset(pt, count);
 
     self.assign(lhs, rhs, self.ctx._true().into());
   }

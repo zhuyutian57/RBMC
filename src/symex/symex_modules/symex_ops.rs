@@ -55,7 +55,7 @@ impl<'cfg> Symex<'cfg> {
     panic!("Do not support index({ty:?})");
   }
 
-  fn make_range(&mut self, operand: &Operand) -> (Option<usize>, Option<usize>) {
+  pub(super) fn make_range(&mut self, operand: &Operand) -> (Option<usize>, Option<usize>) {
     let mut range = self.make_operand(operand);
     assert!(range.ty().is_struct());
     let name = range.ty().name();

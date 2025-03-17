@@ -152,7 +152,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     let null_pt =
       self.mk_pointer(
         &self.mk_smt_int(BigInt::ZERO),
-        &self.mk_smt_int(BigInt::ZERO)
+        &self.mk_smt_int(BigInt::ZERO),
+        None
       );
     if ty.is_primitive_ptr() {
       null_pt
@@ -165,10 +166,11 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
   fn convert_pointer(
     &self,
-    ident: &z3::ast::Dynamic<'ctx>,
-    offset: &z3::ast::Dynamic<'ctx>
+    base: &z3::ast::Dynamic<'ctx>,
+    offset: &z3::ast::Dynamic<'ctx>,
+    meta: Option<&z3::ast::Dynamic<'ctx>>
   ) -> z3::ast::Dynamic<'ctx> {
-    self.mk_pointer(ident, offset)
+    self.mk_pointer(base, offset, meta)
   }
 
   fn convert_pointer_base(
@@ -185,6 +187,13 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     self.mk_pointer_offset(pt)
   }
 
+  fn convert_pointer_meta(
+    &self,
+    pt: &z3::ast::Dynamic<'ctx>
+  ) -> z3::ast::Dynamic<'ctx> {
+    self.mk_pointer_meta(pt)
+  }
+
   fn convert_box(
     &self,
     inner_pt: &z3::ast::Dynamic<'ctx>
@@ -197,28 +206,6 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     _box: &z3::ast::Dynamic<'ctx>
   ) -> z3::ast::Dynamic<'ctx> {
     self.mk_box_ptr(_box)
-  }
-
-  fn convert_slice(
-    &self,
-    inner_pt: &z3::ast::Dynamic<'ctx>,
-    meta: &z3::ast::Dynamic<'ctx>
-  ) -> z3::ast::Dynamic<'ctx> {
-    self.mk_slice(inner_pt, meta)
-  }
-
-  fn convert_slice_ptr(
-    &self,
-    slice: &z3::ast::Dynamic<'ctx>
-  ) -> z3::ast::Dynamic<'ctx> {
-    self.mk_slice_ptr(slice)
-  }
-
-  fn convert_slice_meta(
-    &self,
-    slice: &z3::ast::Dynamic<'ctx>
-  ) -> z3::ast::Dynamic<'ctx> {
-    self.mk_slice_meta(slice)
   }
 
   fn convert_struct(
@@ -311,10 +298,6 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
   fn mk_box_sort(&self) -> z3::Sort<'ctx> {
     self.box_sort()
-  }
-
-  fn mk_slice_sort(&self) -> z3::Sort<'ctx> {
-    self.slice_ptr_sort()
   }
 
   fn mk_smt_bool(&self, b: bool) -> z3::ast::Dynamic<'ctx> {

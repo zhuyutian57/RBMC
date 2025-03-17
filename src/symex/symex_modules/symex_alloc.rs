@@ -35,7 +35,6 @@ impl<'cfg> Symex<'cfg> {
     let mut layout = self.make_operand(&args[0]);
     self.replace_predicates(&mut layout);
     self.rename(&mut layout);
-    layout = layout.extract_inner_expr();
     assert!(layout.is_type());
     let object =  self.exec_state.new_object(layout.extract_type());
 

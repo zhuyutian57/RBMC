@@ -20,9 +20,9 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
           "pointer",
           vec![
             ("base", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx))),
-            ("offset", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx)))
-            ]
-          )
+            ("offset", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx))),
+            ("meta", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx))),
+          ])
         .finish();
     self.tuple_sorts.insert(NString::from("pointer"), pointer_tuple_sort);
 
@@ -41,20 +41,6 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
           )
         .finish();
     self.tuple_sorts.insert(NString::from("box"), pointer_tuple_sort);
-
-    // A slice pointer is a tuple (pointer, len)
-    let pointer_tuple_sort =
-    z3::DatatypeBuilder
-      ::new(&self.z3_ctx, "slice")
-      .variant(
-        "slice",
-        vec![
-          ("slice_ptr", DatatypeAccessor::Sort(pointer_sort)),
-          ("slice_meta", DatatypeAccessor::Sort(z3::Sort::int(&self.z3_ctx)))
-          ]
-        )
-      .finish();
-    self.tuple_sorts.insert(NString::from("slice"), pointer_tuple_sort);
   }
 
   fn pointer_sort(&self) -> z3::Sort<'ctx> {
@@ -71,15 +57,6 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
       .tuple_sorts
       .get(&NString::from("box"))
       .expect("Box pointer tuple is not initialized")
-      .sort
-      .clone()
-  }
-
-  fn slice_ptr_sort(&self) -> z3::Sort<'ctx> {
-    self
-      .tuple_sorts
-      .get(&NString::from("slice"))
-      .expect("Slice pointer tuple is not initialized")
       .sort
       .clone()
   }
@@ -141,15 +118,21 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
   fn mk_pointer(
     &self,
     base: &z3::ast::Dynamic<'ctx>,
-    offset: &z3::ast::Dynamic<'ctx>
+    offset: &z3::ast::Dynamic<'ctx>,
+    meta: Option<&z3::ast::Dynamic<'ctx>>
   ) -> z3::ast::Dynamic<'ctx> {
+    let metadata =
+      match meta {
+        Some(x) => x.clone(),
+        None => self.mk_smt_int(0.into()),
+      };
     self
       .tuple_sorts
       .get(&NString::from("pointer"))
       .unwrap()
       .variants[0]
       .constructor
-      .apply(&[base as &dyn Ast, offset as &dyn Ast])
+      .apply(&[base as &dyn Ast, offset as &dyn Ast, &metadata as &dyn Ast])
   }
 
   fn mk_pointer_ident(&self, pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
@@ -171,6 +154,16 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
       .accessors[1]
       .apply(&[pt as &dyn Ast])
   }
+
+  fn mk_pointer_meta(&self, pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+    self
+      .tuple_sorts
+      .get(&NString::from("pointer"))
+      .unwrap()
+      .variants[0]
+      .accessors[2]
+      .apply(&[pt as &dyn Ast])
+  }
   
   fn mk_box(&self, inner_pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
     self
@@ -190,45 +183,5 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
       .variants[0]
       .accessors[0]
       .apply(&[_box as &dyn Ast])
-  }
-  
-  fn mk_slice(
-    &self,
-    pt: &z3::ast::Dynamic<'ctx>,
-    meta: &z3::ast::Dynamic<'ctx>
-  ) -> z3::ast::Dynamic<'ctx> {
-    self
-      .tuple_sorts
-      .get(&NString::from("slice"))
-      .unwrap()
-      .variants[0]
-      .constructor
-      .apply(&[pt as &dyn Ast, meta as &dyn Ast])
-  }
-
-  fn mk_slice_ptr(
-    &self,
-    slice: &z3::ast::Dynamic<'ctx>
-  ) -> z3::ast::Dynamic<'ctx> {
-    self
-      .tuple_sorts
-      .get(&NString::from("slice"))
-      .unwrap()
-      .variants[0]
-      .accessors[0]
-      .apply(&[slice as &dyn Ast])
-  }
-
-  fn mk_slice_meta(
-    &self,
-    slice: &z3::ast::Dynamic<'ctx>
-  ) -> z3::ast::Dynamic<'ctx> {
-    self
-      .tuple_sorts
-      .get(&NString::from("slice"))
-      .unwrap()
-      .variants[0]
-      .accessors[1]
-      .apply(&[slice as &dyn Ast])
   }
 }

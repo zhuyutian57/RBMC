@@ -46,6 +46,7 @@ impl Expr {
   pub fn is_index(&self) -> bool { self.ctx.borrow().is_index(self.id) }
   pub fn is_store(&self) -> bool { self.ctx.borrow().is_store(self.id) }
 
+  pub fn is_offset(&self) -> bool { self.ctx.borrow().is_offset(self.id) }
   pub fn is_pointer_ident(&self) -> bool { self.ctx.borrow().is_pointer_ident(self.id) }
   pub fn is_pointer_offset(&self) -> bool { self.ctx.borrow().is_pointer_offset(self.id) }
   pub fn is_pointer_meta(&self) -> bool { self.ctx.borrow().is_pointer_meta(self.id) }
@@ -124,8 +125,8 @@ impl Expr {
 
   pub fn extract_root_pointer(&self) -> Expr {
     assert!(self.ty().is_ptr());
-    if self.is_binary() {
-      self.extract_lhs().extract_root_pointer()
+    if self.is_offset() {
+      self.extract_inner_pointer().extract_root_pointer()
     } else {
       self.clone()
     }
@@ -133,21 +134,17 @@ impl Expr {
 
   /// This function will compute the total offset expr.
   pub fn extract_offset(&self) -> Expr {
-    assert!(self.ty().is_ptr() && self.is_binary());
-    let lhs = self.extract_lhs();
-    let r_offset = self.extract_rhs();
+    assert!(self.ty().is_ptr() && self.is_offset());
+    let pt = self.extract_inner_pointer();
+    let r_offset = self.extract_sub_expr(1);
     let l_offset = 
-      if lhs.is_binary() {
-        lhs.extract_offset()
+      if pt.is_offset() {
+        pt.extract_offset()
       } else {
         self.ctx.constant_integer(BigInt::ZERO, r_offset.ty())
       };
-    let mut offset = 
-      match self.extract_bin_op() {
-        BinOp::Add => self.ctx.add(l_offset, r_offset),
-        BinOp::Sub => self.ctx.sub(l_offset, r_offset),
-        _ => panic!("Wrong offset"),
-      };
+    let mut offset =
+      self.ctx.add(l_offset, r_offset);
     offset.simplify();
     offset
   }
@@ -210,6 +207,7 @@ impl Expr {
   pub fn extract_inner_pointer(&self) -> Expr {
     assert!(
       self.is_box() ||
+      self.is_offset() ||
       self.is_pointer_ident() ||
       self.is_pointer_offset() ||
       self.is_pointer_meta()
@@ -357,6 +355,13 @@ impl Expr {
       return;
     }
 
+    if self.is_offset() {
+      let pt = sub_exprs[0].clone();
+      let offset = sub_exprs[1].clone();
+      *self = self.ctx.offset(pt, offset);
+      return;
+    }
+
     if self.is_pointer_ident() {
       let pt = sub_exprs[0].clone();
       *self = self.ctx.pointer_base(pt);
@@ -495,9 +500,20 @@ impl Debug for Expr {
         return write!(f, "Box({pt:?})");
       }
 
+      if self.is_offset() {
+        let pt = &sub_exprs[0];
+        let offset = &sub_exprs[1];
+        return write!(f, "{pt:?} + {offset:?}");
+      }
+
       if self.is_pointer_ident() {
         let pt = &sub_exprs[0];
         return write!(f, "{pt:?}");
+      }
+
+      if self.is_pointer_offset() {
+        let pt = &sub_exprs[0];
+        return write!(f, "Offset({pt:?})");
       }
 
       if self.is_pointer_meta() {
@@ -566,6 +582,7 @@ pub trait ExprBuilder {
   fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr;
   fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
 
+  fn offset(&self, pt: Expr, offset: Expr) -> Expr;
   fn pointer_base(&self, pt: Expr) -> Expr;
   fn pointer_offset(&self, pt: Expr) -> Expr;
   fn pointer_meta(&self, pt: Expr) -> Expr;

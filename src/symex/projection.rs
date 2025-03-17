@@ -36,7 +36,6 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         ._callback_symex
         .exec_state
         .current_local(place.local, Level::Level1);
-    ret = ctx.object(ret);
 
     for elem in place.projection.iter() {
       ret =
