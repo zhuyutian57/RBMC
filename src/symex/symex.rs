@@ -51,7 +51,7 @@ impl<'cfg> Symex<'cfg> {
       let name = NString::from(def.trimmed_name());
       let ty = Type::from(def.ty());
       let symbol = self.exec_state.l0_symbol(name, ty);
-      let object = self.ctx.object(symbol);
+      let object = self.ctx.object(symbol.clone());
       self.exec_state.ns.insert_object(object.clone());
       
       let init_value =
@@ -61,6 +61,12 @@ impl<'cfg> Symex<'cfg> {
           _ => panic!("Some thing wrong?"),
         };
       self.assign(object, init_value, self.ctx._true().into());
+
+      // All static variable is owned by current program
+      let mut l1_symbol = symbol;
+      self.exec_state.rename(&mut l1_symbol, Level::Level1);
+      let nplace = NPlace(l1_symbol.extract_symbol().l1_name());
+      self.top_mut().cur_state.update_place_state(nplace, PlaceState::Own);
     }
 
     // Global varialbes for Encoding
@@ -69,6 +75,9 @@ impl<'cfg> Symex<'cfg> {
     let const_array =
       self.ctx.constant_array(self.ctx.constant_bool(false), None);
     self.assign(alloc_array, const_array, self.ctx._true().into());
+
+    // Register the initial state
+    self.register_state(0, self.top().cur_state.clone());
   }
 
   pub fn run(&mut self) {

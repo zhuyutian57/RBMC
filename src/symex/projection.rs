@@ -128,7 +128,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
           .exec_state
           .get_place_state(&root_object);
       if place_state.is_unknown() {
-        self.valid_check(object.clone(), pointer_guard.clone());
+        self.valid_check(root_object.clone(), pointer_guard.clone());
       }
       
       if mode == Mode::Drop || mode == Mode::Dealloc { continue; }
@@ -311,7 +311,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     self._callback_symex.rename(&mut invalid);
     guard.add(invalid);
     let msg =
-      NString::from(format!("dereference failure: {object:?} is not alloced"));
+      NString::from(format!("valid check: {object:?} is not alloced"));
     self._callback_symex.claim(msg, guard);
   }
 

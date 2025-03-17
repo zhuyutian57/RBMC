@@ -53,8 +53,6 @@ impl<'cfg> ExecutionState<'cfg> {
     self.ns.insert_object(alloc_array);
     // Initialized stack
     self.push_frame(0, None, None);
-    let ctx = self.ctx.clone();
-    self.top_mut().add_state(0, State::new(ctx));
   }
 
   pub fn can_exec(&self) -> bool {
@@ -209,11 +207,11 @@ impl<'cfg> ExecutionState<'cfg> {
 
   pub fn get_place_state(&self, place: &Expr) -> PlaceState {
     let ident = NString::from(format!("{place:?}"));
-    if ident.contains("heap".into()) {
-      let nplace = NPlace(ident);
+    let nplace = NPlace(ident);
+    if self.top().cur_state.place_states.contains(nplace) {
       self.top().cur_state.get_place_state(nplace)
     } else {
-      // A stack place is owned by some frames.
+      // Check whethe it is a local variable in stack
       for frame in self.frames.iter().rev() {
         if ident.contains(frame.function_id()) {
           return PlaceState::Own

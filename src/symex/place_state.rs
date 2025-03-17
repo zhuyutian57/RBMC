@@ -67,6 +67,10 @@ pub struct HeapPlaceStates {
 }
 
 impl HeapPlaceStates {
+  pub fn contains(&self, nplace: NPlace) -> bool {
+    self._place_states_map.contains_key(&nplace)
+  }
+
   pub fn place_state(&self, nplace: NPlace) -> PlaceState {
     self
       ._place_states_map
