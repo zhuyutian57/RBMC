@@ -2,10 +2,12 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 
+use num_bigint::BigInt;
+
 use crate::expr::expr::Expr;
 use crate::symbol::nstring::NString;
 
-pub type Object = (Expr, Option<usize>);
+pub type Object = (Expr, Option<BigInt>);
 pub type ObjectSet = HashSet<Object>;
 
 #[derive(Default, Clone)]

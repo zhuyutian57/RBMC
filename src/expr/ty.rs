@@ -30,6 +30,10 @@ impl Type {
     Type::from(Ty::signed_ty(ty))
   }
 
+  pub fn isize_type() -> Self {
+    Type::signed_type(IntTy::Isize)
+  }
+
   pub fn unsigned_type(ty: UintTy) -> Self {
     Type::from(Ty::unsigned_ty(ty))
   }

@@ -197,7 +197,7 @@ impl State {
       } else if inner_expr.is_index() {
         let root_object = inner_expr.extract_object();
         let index = inner_expr.extract_index().extract_constant();
-        let offset = bigint_to_usize(&index.to_integer());
+        let offset = index.to_integer();
         values.insert((root_object, Some(offset)));
       } else {
         todo!("get value set from addressof({object:?})");
@@ -220,7 +220,7 @@ impl State {
             Some(x) => offset.clone() + x,
             None => offset.clone(),
           };
-        values.insert((object, Some(bigint_to_usize(&new_offset))));
+        values.insert((object, Some(new_offset)));
       }
       return;
     }

@@ -98,6 +98,7 @@ impl Expr {
       self.is_index() ||
       self.is_store() ||
       self.is_move() ||
+      self.is_valid() ||
       self.is_invalid()
     );
     self.extract_sub_expr(0)
@@ -391,6 +392,11 @@ impl Expr {
       return;
     }
 
+    if self.is_valid() {
+      *self = self.ctx.valid(sub_exprs[0].clone());
+      return;
+    }
+
     panic!("Need implementing for {self:?}");
   }
 }
@@ -521,12 +527,16 @@ impl Debug for Expr {
         return write!(f, "Meta({pt:?})");
       }
 
-      if self.is_invalid() {
-        return write!(f, "Invalid({:?})", sub_exprs[0]);
-      }
-
       if self.is_move() {
         return write!(f, "Move({:?})", sub_exprs[0]);
+      }
+
+      if self.is_valid() {
+        return write!(f, "Valid({:?})", sub_exprs[0]);
+      }
+
+      if self.is_invalid() {
+        return write!(f, "Invalid({:?})", sub_exprs[0]);
       }
 
       if self.is_null_object() {
@@ -548,7 +558,8 @@ pub trait ExprBuilder {
   fn _true(&self) -> Expr;
   fn _false(&self) -> Expr;
   fn constant_integer(&self, i: BigInt, ty: Type) -> Expr;
-  fn constant_usize(&self, i: usize) -> Expr;
+  fn constant_isize(&self, i: isize) -> Expr;
+  fn constant_usize(&self, u: usize) -> Expr;
   fn null(&self, ty: Type) -> Expr;
   fn constant_array(&self, constant: Expr, len: Option<u64>) -> Expr;
   fn constant_struct(&self, fields: Vec<StructFieldDef>, ty: Type) -> Expr;

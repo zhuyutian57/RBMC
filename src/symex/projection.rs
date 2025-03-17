@@ -55,12 +55,13 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
               ),
           ProjectionElem::Index(local)
             => {
-              let index =
+              let mut index =
                 self
                   ._callback_symex
                   .exec_state
                   .current_local(*local, Level::Level2);
-              self.project_index(ret.clone(), index, true)
+              self._callback_symex.rename(&mut index);
+              self.project_index(ret.clone(), index)
             },
           ProjectionElem::ConstantIndex {
             offset,
@@ -69,7 +70,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
           } => {
               let i = if *from_end { min_length - offset } else { *offset };
               let index = ctx.constant_usize(i as usize);
-              self.project_index(ret.clone(), index, false)
+              self.project_index(ret.clone(), index)
             },
           _ => panic!("Not support {elem:?} for {ret:?}"),
         };
@@ -133,7 +134,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
       
       if mode == Mode::Drop || mode == Mode::Dealloc {
         if let Some(x) = offset {
-          if x == 0 { continue; }
+          if x == BigInt::ZERO { continue; }
           let msg = 
             format!(
               "{} fail: the offset is {x} != 0",
@@ -175,25 +176,28 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
 
     assert!(object.ty().is_struct());
     let offset = self._callback_symex.ctx.constant_usize(field);
-    self.build_with_offset(object, offset)
+    self.build_with_const_offset(
+      object,
+      BigInt::from(field),
+      false
+    ).unwrap()
   }
 
   /// Visit an array/slice. Return `Index(array/slice, i)`.
   fn project_index(
     &mut self,
     object: Expr,
-    index: Expr,
-    bound_check: bool,
+    index: Expr
   ) -> Expr {
     let ty = object.ty();
     assert!(ty.is_array() || ty.is_slice());
-    
-    // Bound check
-    if ty.is_array() && bound_check {
-      self.bound_check(object.clone(), index.clone());
-    }
 
-    self.build_with_offset(object, index)
+    if index.is_constant() {
+      let offset = index.extract_constant().to_integer();
+      self.build_with_const_offset(object, offset, false).unwrap()
+    } else {
+      todo!("Non-const index")
+    }
   }
 
   fn get_root_object(&mut self, object: &Expr) -> Expr {
@@ -208,50 +212,65 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
   fn build_ret(
     &mut self,
     object: Expr,
-    offset: Option<usize>,
+    offset: Option<BigInt>,
     mode: Mode,
     guard: Guard
   ) -> Option<Expr> {
     match mode {
-      Mode::Read => {
-        let ret =
-          match offset {
-            Some(x) =>
-              self.build_with_offset(
-                object,
-                self._callback_symex.ctx.constant_usize(x)
-              ),
-            None => object,
-          };
-        Some(ret)
-      },
+      Mode::Read
+        => self.build_read(object, offset, guard),
       Mode::Slice(l, r)
         => self.build_slice(object, offset, l, r, guard),
       _ => todo!(),
     }
   }
 
-  fn build_with_offset(&mut self, object: Expr, offset: Expr) -> Expr {
+  fn build_read(
+    &mut self,
+    object: Expr,
+    offset: Option<BigInt>,
+    guard: Guard
+  ) -> Option<Expr> {
+    if let Some(x) = offset {
+      self.build_with_const_offset(object, x, true)
+    } else {
+      Some(object)
+    }
+  }
+
+  fn build_with_const_offset(
+    &mut self,
+    object: Expr,
+    offset: BigInt,
+    bound_check: bool
+  ) -> Option<Expr> {
+    let index =
+      self
+        ._callback_symex
+        .ctx
+        .constant_integer(offset.clone(), Type::isize_type());
+    if bound_check {
+      self.bound_check(object.clone(), index.clone());
+    }
+    
     let ty = 
       if object.ty().is_array() {
         object.ty().array_range()
       } else if object.ty().is_slice() {
         object.ty().slice_elem_ty()
       } else if object.ty().is_struct() {
-        assert!(offset.is_constant());
-        let i =
-          bigint_to_usize(&offset.extract_constant().to_integer());
+        let i = bigint_to_usize(&offset);
         object.ty().struct_def().1[i].1
       } else {
         todo!("Not suport build {:?} with offset", object.ty())
       };
-    self._callback_symex.ctx.index(object, offset, ty)
+    Some(self._callback_symex.ctx.index(object, index, ty))
   }
 
   fn build_slice(
     &mut self,
     object: Expr,
-    offset: Option<usize>,
+    offset: Option<BigInt>,
     l: Option<usize>,
     r: Option<usize>,
     guard: Guard
@@ -261,9 +280,10 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     let ctx = object.ctx.clone();
     let (root_object, start, len) =
       if object.ty().is_array() {
-        let start = match offset { Some(o) => o, None => 0, };
+        let start =
+          match offset { Some(o) => o, None => BigInt::ZERO, };
         let len = object.ty().array_size().expect("array must has len");
-        (object, BigInt::from(start), BigInt::from(len as usize))
+        (object, start, BigInt::from(len as usize))
       } else {
         let root_object = inner_expr.extract_object();
         let start =
@@ -327,22 +347,25 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
   }
 
   fn bound_check(&mut self, object: Expr, index: Expr) {
+    assert!(object.is_object());
     let ctx = object.ctx.clone();
     let array_ty = object.ty();
     let s = array_ty.array_size();
     if let Some(len) = s {
-      // If the array/slice is finite, the assertion must be
-      // in the mir. No need to check again
-      if len > 0 { return; }
-      let out_of_bound =
-        ctx.ge(index.clone(), ctx.constant_usize(len as usize));
+      let mut out_of_bound =
+        ctx.or(
+          ctx.lt(index.clone(), ctx.constant_isize(0)),
+          ctx.ge(index.clone(), ctx.constant_isize(len as isize))
+        );
       let msg =
         NString::from(format!("bound check: {object:?}[{index:?}] is out-of-bound"));
 
-      let mut cond = ctx.and(ctx.valid(object.clone()), out_of_bound);
-      self._callback_symex.rename(&mut cond);
-      let mut new_guard = Guard::from(cond);
-      self._callback_symex.claim(msg, new_guard);
+      self._callback_symex.rename(&mut out_of_bound);
+      out_of_bound.simplify();
+      if !out_of_bound.is_false() {
+        let mut new_guard = Guard::from(out_of_bound);
+        self._callback_symex.claim(msg, new_guard);
+      }
     }
   }
 

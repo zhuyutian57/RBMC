@@ -218,7 +218,7 @@ impl Expr {
       BinOp::Implies => {
         if lhs.is_false() || rhs.is_true() {
           self.id = Context::TRUE_ID;
-        } else if lhs.is_true() || rhs.is_false() {
+        } else if lhs.is_true() && rhs.is_false() {
           self.id = Context::FALSE_ID;
         } else if lhs == rhs {
           self.id = Context::TRUE_ID;

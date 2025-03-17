@@ -327,9 +327,15 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn constant_usize(&self, i: usize) -> Expr {
+  fn constant_isize(&self, i: isize) -> Expr {
     let integer = BigInt::from(i);
-    let ty = Type::unsigned_type(UintTy::Usize);
+    let ty = Type::isize_type();
+    self.constant_integer(integer, ty)
+  }
+
+  fn constant_usize(&self, u: usize) -> Expr {
+    let integer = BigInt::from(u);
+    let ty = Type::usize_type();
     self.constant_integer(integer, ty)
   }
 
