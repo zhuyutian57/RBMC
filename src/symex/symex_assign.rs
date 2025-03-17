@@ -52,6 +52,7 @@ impl<'cfg> Symex<'cfg> {
     // Rename to l2 rhs
     self.replace_predicates(&mut rhs);
     self.rename(&mut rhs);
+    rhs.simplify();
     // New l2 symbol
     lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
 

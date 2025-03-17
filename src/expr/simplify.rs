@@ -238,6 +238,10 @@ impl Expr {
         if operand.is_unary() &&
            operand.extract_un_op() == self.extract_un_op() {
           self.id = operand.extract_inner_expr().id;
+        } else if operand.is_true() {
+          self.id = Context::FALSE_ID;
+        } else if operand.is_false() {
+          self.id = Context::TRUE_ID;
         }
       },
       _ => todo!("Not support"),
