@@ -74,6 +74,7 @@ impl Cli {
         std::env::current_exe().expect("").to_str().unwrap().to_string(),
         self.file.to_string(),
         "-Copt-level=1".to_string(),
+        // Reorder basic blocks to reverse post-order
         "-Zmir-enable-passes=+ReorderBasicBlocks".to_string()
       ];
     if !self.show_warnings {

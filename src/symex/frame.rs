@@ -54,7 +54,11 @@ impl<'func> Frame<'func> {
     }
   }
 
-  pub fn inc_pc(&mut self) { self.pc += 1; }
+  pub fn inc_pc(&mut self) {
+    // To handle loop, we set the small pc every time we inc,
+    // since the basic blocks have been in reverse post-order.
+    self.pc = *self.state_map.keys().min().expect("Impossible");
+  }
 
   pub fn cur_state(&self) -> &State { &self.cur_state }
 
