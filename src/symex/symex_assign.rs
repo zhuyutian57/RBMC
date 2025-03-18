@@ -23,11 +23,10 @@ impl<'cfg> Symex<'cfg> {
     self.assign(lhs, rhs.clone(), self.ctx._true().into());
   }
 
-  pub(super) fn symex_assign_layout(&mut self, place: &Place, ty: Type) {
+  pub(super) fn symex_assign_layout(&mut self, lhs: Expr, ty: Type) {
     // Use l2 symbol to do assignment
-    let l2_var = self.make_project(place);
     let layout = self.ctx.mk_type(ty);
-    self.assign(l2_var, layout, self.ctx._true().into());
+    self.assign(lhs, layout, self.ctx._true().into());
   }
 
   pub(super) fn assign(&mut self, lhs: Expr, rhs: Expr, guard: Guard) {

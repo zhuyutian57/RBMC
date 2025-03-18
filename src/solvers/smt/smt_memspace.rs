@@ -64,7 +64,7 @@ pub trait MemSpace<Sort, Ast> {
   fn init_pointer_space(&mut self, object: &Expr);
 
   fn mk_pointer(&self, base: &Ast, offset: &Ast, meta: Option<&Ast>) -> Ast;
-  fn mk_pointer_ident(&self, pt: &Ast) -> Ast;
+  fn mk_pointer_base(&self, pt: &Ast) -> Ast;
   fn mk_pointer_offset(&self, pt: &Ast) -> Ast;
   fn mk_pointer_meta(&self, pt: &Ast) -> Ast;
   fn mk_box(&self, inner_pt: &Ast) -> Ast;

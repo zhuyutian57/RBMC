@@ -5,6 +5,7 @@ use std::fmt::Debug;
 use std::rc::Rc;
 
 use num_bigint::BigInt;
+use num_bigint::Sign;
 use stable_mir::ty::*;
 
 use crate::symbol::nstring::*;
@@ -327,13 +328,14 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn constant_isize(&self, i: isize) -> Expr {
+  fn constant_isize(&self, i: BigInt) -> Expr {
     let integer = BigInt::from(i);
     let ty = Type::isize_type();
     self.constant_integer(integer, ty)
   }
 
-  fn constant_usize(&self, u: usize) -> Expr {
+  fn constant_usize(&self, u: BigInt) -> Expr {
+    assert!(u >= BigInt::ZERO);
     let integer = BigInt::from(u);
     let ty = Type::usize_type();
     self.constant_integer(integer, ty)
@@ -607,14 +609,14 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr {
+  fn index(&self, object: Expr, mut index: Expr, ty: Type) -> Expr {
     assert!(
       object.unwrap_predicates().is_object() &&
       (object.ty().is_array() ||
        object.ty().is_struct() ||
-       object.ty().is_slice())
+       object.ty().is_slice() ||
+       object.ty().is_tuple())
     );
-    // TODO: match type
     let kind = NodeKind::Index(object.id, index.id);
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
@@ -642,7 +644,7 @@ impl ExprBuilder for ExprCtx {
   fn pointer_base(&self, pt: Expr) -> Expr {
     assert!(pt.ty().is_any_ptr());
     let kind = NodeKind::PointerBase(pt.id);
-    let ty = Type::unsigned_type(UintTy::Usize);
+    let ty = Type::usize_type();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
@@ -651,7 +653,7 @@ impl ExprBuilder for ExprCtx {
   fn pointer_offset(&self, pt: Expr) -> Expr {
     assert!(pt.ty().is_any_ptr());
     let kind = NodeKind::PointerOffset(pt.id);
-    let ty = Type::unsigned_type(UintTy::Usize);
+    let ty = Type::usize_type();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }
@@ -660,7 +662,7 @@ impl ExprBuilder for ExprCtx {
   fn pointer_meta(&self, pt: Expr) -> Expr {
     assert!(pt.ty().is_slice_ptr());
     let kind = NodeKind::PointerMeta(pt.id);
-    let ty = Type::unsigned_type(UintTy::Usize);
+    let ty = Type::usize_type();
     let new_node = Node::new(kind, ty);
     let id = self.borrow_mut().add_node(new_node);
     Expr { ctx: self.clone(), id }

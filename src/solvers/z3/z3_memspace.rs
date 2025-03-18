@@ -135,7 +135,7 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
       .apply(&[base as &dyn Ast, offset as &dyn Ast, &metadata as &dyn Ast])
   }
 
-  fn mk_pointer_ident(&self, pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+  fn mk_pointer_base(&self, pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
     self
       .tuple_sorts
       .get(&NString::from("pointer"))

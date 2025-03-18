@@ -1,4 +1,5 @@
 
+use num_bigint::BigInt;
 use stable_mir::mir::*;
 
 use crate::expr::expr::*;
@@ -55,7 +56,12 @@ impl<'cfg> Symex<'cfg> {
   /// Drop a box will free the memory it points to
   fn drop_box(&mut self, _box: Expr, guard: Guard) {
     // Check whethe the box is uninitilized
-    self.make_deref(_box.clone(), Mode::Drop, guard.clone());
+    self.make_deref(
+      _box.clone(), 
+      Mode::Drop,
+      guard.clone(),
+      _box.ty().pointee_ty()
+    );
     self.top_mut().cur_state.dealloc_objects(_box.clone());
     self.top_mut().cur_state.remove_pointer(_box.clone());
 
@@ -76,7 +82,7 @@ impl<'cfg> Symex<'cfg> {
         self.ctx.object(
           self.ctx.index(
             st.clone(),
-            self.ctx.constant_usize(i),
+            self.ctx.constant_isize(BigInt::from(i)),
             *ty));
       self.symex_drop_rec(object, guard.clone());
     }

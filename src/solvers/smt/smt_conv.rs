@@ -133,8 +133,10 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     }
 
     if expr.is_same_object() {
-      let base_1 = self.project(&args[0]);
-      let base_2 = self.project(&args[1]);
+      let lhs = expr.extract_lhs();
+      let rhs = expr.extract_rhs();
+      let base_1 = self.project(&args[0], lhs.ty());
+      let base_2 = self.project(&args[1], rhs.ty());
       a = Some(self.mk_eq(&base_1, &base_2));
     }
 
@@ -423,7 +425,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
   fn mk_tuple_symbol(&self, name: NString, sort: &Sort) -> Ast;
 
   // pointer
-  fn project(&self, pt: &Ast) -> Ast;
+  fn project(&self, pt: &Ast, ty: Type) -> Ast;
 
   // array
   fn mk_select(&self, array: &Ast, index: &Ast) -> Ast;

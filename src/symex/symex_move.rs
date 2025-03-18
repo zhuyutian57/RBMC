@@ -1,4 +1,6 @@
 
+use num_bigint::BigInt;
+
 use crate::{expr::expr::*, symbol::symbol::Level};
 use super::symex::*;
 
@@ -36,7 +38,7 @@ impl<'cfg> Symex<'cfg> {
         let index = 
           self.ctx.index(
             expr.clone(),
-            self.ctx.constant_usize(i),
+            self.ctx.constant_isize(BigInt::from(i)),
             *ty
           );
         self.move_rec(index);

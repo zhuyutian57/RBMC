@@ -6,6 +6,7 @@ use std::hash::Hash;
 use num_bigint::BigInt;
 use stable_mir::mir::Mutability;
 
+use crate::program::program::bigint_to_usize;
 use crate::symbol::symbol::*;
 use crate::NString;
 use super::ast::*;
@@ -104,6 +105,23 @@ impl Expr {
     self.extract_sub_expr(0)
   }
 
+  pub fn extract_root_object(&self) -> Expr {
+    if self.is_symbol() {
+      return self.ctx.object(self.clone());
+    }
+
+    if self.is_object() {
+      return self.extract_inner_expr().extract_root_object();
+    }
+
+    if self.is_address_of() || self.is_slice() ||
+       self.is_index() || self.is_store() {
+      return self.extract_object().extract_root_object();
+    }
+
+    panic!("Impossible")
+  }
+
   pub fn extract_fields(&self) -> Vec<Expr> {
     assert!(self.is_aggregate());
     self.sub_exprs().unwrap()
@@ -115,12 +133,12 @@ impl Expr {
   }
 
   pub fn extract_lhs(&self) -> Expr {
-    assert!(self.is_binary());
+    assert!(self.is_binary() || self.is_same_object());
     self.extract_sub_expr(0)
   }
 
   pub fn extract_rhs(&self) -> Expr {
-    assert!(self.is_binary());
+    assert!(self.is_binary() || self.is_same_object());
     self.extract_sub_expr(1)
   }
 
@@ -214,6 +232,76 @@ impl Expr {
       self.is_pointer_meta()
     );
     self.extract_sub_expr(0)
+  }
+
+  /// Compute offset from root object. To do that, the nested
+  /// struct/tuple will be serialized. The final offset is also
+  /// in field-level.
+  /// 
+  /// For example, `index(a, 1) = 2` if a = ((f1, f2), f3).
+  /// `index(index(a, 0), 1) = 1`.
+  pub fn compute_offset(&self) -> Expr {
+    if self.is_symbol() {
+      return self.ctx.constant_isize(BigInt::ZERO);
+    }
+
+    if self.is_object() {
+      return self.extract_inner_expr().compute_offset();
+    }
+
+    if self.is_slice() {
+      let mut offset = self.extract_object().compute_offset();
+      let elem_size = self.ty().elem_type().size().expect("Impossible");
+      let start = self.extract_slice_start();
+      offset = self.ctx.add(
+        offset,
+        self.ctx.mul(
+          self.ctx.constant_isize(BigInt::from(elem_size)),
+          start
+        )
+      );
+      offset.simplify();
+      return offset;
+    }
+
+    if self.is_index() {
+      let inner_object = self.extract_object();
+      let mut offset = inner_object.compute_offset();
+      let index = self.extract_index();
+      
+      let collected_offset = 
+        if inner_object.ty().is_array() || inner_object.ty().is_slice() {
+          let elem_size = inner_object.ty().size().expect("Impossible");
+          self.ctx.mul(
+            index,
+            self.ctx.constant_isize(BigInt::from(elem_size))
+          )
+        } else if inner_object.ty().is_struct() {
+          assert!(index.is_constant());
+          let idx = index.extract_constant().to_integer();
+          let def = inner_object.ty().struct_def();
+          assert!(BigInt::ZERO <= idx && idx < def.1.len().into());
+          let i = bigint_to_usize(&idx);
+          let mut res = 0;
+          for j in 0..i { res += def.1[i].1.size().expect(""); }
+          self.ctx.constant_isize(BigInt::from(res))
+        } else {
+          assert!(inner_object.ty().is_tuple());
+          assert!(index.is_constant());
+          let idx = index.extract_constant().to_integer();
+          let def = inner_object.ty().tuple_def();
+          assert!(BigInt::ZERO <= idx && idx < def.len().into());
+          let i = bigint_to_usize(&idx);
+          let mut res = 0;
+          for j in 0..i { res += def[j].size().expect(""); }
+          self.ctx.constant_isize(BigInt::from(res))
+        };
+      offset = self.ctx.add(offset, collected_offset);
+      offset.simplify();
+      return offset;
+    }
+
+    todo!("{self:?}")
   }
 
   pub fn unwrap_predicates(&self) -> Expr {
@@ -548,8 +636,8 @@ pub trait ExprBuilder {
   fn _true(&self) -> Expr;
   fn _false(&self) -> Expr;
   fn constant_integer(&self, i: BigInt, ty: Type) -> Expr;
-  fn constant_isize(&self, i: isize) -> Expr;
-  fn constant_usize(&self, u: usize) -> Expr;
+  fn constant_isize(&self, i: BigInt) -> Expr;
+  fn constant_usize(&self, u: BigInt) -> Expr;
   fn null(&self, ty: Type) -> Expr;
   fn constant_array(&self, constant: Expr, len: Option<u64>) -> Expr;
   fn constant_struct(&self, fields: Vec<StructFieldDef>, ty: Type) -> Expr;

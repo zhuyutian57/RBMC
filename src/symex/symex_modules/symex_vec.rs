@@ -17,8 +17,8 @@ impl<'cfg> Symex<'cfg> {
   pub fn symex_vec_api(
     &mut self,
     fndef: &FunctionDef,
-    args: &Vec<Operand>,
-    dest: &Place,
+    args: Vec<Expr>,
+    dest: Expr,
   ) {
     let name = NString::from(fndef.0.trimmed_name());
     if name == NString::from("Vec::<T>::new") {
@@ -28,16 +28,11 @@ impl<'cfg> Symex<'cfg> {
     }
   }
 
-  fn symex_vec_new(&mut self, dest: &Place, fndef: &FunctionDef) {
-    let elem_ty = Type::from(fndef.1.0[0].expect_ty());
-    let vec_ty = Type::infinite_array_type(elem_ty);
-    let vector = self.exec_state.new_object(vec_ty);
-
-    let lhs = self.make_project(dest);
-    
+  fn symex_vec_new(&mut self, dest: Expr, fndef: &FunctionDef) {
+    todo!()
   }
 
-  fn symex_from_elem(&mut self, dest: &Place, args: &Vec<Operand>) {
+  fn symex_from_elem(&mut self, dest: Expr, args: Vec<Expr>) {
     todo!()
   }
 }

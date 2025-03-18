@@ -1,7 +1,9 @@
 
 use std::cell::RefCell;
 
+use num_bigint::BigInt;
 use stable_mir::mir::*;
+use stable_mir::CrateDef;
 
 use crate::expr::context::*;
 use crate::expr::expr::*;
@@ -205,19 +207,38 @@ impl<'cfg> ExecutionState<'cfg> {
     self.renaming.borrow_mut().constant_propagate(lhs, rhs);
   }
 
+  pub fn is_static_or_stack_symbol(&self, name: NString) -> bool {
+    let ident =
+      match name.find("::".into()) {
+        Some(i) => name.sub_str(0, i),
+        None => name,
+      };
+    for x in self.program.static_variables() {
+      if ident == NString::from(x.trimmed_name()) { return true; }
+    }
+    for frame in self.frames.iter().rev() {
+      if ident == frame.function_id() { return true; }
+    }
+    false
+  }
+
   pub fn get_place_state(&self, place: &Expr) -> PlaceState {
-    let ident = NString::from(format!("{place:?}"));
-    let nplace = NPlace(ident);
+    if place.is_object() {
+      return self.get_place_state(&place.extract_inner_expr());
+    }
+
+    assert!(place.is_symbol());
+    let l1_name = place.extract_symbol().l1_name();
+    let nplace = NPlace(l1_name);
     if self.top().cur_state.place_states.contains(nplace) {
       self.top().cur_state.get_place_state(nplace)
     } else {
       // Check whethe it is a local variable in stack
-      for frame in self.frames.iter().rev() {
-        if ident.contains(frame.function_id()) {
-          return PlaceState::Own
-        }
+      if self.is_static_or_stack_symbol(l1_name) {
+        PlaceState::Own
+      } else {
+        PlaceState::Unknown
       }
-      PlaceState::Unknown
     }
   }
 
@@ -225,9 +246,9 @@ impl<'cfg> ExecutionState<'cfg> {
     if place.is_symbol() {
       let mut l1_place = place;
       self.rename(&mut l1_place, Level::Level1);
-      let ident = l1_place.extract_symbol().l1_name();
-      assert!(ident.contains("heap".into()));
-      let nplace = NPlace(ident);
+      let symbol = l1_place.extract_symbol();
+      assert!(symbol.ident().contains("heap_object".into()));
+      let nplace = NPlace(symbol.l1_name());
       self.cur_state_mut().update_place_state(nplace, state);
       return;
     }
@@ -274,7 +295,7 @@ impl<'cfg> ExecutionState<'cfg> {
         else { self.ctx.object(rhs.clone()) };
       for (i, (_, ty)) in lhs.ty().struct_def().1.iter().enumerate() {
         if !ty.is_any_ptr() { return; }
-        let i = self.ctx.constant_usize(i);
+        let i = self.ctx.constant_isize(BigInt::from(i));
         let new_lhs = self.ctx.index(lhs_object.clone(), i.clone(), *ty);
         let new_rhs = self.ctx.index(rhs_object.clone(), i.clone(), *ty);
         self.update_value_set_rec(new_lhs, new_rhs);

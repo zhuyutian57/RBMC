@@ -130,10 +130,11 @@ impl<'cfg> Symex<'cfg> {
     &mut self,
     mut pt: Expr,
     mode: Mode,
-    guard: Guard
+    guard: Guard,
+    ty: Type
   ) -> Option<Expr> {
     self.replace_predicates(&mut pt);
-    Projection::new(self).project_deref(pt, mode, guard)
+    Projection::new(self).project_deref(pt, mode, guard, ty)
   }
 
   pub(super) fn make_mirconst(&mut self, mirconst: &MirConst) -> Expr {
@@ -284,7 +285,7 @@ impl<'cfg> Symex<'cfg> {
 
     if expr.is_valid() || expr.is_invalid() {
       let object = expr.extract_object();
-      let ptr_indent =
+      let pt_ident =
         self
           .ctx
           .pointer_base(
@@ -298,7 +299,7 @@ impl<'cfg> Symex<'cfg> {
       let alloced =
           self.ctx.index(
             alloc_array,
-            ptr_indent,
+            pt_ident,
             Type::bool_type()
           );
       *expr =

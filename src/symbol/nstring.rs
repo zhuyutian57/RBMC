@@ -71,6 +71,16 @@ impl NString {
     let sub_str = string_m().get_string(str.0);
     string.contains(sub_str)
   }
+
+  pub fn find(&self, s: NString) -> Option<usize> {
+    self.to_string().find(s.as_str())
+  }
+
+  pub fn sub_str(&self, l: usize, r: usize) -> NString {
+    let str = self.as_str();
+    assert!(0 <= l && l < r && r <= str.len());
+    NString::from(&str[l..r])
+  }
   
   /// During the symex, we do not delete any NString.
   /// Thus, returning static str is safe.

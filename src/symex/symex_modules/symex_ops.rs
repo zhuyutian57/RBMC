@@ -17,31 +17,36 @@ impl<'cfg> Symex<'cfg> {
   pub fn symex_ops_api(
     &mut self,
     fndef: &FunctionDef,
-    args: &Vec<Operand>,
-    dest: &Place,
+    args: Vec<Expr>,
+    dest: Expr,
   ) {
     let name = NString::from(fndef.0.trimmed_name());
     if name == NString::from("Index::index") ||
        name == NString::from("IndexMut::index_mut") {
-      self.symex_index(dest, args);
+      self.symex_ops_index(dest, args);
     } else {
       panic!("Not support for {name:?}");
     }
   }
 
-  fn symex_index(&mut self, dest: &Place, args: &Vec<Operand>) {
-    let lhs = self.make_project(dest);
+  fn symex_ops_index(&mut self, dest: Expr, args: Vec<Expr>) {
+    let lhs = dest.clone();
     let ty = lhs.ty();
     assert!(ty.is_ref());
     
     if ty.is_slice_ptr() {
-      let pt = self.make_operand(&args[0]);
-      let (l, r) = self.make_range(&args[1]);
-
+      let pt = args[0].clone();
+      let (l, r) = self.make_range(args[1].clone());
+      
       // Maybe a bug for stable mir: the operands for Range do not
       // follow the endian.
       let slice =
-        self.make_deref(pt.clone(), Mode::Slice(l, r), self.ctx._true().into());
+        self.make_deref(
+          pt.clone(),
+          Mode::Slice(l, r),
+          self.ctx._true().into(),
+          ty
+        );
       
       // Build success
       if let Some(s) = slice {
@@ -55,8 +60,10 @@ impl<'cfg> Symex<'cfg> {
     panic!("Do not support index({ty:?})");
   }
 
-  pub(super) fn make_range(&mut self, operand: &Operand) -> (Option<usize>, Option<usize>) {
-    let mut range = self.make_operand(operand);
+  pub(super) fn make_range(
+    &mut self,
+    range: Expr
+  ) -> (Option<usize>, Option<usize>) {
     assert!(range.ty().is_struct());
     let name = range.ty().name();
     if name == "RangeFull" {

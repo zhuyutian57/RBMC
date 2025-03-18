@@ -15,6 +15,7 @@ use super::exec_state::*;
 use super::frame::*;
 use super::place_state::*;
 use super::state::State;
+use super::value_set::ObjectSet;
 
 pub struct Symex<'cfg> {
   pub(super) config : &'cfg Config,
@@ -22,6 +23,7 @@ pub struct Symex<'cfg> {
   pub(super) ctx: ExprCtx,
   pub(super) exec_state: ExecutionState<'cfg>,
   pub(super) vc_system: VCSysPtr,
+  pub(super) internal_objects: Box<ObjectSet>,
 }
 
 impl<'cfg> Symex<'cfg> {
@@ -39,7 +41,8 @@ impl<'cfg> Symex<'cfg> {
         program: &config.program,
         ctx: ctx.clone(),
         exec_state,
-        vc_system
+        vc_system,
+        internal_objects: Box::new(ObjectSet::new())
       };
     symex.init();
     symex

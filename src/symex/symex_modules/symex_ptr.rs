@@ -13,8 +13,8 @@ impl<'cfg> Symex<'cfg> {
   pub fn symex_ptr_api(
     &mut self,
     fndef: &FunctionDef,
-    args: &Vec<Operand>,
-    dest: &Place,
+    args: Vec<Expr>,
+    dest: Expr,
   ) {
     let name = NString::from(fndef.0.trimmed_name());
     if name == NString::from("eq") {
@@ -31,40 +31,40 @@ impl<'cfg> Symex<'cfg> {
     }
   }
 
-  fn symex_ptr_eq(&mut self, dest: &Place, args: &Vec<Operand>) {
+  fn symex_ptr_eq(&mut self, dest: Expr, args: Vec<Expr>) {
     assert!(args.len() == 2);
-    let lhs = self.make_project(dest);
+    let lhs = dest.clone();
     
-    let p1 = self.make_operand(&args[0]);
-    let p2 = self.make_operand(&args[1]);
+    let p1 = args[0].clone();
+    let p2 = args[1].clone();
     let mut rhs = self.ctx.eq(p1, p2);
     self.replace_predicates(&mut rhs);
 
     self.assign(lhs, rhs, self.ctx._true().into());
   }
 
-  fn symex_ptr_null(&mut self, dest: &Place) {
-    let lhs = self.make_project(dest);
+  fn symex_ptr_null(&mut self, dest: Expr) {
+    let lhs = dest.clone();
     let rhs = self.ctx.null(lhs.ty());
     self.assign(lhs, rhs, self.ctx._true().into());
   }
 
-  fn symex_ptr_add(&mut self, dest: &Place, args: &Vec<Operand>) {
-    let lhs = self.make_project(dest);
+  fn symex_ptr_add(&mut self, dest: Expr, args: Vec<Expr>) {
+    let lhs = dest.clone();
     
-    let pt = self.make_operand(&args[0]);
-    let mut count = self.make_operand(&args[1]);
+    let pt = args[0].clone();
+    let mut count = args[1].clone();
     if count.is_object() { count = count.extract_inner_expr(); }
     let rhs = self.ctx.offset(pt, count);
 
     self.assign(lhs, rhs, self.ctx._true().into());
   }
 
-  fn symex_ptr_offset(&mut self, dest: &Place, args: &Vec<Operand>) {
-    let lhs = self.make_project(dest);
+  fn symex_ptr_offset(&mut self, dest: Expr, args: Vec<Expr>) {
+    let lhs = dest.clone();
     
-    let pt = self.make_operand(&args[0]);
-    let mut count = self.make_operand(&args[1]);
+    let pt = args[0].clone();
+    let mut count = args[1].clone();
     if count.is_object() { count = count.extract_inner_expr(); }
     let rhs = self.ctx.offset(pt, count);
 

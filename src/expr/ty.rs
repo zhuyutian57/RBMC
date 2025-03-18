@@ -85,12 +85,24 @@ impl Type {
     self.0.kind().is_signed()
   }
 
+  pub fn is_isize(&self) -> bool {
+    *self == Type::isize_type()
+  }
+
   pub fn is_unsigned(&self) -> bool {
     self.0.kind().is_integral() && !self.is_signed()
   }
 
+  pub fn is_usize(&self) -> bool {
+    *self == Type::usize_type()
+  }
+
   pub fn is_integer(&self) -> bool {
     self.0.kind().is_integral()
+  }
+
+  pub fn is_primitive(&self) -> bool {
+    self.0.kind().is_primitive()
   }
 
   pub fn is_enum(&self) -> bool {
@@ -137,6 +149,48 @@ impl Type {
 
   pub fn is_primitive_ptr(&self) -> bool {
     self.is_ptr() || self.is_ref()
+  }
+
+  /// Size will be in field-level
+  pub fn size(&self) -> Option<usize> {
+    if self.is_unit() { return Some(0); }
+    if self.is_bool() || self.is_integer() || self.is_any_ptr() {
+      return Some(1);
+    }
+
+    if self.is_array() {
+      return Some(self.array_size().unwrap() as usize)
+    }
+
+    if self.is_struct() {
+      let def = self.struct_def();
+      let size = 
+        def.1.iter().fold(
+          0,
+          |acc, x|
+          acc + match x.1.size() {
+            Some(s) => s,
+            None => panic!("Impoissible"),
+          }
+        );
+      return Some(size);
+    }
+
+    if self.is_tuple() {
+      let def = self.tuple_def();
+      let size = 
+        def.iter().fold(
+          0,
+          |acc, x|
+          acc+ match x.size() {
+            Some(s) => s,
+            None => panic!("Impoissible"),
+          }
+        );
+      return Some(size);
+    }
+
+    todo!("{self:?}")
   }
 
   pub fn pointee_ty(&self) -> Self {

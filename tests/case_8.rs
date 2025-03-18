@@ -1,22 +1,8 @@
-use std::{alloc::Layout, ptr};
-
-struct Node(i32, i32);
-
-const N : usize = 128;
-static mut A : Node = Node(0, 0);
-static mut B : i32 = 12;
-
-unsafe fn foo() {
-  B = 301;
-  A = Node(1, 2);
-}
+use std::alloc::{alloc, Layout};
 
 fn main() {
-  unsafe {
-    // println!("{a:p} - {b:p} - {c:p}");
-    // println!("{e:p} - {d:p} - {:p}", &n);
-    let x = N * N;
-    B = 101;
-    let y = B as usize;
-  }
+  let raw = unsafe { alloc(Layout::new::<(i32, i32)>()) as *mut (i32, i32) };
+  let b = unsafe { Box::from_raw(raw) };
+  let t = *b;
+  let bb = unsafe { Box::from_raw(raw) };
 }

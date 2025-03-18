@@ -26,23 +26,31 @@ impl <'cfg> Symex<'cfg> {
     let fndef = ty.fn_def();
     let name = NString::from(fndef.0.name());
     let trimmed_name = NString::from(fndef.0.trimmed_name());
+    
+    let ret = self.make_project(dest);
+    let mut args_exprs =
+      args.iter().map(|x| self.make_operand(x)).collect::<Vec<_>>();
+
     if self.program.contains_function(trimmed_name) {
       let i = self.program.function_idx(trimmed_name);
       self.symex_function(i, args, dest, target);
       return;
     } else if name.contains(NString::from("std::alloc")) {
-      self.symex_alloc_api(&fndef, args, dest);
+      self.symex_alloc_api(&fndef, args_exprs.clone(), ret);
     } else if name.contains(NString::from("std::boxed")) {
-      self.symex_boxed_api(&fndef, args, dest);
+      self.symex_boxed_api(&fndef, args_exprs.clone(), ret);
     } else if name.contains(NString::from("std::ops")) {
-      self.symex_ops_api(&fndef, args, dest);
+      self.symex_ops_api(&fndef, args_exprs.clone(), ret);
     } else if name.contains(NString::from("std::ptr")) {
-      self.symex_ptr_api(&fndef, args, dest);
+      self.symex_ptr_api(&fndef, args_exprs.clone(), ret);
     } else if name.contains(NString::from("std::vec")) {
-      self.symex_vec_api(&fndef, args, dest);
+      self.symex_vec_api(&fndef, args_exprs.clone(), ret);
     } else {
       panic!("Do not support {name:?}")
     }
+
+    // Move semantic
+    for arg_expr in args_exprs { self.symex_move(arg_expr); }
 
     if let Some(t) = target {
       let state = self.top_mut().cur_state().clone();

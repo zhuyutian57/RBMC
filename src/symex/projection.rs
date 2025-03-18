@@ -47,7 +47,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
                 .project_deref(
                   ret.clone(),
                   Mode::Read,
-                  Guard::new(ctx.clone())
+                  Guard::new(ctx.clone()),
+                  ret.ty().pointee_ty()
                 ).unwrap(),
           ProjectionElem::Field(i, ty)
             => self.project_field(
@@ -71,7 +72,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
             from_end 
           } => {
               let i = if *from_end { min_length - offset } else { *offset };
-              let index = ctx.constant_usize(i as usize);
+              let index = ctx.constant_usize(BigInt::from(i));
               self.project_index(ret.clone(), index)
             },
           _ => panic!("Not support {elem:?} for {ret:?}"),
@@ -87,7 +88,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     &mut self,
     pt: Expr,
     mode: Mode,
-    guard: Guard
+    guard: Guard,
+    ty: Type,
   ) -> Option<Expr> {
     assert!(pt.ty().is_any_ptr());
     
@@ -114,36 +116,38 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         self.dereference_invalid_ptr(pt.clone(), mode, guard.clone());
         continue;
       }
-
+      
+      // Note that all pointer is constructed from a root object
+      let root_object = object.extract_root_object();
       let mut pointer_cond =
         ctx.same_object(
           pt.clone(),
-          ctx.address_of(object.clone(), pt.ty())
+          ctx.address_of(
+            root_object.clone(),
+            root_object.extract_address_type()
+          )
         );
       self._callback_symex.rename(&mut pointer_cond);
       let pointer_guard = Guard::from(pointer_cond);
 
       // Valid check
-      let root_object = self.get_root_object(&object);
       let place_state =
         self
           ._callback_symex
           .exec_state
           .get_place_state(&root_object);
       if place_state.is_unknown() {
-        self.valid_check(object.clone(), pointer_guard.clone());
+        self.valid_check(root_object.clone(), pointer_guard.clone());
       }
       
       if mode == Mode::Drop || mode == Mode::Dealloc {
-        if let Some(x) = offset {
-          if x == BigInt::ZERO { continue; }
-          let msg = 
-            format!(
-              "{} {object:?} fail: the offset is {x} != 0",
-              format!("{mode:?}").to_lowercase()
-            ).into();
-          self._callback_symex.claim(msg, pointer_guard.to_expr());
-        }
+        self.dealloc_check(
+          object.clone(),
+          offset,
+          ty,
+          mode,
+          pointer_guard.clone()
+        );
         continue;
       }
 
@@ -153,7 +157,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
           offset,
           mode,
           pointer_guard.clone(),
-          pt.ty().pointee_ty()
+          ty
         );
       if new_ret == None { continue; }
 
@@ -182,8 +186,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
       return object;
     }
 
-    assert!(object.ty().is_struct());
-    let offset = self._ctx.constant_usize(field);
+    assert!(object.ty().is_struct() || object.ty().is_tuple());
+    let offset = self._ctx.constant_usize(BigInt::from(field));
     self.build_with_const_offset(
       object,
       BigInt::from(field),
@@ -214,15 +218,6 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
       ).unwrap()
     } else {
       todo!("Non-const index")
-    }
-  }
-
-  fn get_root_object(&mut self, object: &Expr) -> Expr {
-    if object.extract_inner_expr().is_slice() {
-      let inner_object = object.extract_inner_expr().extract_object();
-      self.get_root_object(&inner_object)
-    } else {
-      object.clone()
     }
   }
 
@@ -297,7 +292,9 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     if bound_check {
       self.bound_check(object.clone(), index.clone(), guard);
     }
-    let new_object = self._ctx.object(object);
+    let new_object = 
+      if object.is_object() { object }
+      else { self._ctx.object(object) };
     Some(self._ctx.index(new_object, index, ty))
   }
 
@@ -388,8 +385,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     if let Some(len) = s {
       let mut out_of_bound =
         ctx.or(
-          ctx.lt(index.clone(), ctx.constant_isize(0)),
-          ctx.ge(index.clone(), ctx.constant_isize(len as isize))
+          ctx.lt(index.clone(), ctx.constant_isize(BigInt::ZERO)),
+          ctx.ge(index.clone(), ctx.constant_isize(BigInt::from(len)))
         );
       self._callback_symex.rename(&mut out_of_bound);
       out_of_bound.simplify();
@@ -446,5 +443,53 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     error.add(not_null);
     error.add(not_alloced);
     self._callback_symex.claim(msg, error.to_expr());
+  }
+
+  fn dealloc_check(
+    &mut self,
+    object: Expr,
+    offset: Option<BigInt>,
+    ty: Type,
+    mode: Mode,
+    guard: Guard
+  ) {
+    let object_ty = object.ty();
+    // Offset check
+    let tmp_object =
+      if object_ty.is_primitive() || object_ty.is_any_ptr() {
+        object.clone()
+      } else {
+        self._ctx.index(
+          object.clone(),
+          if let Some(x) = offset {
+            self._ctx.constant_integer(x, Type::isize_type())
+          } else  {
+            self._ctx.constant_integer(BigInt::ZERO, Type::isize_type())
+          },
+          ty
+        )
+      };
+    let total_offset = tmp_object.compute_offset();
+    let msg = 
+        format!(
+          "{} {object:?} fail: the offset is {total_offset:?} != 0",
+          format!("{mode:?}").to_lowercase()
+        ).into();
+    let mut new_guard = guard.clone();
+    let zero = self._ctx.constant_isize(BigInt::ZERO);
+    new_guard.add(self._ctx.ne(total_offset, zero));
+    self._callback_symex.claim(msg, new_guard.to_expr());
+
+    // Check layout
+    if object.ty() != ty {
+      let msg = 
+        format!(
+          "{} {object:?} fail: the layout is {ty:?} where {:?} is required",
+          format!("{mode:?}").to_lowercase(), object.ty()
+        ).into();
+      let mut new_guard = guard.clone();
+      new_guard.add(self._ctx._true());
+      self._callback_symex.claim(msg, new_guard.to_expr());
+    }
   }
 }

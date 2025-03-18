@@ -177,7 +177,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     &self,
     pt: &z3::ast::Dynamic<'ctx>
   ) -> z3::ast::Dynamic<'ctx> {
-    self.mk_pointer_ident(pt)
+    self.mk_pointer_base(pt)
   }
 
   fn convert_pointer_offset(
@@ -359,8 +359,14 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     )
   }
 
-  fn project(&self, pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
-    self.mk_pointer_ident(pt)
+  fn project(
+    &self,
+    pt: &z3::ast::Dynamic<'ctx>,
+    ty: Type
+  ) -> z3::ast::Dynamic<'ctx> {
+    let mut ptr =
+      if ty.is_box() { self.mk_box_ptr(&pt) } else { pt.clone() };
+    self.mk_pointer_base(&ptr)
   }
 
   fn mk_select(
