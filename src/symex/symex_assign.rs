@@ -100,10 +100,7 @@ impl<'cfg> Symex<'cfg> {
       let inner_object = lhs.extract_object();
       let mut new_lhs = inner_object.clone();
       let mut index = lhs.extract_index();
-      if !index.ty().is_unsigned() {
-        let usize_type = self.ctx.mk_type(Type::usize_type());
-        index = self.ctx.cast(index, usize_type);
-      }
+
       if inner_object.ty().is_slice() {
         let slice = inner_object.extract_inner_expr();
         new_lhs = slice.extract_object();
