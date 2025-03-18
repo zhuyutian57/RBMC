@@ -116,9 +116,9 @@ impl<'cfg> Symex<'cfg> {
          self.exec_state.is_static_or_stack_symbol(symbol.ident()) { continue; }
       // Only update the place in heap.
       let nplace = NPlace(symbol.l1_name());
-      let cur_place_state = self.top().cur_state.get_place_state(nplace);
-      let new_place_state =
-        PlaceState::merge(cur_place_state, PlaceState::Alloced);
+      let mut new_place_state =
+        self.top().cur_state.get_place_state(nplace);
+      new_place_state.meet(PlaceState::Alloced);
       self.top_mut().cur_state.update_place_state(nplace, new_place_state);
     }
   }

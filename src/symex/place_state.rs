@@ -38,14 +38,24 @@ impl PlaceState {
   pub fn is_own(&self) -> bool {
     matches!(self, PlaceState::Own)
   }
+
+  pub fn is_valid(&self) -> bool {
+    self.is_alloced() || self.is_own()
+  }
   
   /// The meet operation. A place is owned by some variables(or frame)
   /// only if two program states own the place. Otherwise, we mark its
   /// state `alloced`.
   /// 
   /// TODO: design carefully.
-  pub fn merge(s1: PlaceState, s2: PlaceState) -> Self {
-    min(s1, s2)
+  pub fn meet(&mut self, rhs: PlaceState) {
+    *self =
+      if self.is_valid() && rhs.is_dealloced() ||
+         self.is_dealloced() && rhs.is_valid() {
+        PlaceState::Unknown
+      } else {
+        min(*self, rhs)
+      };
   }
 }
 
@@ -101,9 +111,7 @@ impl HeapPlaceStates {
       self
         ._place_states_map
         .entry(place)
-        .and_modify(
-          |s|
-          *s = PlaceState::merge(*s, state))
+        .and_modify(|s| s.meet(state))
         .or_insert(PlaceState::Unknown);
     }
   }
