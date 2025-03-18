@@ -283,7 +283,7 @@ impl<'cfg> ExecutionState<'cfg> {
     }
 
     if lhs.ty().is_array() {
-      if lhs.ty().array_range().is_any_ptr() {
+      if lhs.ty().elem_type().is_any_ptr() {
         // TODO
       }
       return;

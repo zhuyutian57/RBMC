@@ -60,7 +60,7 @@ impl Type {
 
   pub fn slice_type_from_array_type(array_type: Type) -> Self {
     assert!(array_type.is_array());
-    Type::slice_type(array_type.array_range())
+    Type::slice_type(array_type.elem_type())
   }
 
   pub fn ptr_type(pointee_type: Type, m: Mutability) -> Self {
@@ -184,22 +184,17 @@ impl Type {
     Type::unsigned_type(UintTy::Usize)
   }
 
-  pub fn array_range(&self) -> Type {
+  /// Range for array/slice
+  pub fn elem_type(&self) -> Type {
+    assert!(self.is_array() || self.is_slice());
     if let TyKind::RigidTy(r) = self.0.kind() {
-      if let RigidTy::Array(t, ..) = r {
-        return Type::from(t);
-      }
+      return match r {
+        RigidTy::Array(t, _) | RigidTy::Slice(t)
+          => Type::from(t),
+        _ => panic!("Impossible"),
+      };
     }
-    panic!("Wrong struct type");
-  }
-
-  pub fn slice_elem_ty(&self) -> Type {
-    if let TyKind::RigidTy(r) = self.0.kind() {
-      if let RigidTy::Slice(t) = r {
-        return Type::from(t);
-      }
-    }
-    panic!("Wrong struct type");
+    panic!("Impossible")
   }
 
   pub fn struct_def(&self) -> StructDef {

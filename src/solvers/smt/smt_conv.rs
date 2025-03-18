@@ -34,7 +34,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     
     if ty.is_array() {
       let domain = self.convert_sort(ty.array_domain());
-      let range = self.convert_sort(ty.array_range());
+      let range = self.convert_sort(ty.elem_type());
       return self.mk_array_sort(&domain, &range);
     }
     if ty.is_struct() { return self.convert_struct_sort(ty); }
@@ -264,7 +264,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     }
     if ty.is_array() {
       let domain = self.convert_sort(ty.array_domain());
-      let range = self.convert_sort(ty.array_range());
+      let range = self.convert_sort(ty.elem_type());
       return self.mk_array_symbol(name, &domain, &range);
     }
     if ty.is_struct() {

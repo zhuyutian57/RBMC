@@ -2,6 +2,7 @@
 use num_bigint::BigInt;
 use stable_mir::mir::*;
 
+use crate::expr::context::ExprCtx;
 use crate::expr::expr::*;
 use crate::expr::guard::*;
 use crate::expr::ty::Type;
@@ -20,16 +21,17 @@ pub enum Mode {
 }
 
 pub(super) struct Projection<'a, 'cfg> {
+  _ctx: ExprCtx,
   _callback_symex: &'a mut Symex<'cfg>,
 }
 
 impl<'a, 'cfg> Projection<'a, 'cfg> {
   pub(super) fn new(state: &'a mut Symex<'cfg>) -> Self {
-    Projection { _callback_symex: state }
+    Projection { _ctx: state.ctx.clone(), _callback_symex: state }
   }
 
   pub(super) fn project(&mut self, place: &Place) -> Expr {
-    let ctx = self._callback_symex.ctx.clone();
+    let ctx = self._ctx.clone();
 
     let mut ret =
       self
@@ -145,21 +147,14 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         continue;
       }
 
-      let final_offset =
-        match offset {
-          Some(x) => Some(x),
-          None => {
-            // The pointer only access a field of the object
-            if pt.ty().pointee_ty() != object.ty() {
-              Some(BigInt::ZERO)
-            } else {
-              None
-            }
-          },
-        };
-
       let new_ret =
-        self.build_ret(object, final_offset, mode, pointer_guard.clone());
+        self.build_ret(
+          object,
+          offset,
+          mode,
+          pointer_guard.clone(),
+          pt.ty().pointee_ty()
+        );
       if new_ret == None { continue; }
 
       ret =
@@ -188,11 +183,12 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     }
 
     assert!(object.ty().is_struct());
-    let offset = self._callback_symex.ctx.constant_usize(field);
+    let offset = self._ctx.constant_usize(field);
     self.build_with_const_offset(
       object,
       BigInt::from(field),
-      self._callback_symex.ctx._true().into(),
+      self._ctx._true().into(),
+      ty,
       false
     ).unwrap()
   }
@@ -201,17 +197,19 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
   fn project_index(
     &mut self,
     object: Expr,
-    index: Expr
+    index: Expr,
   ) -> Expr {
     let ty = object.ty();
     assert!(ty.is_array() || ty.is_slice());
+    let elem_ty = ty.elem_type();
 
     if index.is_constant() {
       let offset = index.extract_constant().to_integer();
       self.build_with_const_offset(
         object,
         offset,
-        self._callback_symex.ctx._true().into(),
+        self._ctx._true().into(),
+        elem_ty,
         false
       ).unwrap()
     } else {
@@ -233,11 +231,12 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     object: Expr,
     offset: Option<BigInt>,
     mode: Mode,
-    guard: Guard
+    guard: Guard,
+    ty: Type
   ) -> Option<Expr> {
     match mode {
       Mode::Read
-        => self.build_read(object, offset, guard),
+        => self.build_read(object, offset, guard, ty),
       Mode::Slice(l, r)
         => self.build_slice(object, offset, l, r, guard),
       _ => todo!(),
@@ -248,10 +247,35 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     &mut self,
     object: Expr,
     offset: Option<BigInt>,
-    guard: Guard
+    guard: Guard,
+    ty: Type
   ) -> Option<Expr> {
-    if let Some(x) = offset {
-      self.build_with_const_offset(object, x, guard, true)
+    // Compute the final offset of the accessing region.
+    let final_offset =
+      if object.ty() == ty || offset != None{
+        // Access the whole object or the expr has arithmetic
+        offset
+      } else {
+        // Access part of object
+        let range = 
+          if object.ty().is_array() {
+            // Access one index of an array
+            object.ty().elem_type()
+          } else if object.ty().is_slice() {
+            // Access one index of a slice
+            object.ty().elem_type()
+          } else if object.ty().is_struct() {
+            // Access the first field of a stuct
+            object.ty().struct_def().1[0].1
+          } else {
+            panic!("Impossible for access {:?} with {ty:?}", object.ty())
+          };
+        assert!(range == ty);
+        Some(BigInt::ZERO)
+      };
+
+    if let Some(x) = final_offset {
+      self.build_with_const_offset(object, x, guard, ty, true)
     } else {
       Some(object.extract_inner_expr())
     }
@@ -262,6 +286,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     object: Expr,
     offset: BigInt,
     guard: Guard,
+    ty: Type,
     bound_check: bool
   ) -> Option<Expr> {
     let index =
@@ -272,19 +297,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     if bound_check {
       self.bound_check(object.clone(), index.clone(), guard);
     }
-    
-    let ty = 
-      if object.ty().is_array() {
-        object.ty().array_range()
-      } else if object.ty().is_slice() {
-        object.ty().slice_elem_ty()
-      } else if object.ty().is_struct() {
-        let i = bigint_to_usize(&offset);
-        object.ty().struct_def().1[i].1
-      } else {
-        todo!("Not suport build {:?} with offset", object.ty())
-      };
-    Some(self._callback_symex.ctx.index(object, index, ty))
+    let new_object = self._ctx.object(object);
+    Some(self._ctx.index(new_object, index, ty))
   }
 
   fn build_slice(
@@ -341,7 +355,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
   }
 
   fn make_invalid_object(&mut self, ty: Type) -> Expr {
-    let ctx = self._callback_symex.ctx.clone();
+    let ctx = self._ctx.clone();
     let l0_symbol =
       self
         ._callback_symex
