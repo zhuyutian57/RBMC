@@ -30,6 +30,8 @@ impl<'cfg> Symex<'cfg> {
       self.symex_box_new(dest, args);
     } else if name == NString::from("Box::<T>::from_raw") {
       self.symex_box_from_raw(dest, args);
+    } else if name == NString::from("Box::<T, A>::into_raw") {
+      self.symex_box_into_raw(dest, args);
     } else {
       panic!("Not support {name:?}");
     }
@@ -58,13 +60,11 @@ impl<'cfg> Symex<'cfg> {
     self.exec_state.update_place_state(object, place_state);
   }
 
+  
   fn symex_box_from_raw(&mut self, dest: Expr, args: Vec<Expr>) {
     let lhs = dest.clone();
 
     let pt = args[0].clone();
-
-    // TODO: check ptr is NonNull?
-
     // Construct a box pointer
     let rhs = self.ctx._box(pt.clone());
     self.assign(lhs, rhs, self.ctx._true().into());
@@ -83,12 +83,43 @@ impl<'cfg> Symex<'cfg> {
         let symbol = root_object.extract_inner_expr().extract_symbol();
         if root_object != object || 
            pt.ty().pointee_ty() != root_object.ty() ||
-           self.exec_state.is_static_or_stack_symbol(symbol.ident()) { continue; }
+           self.exec_state
+            .is_static_or_stack_symbol(symbol.ident()) { continue; }
         // Only update the place in heap. Moreover, only update
         // the root object. If the object is not root obect,
         let nplace = NPlace(symbol.l1_name());
         self.top_mut().cur_state.update_place_state(nplace, PlaceState::Own);
       }
+    }
+  }
+
+  fn symex_box_into_raw(&mut self, dest: Expr, args: Vec<Expr>) {
+    let lhs = dest.clone();
+
+    let _box = args[0].clone();
+    // Casting to other pointer
+    let target_ty = self.ctx.mk_type(lhs.ty());
+    let rhs = self.ctx.cast(_box.clone(), target_ty);
+    self.assign(lhs, rhs, self.ctx._true().into());
+
+    // Update place states for objects.
+    let mut objects = ObjectSet::new();
+    self.top().cur_state.get_value_set(_box.clone(), &mut objects);
+    // All object should be updated 
+    for (object, offset) in objects {
+      if offset != None ||
+         object.is_null_object() ||
+         object.is_unknown() { continue; }
+      let root_object = object.extract_root_object();
+      let symbol = root_object.extract_inner_expr().extract_symbol();
+      if root_object != object || 
+         self.exec_state.is_static_or_stack_symbol(symbol.ident()) { continue; }
+      // Only update the place in heap.
+      let nplace = NPlace(symbol.l1_name());
+      let cur_place_state = self.top().cur_state.get_place_state(nplace);
+      let new_place_state =
+        PlaceState::merge(cur_place_state, PlaceState::Alloced);
+      self.top_mut().cur_state.update_place_state(nplace, new_place_state);
     }
   }
 }

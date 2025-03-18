@@ -5,4 +5,5 @@ fn main() {
   let b = unsafe { Box::from_raw(raw) };
   let t = *b;
   let bb = unsafe { Box::from_raw(raw) };
+  let raw_agin = Box::into_raw(bb);
 }

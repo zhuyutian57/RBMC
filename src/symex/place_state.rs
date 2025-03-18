@@ -13,8 +13,10 @@ pub enum PlaceState {
   /// We don't know whether the place is alloced, owned
   /// or dropped(dealloced). Let SMT solve the puzzle.
   Unknown,
-  /// The place is alloced(valid) in memory, but not owned
-  /// by any variable.
+  /// The place is dealloced(dropped).
+  Dealloced,
+  /// The place is alloced(valid) in memory,
+  /// but not owned by any variable.
   Alloced,
   /// The place is owned by some variables or in stack.
   Own,
@@ -23,6 +25,10 @@ pub enum PlaceState {
 impl PlaceState {
   pub fn is_unknown(&self) -> bool {
     matches!(self, PlaceState::Unknown)
+  }
+
+  pub fn is_dealloced(&self) -> bool {
+    matches!(self, PlaceState::Dealloced)
   }
 
   pub fn is_alloced(&self) -> bool {

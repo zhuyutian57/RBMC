@@ -118,7 +118,7 @@ pub(super) enum NodeKind {
   PointerOffset(NodeId),
   /// `PtrMetaData(pt)` retrieve pointer meta data, such as slice len
   PointerMeta(NodeId),
-  /// `Box(*const T)` encodes Box pointer,a one-field tuple 
+  /// `Box(*const T)` encodes Box pointer, one-field tuple 
   Box(NodeId),
 
   // Predicates for symbolic execution. Before generating VCC,
