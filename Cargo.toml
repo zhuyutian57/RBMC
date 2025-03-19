@@ -3,7 +3,16 @@ name = "stable_mir_analysis"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "mirv"
+path = "./src/mirv.rs"
+
+[[bin]]
+name = "cargo-mirv"
+path = "./src/cargo-mirv.rs"
+
 [dependencies]
+cargo_metadata = "0.19.2"
 clap = { version = "4.5.31", features = ["derive", "cargo", "env"] }
 num-bigint = "0.4.6"
 z3 = {version="0.12", features = ["static-link-z3"]}

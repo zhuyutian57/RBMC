@@ -20,7 +20,6 @@ use super::frame::Pc;
 use super::projection::*;
 use super::state::State;
 use super::symex::*;
-use super::value_set::ObjectSet;
 
 impl<'cfg> Symex<'cfg> {
   pub(super) fn merge_states(&mut self, pc: Pc) -> bool {

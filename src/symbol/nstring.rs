@@ -54,7 +54,7 @@ fn string_m() -> &'static mut StringManager {
 }
 
 /// A wrapper for String
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct NString(usize);
 
 impl NString {
