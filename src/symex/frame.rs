@@ -5,7 +5,6 @@ use stable_mir::mir::*;
 
 use crate::symbol::nstring::*;
 use crate::program::function::*;
-use crate::program::program::*;
 use crate::expr::context::*;
 use super::state::*;
 

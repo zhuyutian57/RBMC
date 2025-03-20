@@ -1,15 +1,7 @@
 [package]
-name = "stable_mir_analysis"
+name = "mirv"
 version = "0.1.0"
 edition = "2024"
-
-[[bin]]
-name = "mirv"
-path = "./src/mirv.rs"
-
-[[bin]]
-name = "cargo-mirv"
-path = "./src/cargo-mirv.rs"
 
 [dependencies]
 cargo_metadata = "0.19.2"

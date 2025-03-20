@@ -1,12 +1,11 @@
 
 use std::fmt::Debug;
-use std::fmt::Error;
 
 use stable_mir::CrateDef;
 use stable_mir::mir::*;
 use stable_mir::ty::*;
 
-use crate::NString;
+use crate::symbol::nstring::NString;
 
 pub type FieldDef = (NString, Type);
 pub type StructDef = (NString, Vec<FieldDef>);

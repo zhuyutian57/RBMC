@@ -1,10 +1,8 @@
 
-use num_bigint::BigInt;
 use stable_mir::mir::*;
 
 use crate::expr::expr::*;
-use crate::expr::constant::*;
-use crate::NString;
+use crate::symbol::nstring::NString;
 use super::symex::*;
 
 impl<'cfg> Symex<'cfg> {

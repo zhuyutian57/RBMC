@@ -125,7 +125,7 @@ impl BitOrAssign<&Guard> for Guard {
       let mut s2 = rhs._expr_set.clone();
       // Resolution
       if s1.len() > 1 && s2.len() > 1 {
-        let mut exprs =
+        let exprs =
           self
             ._expr_set
             .union(&rhs._expr_set)

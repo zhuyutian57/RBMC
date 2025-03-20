@@ -6,9 +6,8 @@ use crate::expr::context::ExprCtx;
 use crate::expr::expr::*;
 use crate::expr::guard::*;
 use crate::expr::ty::Type;
-use crate::program::program::bigint_to_usize;
 use crate::symbol::symbol::*;
-use crate::NString;
+use crate::symbol::nstring::NString;
 use super::symex::Symex;
 use super::value_set::*;
 
@@ -369,7 +368,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
   fn valid_check(&mut self, object: Expr, guard: Guard) {
     assert!(object.is_object());
     let ctx = object.ctx.clone();
-    let mut invalid = ctx.invalid(object.clone());
+    let invalid = ctx.invalid(object.clone());
     let msg =
       NString::from(format!("valid check: {object:?} is not alloced"));
     let mut error = guard.clone();
@@ -398,7 +397,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     }
   }
 
-  fn dereference_null(&mut self, pt: Expr, mut guard: Guard, mode: Mode) {
+  fn dereference_null(&mut self, pt: Expr, guard: Guard, mode: Mode) {
     assert!(pt.ty().is_any_ptr());
     assert!(mode == Mode::Read);
     let ctx = pt.ctx.clone();
@@ -412,7 +411,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     self._callback_symex.claim(msg, error.to_expr());
   }
 
-  fn dereference_invalid_ptr(&mut self, pt: Expr, mode: Mode, mut guard: Guard) {
+  fn dereference_invalid_ptr(&mut self, pt: Expr, mode: Mode, guard: Guard) {
     // Check the pointer is invalid
     let ctx = pt.ctx.clone();
     let pointer_base = ctx.pointer_base(pt.clone());

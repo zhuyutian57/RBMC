@@ -1,6 +1,5 @@
 
 use crate::expr::expr::*;
-use crate::expr::ty::*;
 use crate::symbol::nstring::*;
 use super::symex::*;
 

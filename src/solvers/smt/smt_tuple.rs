@@ -3,7 +3,7 @@ use num_bigint::BigInt;
 
 use crate::expr::expr::Expr;
 use crate::expr::ty::*;
-use crate::NString;
+use crate::symbol::nstring::NString;
 
 pub type Variant = Vec<FieldDef>;
 pub type Variants = Vec<(NString, Variant)>;

@@ -1,9 +1,15 @@
 
+#![feature(rustc_private)]
+
+extern crate rustc_driver;
+extern crate rustc_interface;
+extern crate rustc_middle;
+extern crate rustc_smir;
+extern crate stable_mir;
+
 use std::process::Command;
 
-use cargo_metadata::*;
-
-const MIRV_MODE : &str = "cargo";
+use mirv::config::cli;
 
 fn parse_mirv_flags() -> String {
   let mut args = std::env::args().into_iter().collect::<Vec<_>>();
@@ -13,10 +19,10 @@ fn parse_mirv_flags() -> String {
       .enumerate()
       .find_map(
         |(i, x)|
-        if x == "--mirv-flags" { Some(i) } else { None }
+        if x == "--mirv-args" { Some(i) } else { None }
       );
   match idx {
-    Some(i) => args.split_off(i + 1).join(" "),
+    Some(i) => args.split_off(i).join(" "),
     None => "".to_string(),
   }
 }
@@ -34,17 +40,15 @@ fn main() {
     println!("cargo mirv: {}", root.name);
     let mut cmd = Command::new("cargo");
     cmd
-      // Tell mirv to retrieve rustc args diretly
-      .env("MIRV_MODE", MIRV_MODE)
       // Set the crate being verified
-      .env("MIRV_CRATE", root.name.as_str())
+      .env(cli::MIRV_CRATE, root.name.as_str())
       // Mirv arguments
-      .env("MIRV_FLAGS", parse_mirv_flags())
+      .env(cli::MIRV_FLAGS, parse_mirv_flags())
       // Wrap the rustc with mirv
       .env("RUSTC_WRAPPER", "mirv")
       // No need to compile the whole project
       .arg("check").arg("--bin").arg(root.name.as_str());
-    
+
     let exit_status = cmd
       .spawn()
       .expect("could not run cargo")

@@ -1,12 +1,7 @@
 
-use std::collections::HashSet;
 
 use num_bigint::BigInt;
 
-use crate::symbol::symbol::*;
-use crate::NString;
-use super::ast::*;
-use super::constant::*;
 use super::context::*;
 use super::expr::*;
 use super::op::*;
@@ -89,7 +84,7 @@ impl Expr {
   }
 
   fn simplify_binary(&mut self) {
-    let mut sub_exprs = self.simplify_args();
+    let sub_exprs = self.simplify_args();
     let lhs = sub_exprs[0].clone();
     let rhs = sub_exprs[1].clone();
     match self.extract_bin_op() {
@@ -231,7 +226,7 @@ impl Expr {
   }
 
   fn simplify_unary(&mut self) {
-    let mut sub_exprs = self.simplify_args();
+    let sub_exprs = self.simplify_args();
     let operand = &sub_exprs[0];
     match self.extract_un_op() {
       UnOp::Not | UnOp::Neg => {
@@ -249,7 +244,7 @@ impl Expr {
   }
 
   fn simplify_ite(&mut self) {
-    let mut sub_exprs = self.simplify_args();
+    let sub_exprs = self.simplify_args();
     let cond = sub_exprs[0].clone();
     let true_value = sub_exprs[1].clone();
     let false_value = sub_exprs[2].clone();
@@ -263,7 +258,7 @@ impl Expr {
   }
 
   fn simplify_same_object(&mut self) {
-    let mut sub_exprs = self.simplify_args();
+    let sub_exprs = self.simplify_args();
     let lhs = sub_exprs[0].clone();
     let rhs = sub_exprs[1].clone();
     if lhs == rhs {

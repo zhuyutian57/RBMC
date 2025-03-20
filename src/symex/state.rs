@@ -7,7 +7,7 @@ use crate::expr::context::*;
 use crate::expr::expr::*;
 use crate::expr::guard::Guard;
 use crate::program::program::bigint_to_usize;
-use crate::NString;
+use crate::symbol::nstring::NString;
 use super::place_state::*;
 use super::renaming::Renaming;
 use super::value_set::*;

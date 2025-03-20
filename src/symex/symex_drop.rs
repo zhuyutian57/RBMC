@@ -6,7 +6,7 @@ use crate::expr::expr::*;
 use crate::expr::guard::*;
 use crate::expr::ty::*;
 use crate::symex::projection::Mode;
-use crate::NString;
+use crate::symbol::nstring::NString;
 use super::symex::*;
 
 impl<'cfg> Symex<'cfg> {
@@ -40,10 +40,10 @@ impl<'cfg> Symex<'cfg> {
 
       let mut true_cond = cond.clone();
       self.rename(&mut true_cond);
-      let mut true_guard = Guard::from(true_cond);
+      let true_guard = Guard::from(true_cond);
       let mut false_cond = self.ctx.not(cond);
       self.rename(&mut false_cond);
-      let mut false_guard = Guard::from(false_cond);
+      let false_guard = Guard::from(false_cond);
 
       self.symex_drop_rec(true_value, true_guard);
       self.symex_drop_rec(false_value, false_guard);

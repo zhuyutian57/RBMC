@@ -4,7 +4,6 @@ use std::collections::HashSet;
 use stable_mir::ty::FnDef;
 use stable_mir::*;
 use stable_mir::mir::*;
-use stable_mir::target::*;
 
 use crate::expr::ty::*;
 use crate::symbol::nstring::NString;

@@ -1,10 +1,7 @@
 
-use stable_mir::mir::*;
-use stable_mir::CrateDef;
 
 use crate::expr::expr::*;
 use crate::expr::ty::*;
-use crate::symbol::nstring::*;
 use super::super::symex::*;
 
 /// This mod defines symbolic execution of api in std::vec
@@ -20,19 +17,20 @@ impl<'cfg> Symex<'cfg> {
     args: Vec<Expr>,
     dest: Expr,
   ) {
-    let name = NString::from(fndef.0.trimmed_name());
-    if name == NString::from("Vec::<T>::new") {
-      todo!();
-    } else {
-      panic!("Not support for {name:?}");
-    }
+    todo!();
+    // let name = NString::from(fndef.0.trimmed_name());
+    // if name == NString::from("Vec::<T>::new") {
+    //   todo!();
+    // } else {
+    //   panic!("Not support for {name:?}");
+    // }
   }
 
-  fn symex_vec_new(&mut self, dest: Expr, fndef: &FunctionDef) {
-    todo!()
-  }
+  // fn symex_vec_new(&mut self, dest: Expr, fndef: &FunctionDef) {
+  //   todo!()
+  // }
 
-  fn symex_from_elem(&mut self, dest: Expr, args: Vec<Expr>) {
-    todo!()
-  }
+  // fn symex_from_elem(&mut self, dest: Expr, args: Vec<Expr>) {
+  //   todo!()
+  // }
 }

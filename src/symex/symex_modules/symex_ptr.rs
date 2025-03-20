@@ -1,6 +1,5 @@
 
 use stable_mir::CrateDef;
-use stable_mir::mir::*;
 
 use crate::expr::expr::*;
 use crate::expr::ty::*;

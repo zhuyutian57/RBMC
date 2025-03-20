@@ -5,10 +5,7 @@ use crate::expr::expr::*;
 use crate::expr::guard::*;
 use crate::expr::ty::*;
 use crate::program::program::bigint_to_u64;
-use crate::program::program::bigint_to_usize;
 use crate::symbol::symbol::*;
-use crate::symex::place_state::NPlace;
-use crate::symex::place_state::PlaceState;
 use super::symex::*;
 
 type BinOp = crate::expr::op::BinOp;

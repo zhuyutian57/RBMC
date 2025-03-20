@@ -1,20 +1,17 @@
 
 use std::cell::RefCell;
 
-use crate::expr;
-use crate::program::program::Program;
+use crate::expr::context::*;
+use crate::program::program::*;
 use crate::solvers::context::SolverCtx;
-use crate::ExprCtx;
-use crate::solvers;
-use crate::NString;
+use crate::symbol::nstring::NString;
+use super::cli::*;
 
-use super::cli::Cli;
-
-pub(crate) struct Config {
+pub struct Config {
   pub(crate) cli: Cli,
   pub(crate) program: Program,
   pub(crate) expr_ctx: ExprCtx,
-  pub(crate) solver_config: solvers::context::SolverCtx,
+  pub(crate) solver_config: SolverCtx,
 }
 
 impl Config {
@@ -25,7 +22,7 @@ impl Config {
     
     // Context for managing Expr
     let expr_ctx =
-      ExprCtx::new(RefCell::new(expr::context::Context::new()));
+      ExprCtx::new(RefCell::new(Context::new()));
 
     // Initilized solver
     let solver_config = SolverCtx::new(&cli);

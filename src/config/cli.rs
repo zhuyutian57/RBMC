@@ -1,7 +1,10 @@
 
 use clap::*;
 
-use crate::NString;
+use crate::symbol::nstring::NString;
+
+pub const MIRV_CRATE: &str = "MIRV_CRATE";
+pub const MIRV_FLAGS: &str = "MIRV_FLAGS";
 
 #[derive(clap::ValueEnum, Debug, Default, Clone, Copy)]
 pub enum SmtStrategy {
@@ -68,48 +71,54 @@ pub struct Cli {
   /// Close warnings [default: true]
   #[arg(long, default_value_t = false)]
   pub show_warnings: bool,
-
-  /// rustc arguments
-  rustc_args: Vec<String>,
 }
 
 impl Cli {
-  pub fn from_rustc() -> Self {
-    let mut cli = Cli::parse();
-    cli.rustc_args.push(
-        std::env::current_exe().expect("").to_str().unwrap().to_string()
-    );
-    cli.rustc_args.push(cli.file.to_string());
-    cli.rustc_args.push("-Copt-level=1".to_string());
-    // Reorder basic blocks to reverse post-order
-    cli.rustc_args.push("-Zmir-enable-passes=+ReorderBasicBlocks".to_string());
-    if !cli.show_warnings {
-      cli.rustc_args.push("-Awarnings".to_string());
+  pub fn new() -> Self {
+    // Carefully, dno't print anything in this function.
+    // The println! will communicate with rustc directly.
+    match std::env::var(MIRV_CRATE) {
+      // From `cargo-mirv` or `cargo mirv`
+      Ok(_crate) => {
+        let mut mirv_args = 
+          match std::env::var(MIRV_FLAGS) {
+            Ok(flags) => 
+              flags
+                .split_whitespace()
+                .map(|arg| arg.to_string())
+                .collect::<Vec<_>>(),
+            _ => vec![],
+          };
+        Cli::parse_from(mirv_args)
+      },
+      // From `mirv *.rs`
+      Err(_) => Cli::parse(),
     }
-    cli
-  }
-
-  pub fn from_cargo() -> Self {
-    let mut rustc_args = std::env::args().into_iter().collect::<Vec<_>>();
-    // TODO: set toolchain version
-    rustc_args.remove(1);
-    rustc_args.push("-Copt-level=1".to_string());
-    rustc_args.push("-Zmir-enable-passes=+ReorderBasicBlocks".to_string());
-    let mirv_flags =
-      match std::env::var("MIRV_FLAGS") {
-        Ok(flags) => flags,
-        _ => NString::EMPTY.to_string(),
-      };
-    let mut mirv_args = vec!["."];
-    mirv_args.append(&mut mirv_flags.split_whitespace().collect::<Vec<_>>());
-    let mut cli = Cli::parse_from(mirv_args);
-    cli.rustc_args = rustc_args;
-    if !cli.show_warnings { cli.rustc_args.push("-Awarnings".to_string()); }
-    cli
   }
 
   pub fn rustc_args(&self) -> Vec<String> {
-    self.rustc_args.clone()
+    let mut args = 
+      match self.file.is_empty() {
+        // From `cargo-mirv` or `cargo mirv`
+        true => std::env::args().skip(1).into_iter().collect(),
+        // From `mirv *.rs`
+        false => vec![
+          std::env::current_exe().unwrap().to_str().unwrap().to_string(),
+          self.file.to_string()
+        ]
+      };
+    args.push("-Copt-level=1".to_string());
+    args.push("-Zmir-enable-passes=+ReorderBasicBlocks".to_string());
+    args
+  }
+
+  pub fn cur_crate(&self) -> NString {
+    if self.file.is_empty() {
+      NString::EMPTY
+    } else {
+      let n = self.file.len();
+      self.file.sub_str(0, n - 3)
+    }
   }
 
   pub fn enable_display_state_bb(&self) -> bool {

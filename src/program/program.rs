@@ -1,24 +1,18 @@
 
-use std::cmp::max;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::io::*;
 
 use num_bigint::BigInt;
 use num_bigint::Sign;
 use stable_mir::mir::mono::StaticDef;
-use stable_mir::ty::FnDef;
-use stable_mir::ty::UintTy;
 use stable_mir::*;
-use stable_mir::mir::*;
 use stable_mir::target::*;
 
-use crate::expr::ty::*;
 use crate::symbol::nstring::NString;
 use super::function::*;
 
 pub struct Program {
-  crate_name: NString,
+  pub(crate) crate_name: NString,
   static_variables: Vec<StaticDef>,
   functions: Vec<Function>,
   idx: HashMap<NString, FunctionIdx>,
@@ -72,7 +66,7 @@ impl Program {
   pub fn show(&self) {
     let target = MachineInfo::target();
     println!(
-      "Crate:{:?}, Endian:{}, MachineSize:{}",
+      "Crate:{:?}, Endian:{}, MachineSize:{}\n",
       self.crate_name,
       match target.endian {
         Endian::Little => "Little",

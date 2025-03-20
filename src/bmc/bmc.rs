@@ -2,12 +2,12 @@
 use std::cell::RefCell;
 
 use crate::config::cli::SmtStrategy;
+use crate::config::config::Config;
 use crate::expr::expr::ExprBuilder;
 use crate::solvers::solver::*;
 use crate::symex::symex::*;
 use crate::vc::slicer::Slicer;
 use crate::vc::vc::*;
-use crate::Config;
 
 pub struct Bmc<'cfg> {
   config: &'cfg Config,

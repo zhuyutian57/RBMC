@@ -4,8 +4,7 @@ use z3::ast::*;
 use z3::DatatypeAccessor;
 
 use crate::expr::expr::*;
-use crate::expr::ty::*;
-use crate::NString;
+use crate::symbol::nstring::NString;
 use crate::solvers::smt::smt_conv::*;
 use crate::solvers::smt::smt_memspace::*;
 use super::z3_conv::*;

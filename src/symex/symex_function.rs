@@ -1,17 +1,11 @@
 
-use std::fmt::Error;
 
 use stable_mir::mir::*;
-use stable_mir::ty::*;
 use stable_mir::CrateDef;
 
 use crate::expr::expr::*;
-use crate::expr::ty::*;
 use crate::program::function::FunctionIdx;
-use crate::program::program::*;
-use crate::symbol::symbol::Level;
-use crate::NString;
-use super::place_state::*;
+use crate::symbol::nstring::NString;
 use super::symex::*;
 
 impl <'cfg> Symex<'cfg> {
@@ -28,7 +22,7 @@ impl <'cfg> Symex<'cfg> {
     let trimmed_name = NString::from(fndef.0.trimmed_name());
     
     let ret = self.make_project(dest);
-    let mut args_exprs =
+    let args_exprs =
       args.iter().map(|x| self.make_operand(x)).collect::<Vec<_>>();
 
     if self.program.contains_function(trimmed_name) {

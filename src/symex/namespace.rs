@@ -1,7 +1,7 @@
 
 use std::collections::HashMap;
 
-use crate::NString;
+use crate::symbol::nstring::NString;
 use crate::expr::expr::*;
 
 /// Use for record `l0` symbol and `l0` global objects

@@ -40,7 +40,7 @@ impl StringManager {
 }
 
 /// The global manager for String.
-static mut STRING_M : *mut StringManager = std::ptr::null_mut();
+pub(self) static mut STRING_M : *mut StringManager = std::ptr::null_mut();
 
 fn string_m() -> &'static mut StringManager {
   unsafe {
@@ -55,12 +55,16 @@ fn string_m() -> &'static mut StringManager {
 
 /// A wrapper for String
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct NString(usize);
+pub struct NString(usize);
 
 impl NString {
   pub const EMPTY: NString = NString(0);
   pub const ALLOC_SYM: NString = NString(1);
   pub const INVALID_OBJECT: NString = NString(2);
+
+  pub fn len(&self) -> usize {
+    string_m().get_string(self.0).len()
+  }
 
   pub fn is_empty(&self) -> bool {
     *self == NString::EMPTY
@@ -78,7 +82,7 @@ impl NString {
 
   pub fn sub_str(&self, l: usize, r: usize) -> NString {
     let str = self.as_str();
-    assert!(0 <= l && l < r && r <= str.len());
+    assert!(l < r && r <= str.len());
     NString::from(&str[l..r])
   }
   
@@ -92,6 +96,18 @@ impl NString {
 impl PartialEq<&str> for NString {
   fn eq(&self, other: &&str) -> bool {
     *self == NString::from(*other)
+  }
+}
+
+impl PartialEq<String> for NString {
+  fn eq(&self, other: &String) -> bool {
+    *self == other.as_str()
+  }
+}
+
+impl PartialEq<&String> for NString {
+  fn eq(&self, other: &&String) -> bool {
+    *self == *other
   }
 }
 

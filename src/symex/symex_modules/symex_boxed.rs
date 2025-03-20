@@ -1,6 +1,4 @@
 
-use num_bigint::BigInt;
-use stable_mir::mir::*;
 use stable_mir::CrateDef;
 
 use crate::expr::expr::*;
@@ -8,7 +6,6 @@ use crate::expr::ty::*;
 use crate::symbol::nstring::*;
 use crate::symex::place_state::NPlace;
 use crate::symex::place_state::PlaceState;
-use crate::symex::projection::Mode;
 use crate::symex::value_set::ObjectSet;
 use super::super::symex::*;
 

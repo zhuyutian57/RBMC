@@ -1,7 +1,7 @@
 
 use crate::config::cli::Cli;
 
-pub(crate) enum SolverCtx {
+pub enum SolverCtx {
   Z3(z3::Context),
 }
 

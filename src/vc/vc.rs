@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::slice::{Iter, IterMut};
 
 use crate::expr::expr::*;
-use crate::NString;
+use crate::symbol::nstring::NString;
 
 #[derive(Clone)]
 pub enum VcKind {

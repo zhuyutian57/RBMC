@@ -8,7 +8,7 @@ use stable_mir::mir::Mutability;
 
 use crate::program::program::bigint_to_usize;
 use crate::symbol::symbol::*;
-use crate::NString;
+use crate::symbol::nstring::NString;
 use super::ast::*;
 use super::constant::*;
 use super::context::*;

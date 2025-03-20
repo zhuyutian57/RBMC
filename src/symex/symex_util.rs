@@ -1,5 +1,4 @@
 
-use std::fmt::Error;
 
 use num_bigint::BigInt;
 use stable_mir::mir::alloc::GlobalAlloc;
@@ -47,7 +46,7 @@ impl<'cfg> Symex<'cfg> {
   fn phi_function(&mut self, nstate: &mut State) {
     if let None = nstate.renaming { return; }
 
-    let mut new_guard =
+    let new_guard =
       nstate.guard.clone() - self.top().cur_state.guard.clone();
 
     let mut nrenaming =

@@ -5,8 +5,6 @@ use std::fmt::Debug;
 use std::rc::Rc;
 
 use num_bigint::BigInt;
-use num_bigint::Sign;
-use stable_mir::ty::*;
 
 use crate::symbol::nstring::*;
 use crate::symbol::symbol::*;
@@ -609,7 +607,7 @@ impl ExprBuilder for ExprCtx {
     Expr { ctx: self.clone(), id }
   }
 
-  fn index(&self, object: Expr, mut index: Expr, ty: Type) -> Expr {
+  fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr {
     assert!(
       object.unwrap_predicates().is_object() &&
       (object.ty().is_array() ||

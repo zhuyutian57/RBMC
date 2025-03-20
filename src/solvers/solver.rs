@@ -6,7 +6,7 @@ use super::smt::smt_conv::*;
 use super::z3::z3_conv::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum PResult {
+pub enum PResult {
   PSat,
   PUnknow,
   PUnsat,

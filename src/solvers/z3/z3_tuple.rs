@@ -6,7 +6,7 @@ use z3::DatatypeAccessor;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::solvers::smt::smt_tuple::Variants;
-use crate::NString;
+use crate::symbol::nstring::NString;
 use crate::program::program::*;
 use crate::solvers::smt::smt_conv::*;
 use crate::solvers::smt::smt_tuple::*;

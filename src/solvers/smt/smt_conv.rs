@@ -8,7 +8,7 @@ use crate::expr::expr::*;
 use crate::expr::op::*;
 use crate::expr::ty::*;
 use crate::solvers::solver::PResult;
-use crate::NString;
+use crate::symbol::nstring::NString;
 
 pub(crate) trait SmtSolver<'ctx> {
   fn init(&mut self);

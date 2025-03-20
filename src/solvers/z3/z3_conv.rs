@@ -5,18 +5,15 @@ use num_bigint::BigInt;
 use stable_mir::mir::Mutability;
 
 use z3;
-use z3::DatatypeAccessor;
 use z3::ast::Ast;
 
-use crate::expr::constant::*;
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
-use crate::program::program::*;
 use crate::solvers::smt::smt_conv::*;
 use crate::solvers::smt::smt_memspace::*;
 use crate::solvers::smt::smt_tuple::*;
 use crate::solvers::solver::PResult;
-use crate::NString;
+use crate::symbol::nstring::NString;
 
 pub struct Z3Conv<'ctx> {
   pub(super) z3_ctx: &'ctx z3::Context,
@@ -364,7 +361,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     pt: &z3::ast::Dynamic<'ctx>,
     ty: Type
   ) -> z3::ast::Dynamic<'ctx> {
-    let mut ptr =
+    let ptr =
       if ty.is_box() { self.mk_box_ptr(&pt) } else { pt.clone() };
     self.mk_pointer_base(&ptr)
   }

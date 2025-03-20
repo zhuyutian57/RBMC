@@ -3,7 +3,6 @@ use stable_mir::mir::*;
 use stable_mir::CrateDef;
 
 use crate::expr::context::*;
-use crate::expr::constant::*;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::symbol::nstring::*;
@@ -23,7 +22,6 @@ pub struct Symex<'cfg> {
   pub(super) ctx: ExprCtx,
   pub(super) exec_state: ExecutionState<'cfg>,
   pub(super) vc_system: VCSysPtr,
-  pub(super) internal_objects: Box<ObjectSet>,
 }
 
 impl<'cfg> Symex<'cfg> {
@@ -42,7 +40,6 @@ impl<'cfg> Symex<'cfg> {
         ctx: ctx.clone(),
         exec_state,
         vc_system,
-        internal_objects: Box::new(ObjectSet::new())
       };
     symex.init();
     symex
