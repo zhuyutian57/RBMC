@@ -27,9 +27,9 @@ impl Program {
         functions.push(Function::new(def.clone()));
       }
     }
-    assert!(!functions.is_empty());
     for def in _crate.fn_defs() {
       if def.trimmed_name() == "main" { continue; }
+      if !def.has_body() { continue; }
       functions.push(Function::new(def));
     }
     for (i, function)

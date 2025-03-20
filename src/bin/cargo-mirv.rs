@@ -37,26 +37,29 @@ fn main() {
   
   // We only check the current crate
   if let Some(root) = metadata.root_package() {
-    println!("cargo mirv: {}", root.name);
-    let mut cmd = Command::new("cargo");
-    cmd
-      // Set the crate being verified
-      .env(cli::MIRV_CRATE, root.name.as_str())
-      // Mirv arguments
-      .env(cli::MIRV_FLAGS, parse_mirv_flags())
-      // Wrap the rustc with mirv
-      .env("RUSTC_WRAPPER", "mirv")
-      // No need to compile the whole project
-      .arg("check").arg("--bin").arg(root.name.as_str());
+    for target in &root.targets {
+      if target.is_test() { continue; }
+      println!("Target: {}", target.name);
+      let mut cmd = Command::new("cargo");
+      cmd
+        // Set the crate being verified
+        .env(cli::MIRV_CRATE, target.name.as_str())
+        // Mirv arguments
+        .env(cli::MIRV_FLAGS, parse_mirv_flags())
+        // Wrap the rustc with mirv
+        .env("RUSTC_WRAPPER", "mirv")
+        // No need to compile the whole project
+        .arg("build");
 
-    let exit_status = cmd
-      .spawn()
-      .expect("could not run cargo")
-      .wait()
-      .expect("failed to wait for cargo");
-  
-    if !exit_status.success() {
-      std::process::exit(exit_status.code().unwrap_or(-1))
+      let exit_status = cmd
+        .spawn()
+        .expect("could not run cargo")
+        .wait()
+        .expect("failed to wait for cargo");
+    
+      if !exit_status.success() {
+        std::process::exit(exit_status.code().unwrap_or(-1))
+      }
     }
   } else {  
     panic!("Not support lib yet");

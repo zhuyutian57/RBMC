@@ -108,6 +108,7 @@ impl Cli {
         ]
       };
     args.push("-Copt-level=1".to_string());
+    args.push("-Zalways-encode-mir".to_string());
     args.push("-Zmir-enable-passes=+ReorderBasicBlocks".to_string());
     args
   }
