@@ -134,6 +134,7 @@ impl<'cfg> Bmc<'cfg> {
   }
 
   fn generate_smt_formula(&mut self) {
+    println!("Converting SSA");
     let ctx = self.config.expr_ctx.clone();
 
     let mut assumetion = ctx._true();
