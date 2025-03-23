@@ -207,19 +207,20 @@ impl<'cfg> ExecutionState<'cfg> {
     self.renaming.borrow_mut().constant_propagate(lhs, rhs);
   }
 
-  pub fn is_static_or_stack_symbol(&self, name: NString) -> bool {
-    let ident =
-      match name.find("::".into()) {
-        Some(i) => name.sub_str(0, i),
-        None => name,
-      };
+  pub fn get_place_state_for_stack_symbol(&self, ident: NString) -> PlaceState {
+    // Static variables
     for x in self.program.static_variables() {
-      if ident == NString::from(x.trimmed_name()) { return true; }
+      if ident == NString::from(x.trimmed_name()) {
+        return PlaceState::Own;
+      }
     }
+    // Local without storagelive
+    assert!(ident.contains("::".into()));
+    let func = ident.sub_str(0, ident.find(":".into()).unwrap());
     for frame in self.frames.iter().rev() {
-      if ident == frame.function_id() { return true; }
+      if func == frame.function_id() { return PlaceState::Own; }
     }
-    false
+    PlaceState::Dead
   }
 
   pub fn get_place_state(&self, place: &Expr) -> PlaceState {
@@ -228,18 +229,14 @@ impl<'cfg> ExecutionState<'cfg> {
     }
 
     assert!(place.is_symbol());
-    let l1_name = place.extract_symbol().l1_name();
+    let symbol = place.extract_symbol();
+    let l1_name = symbol.l1_name();
     let nplace = NPlace(l1_name);
-    if self.top().cur_state.place_states.contains(nplace) {
-      self.top().cur_state.get_place_state(nplace)
-    } else {
-      // Check whethe it is a local variable in stack
-      if self.is_static_or_stack_symbol(l1_name) {
-        PlaceState::Own
-      } else {
-        PlaceState::Unknown
-      }
+    let state = self.top().cur_state.get_place_state(nplace);
+    if state.is_unknown() && symbol.is_stack_symbol(){
+      return self.get_place_state_for_stack_symbol(symbol.ident());
     }
+    state
   }
 
   pub fn update_place_state(&mut self, place: Expr, state: PlaceState) {

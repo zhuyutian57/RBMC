@@ -420,7 +420,7 @@ impl ExprBuilder for ExprCtx {
 
   fn add(&self, lhs: Expr, rhs: Expr) -> Expr {
     assert!(
-      lhs.ty() == rhs.ty() ||
+      lhs.ty().is_integer() && rhs.ty().is_integer() ||
       // The offset must be rhs
       lhs.ty().is_ptr() && rhs.ty().is_integer()
     );
@@ -433,7 +433,11 @@ impl ExprBuilder for ExprCtx {
   }
 
   fn sub(&self, lhs: Expr, rhs: Expr) -> Expr {
-    assert!(lhs.ty() == rhs.ty());
+    assert!(
+      lhs.ty().is_integer() && rhs.ty().is_integer() ||
+      // The offset must be rhs
+      lhs.ty().is_ptr() && rhs.ty().is_integer()
+    );
     let kind = NodeKind::Binary(BinOp::Sub, lhs.id, rhs.id);
     let ty = lhs.ty();
     let new_node = Node::new(kind, ty);
@@ -442,7 +446,7 @@ impl ExprBuilder for ExprCtx {
   }
 
   fn mul(&self, lhs: Expr, rhs: Expr) -> Expr {
-    assert!(lhs.ty() == rhs.ty());
+    assert!(lhs.ty().is_integer() && rhs.ty().is_integer());
     let kind = NodeKind::Binary(BinOp::Mul, lhs.id, rhs.id);
     let ty = lhs.ty();
     let new_node = Node::new(kind, ty);
@@ -451,7 +455,7 @@ impl ExprBuilder for ExprCtx {
   }
 
   fn div(&self, lhs: Expr, rhs: Expr) -> Expr {
-    assert!(lhs.ty() == rhs.ty());
+    assert!(lhs.ty().is_integer() && rhs.ty().is_integer());
     let kind = NodeKind::Binary(BinOp::Div, lhs.id, rhs.id);
     let ty = lhs.ty();
     let new_node = Node::new(kind, ty);

@@ -10,6 +10,7 @@ fn g(x: i32) -> i32 {
   1910 * x
 }
 
+// #[kani::proof]
 fn main() {
   let mut n1 = Node { x : -12, y : 100 };
   let mut n2 = Node { x : 13, y : 100 };

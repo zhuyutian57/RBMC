@@ -7,7 +7,7 @@ use crate::symbol::nstring::*;
 
 /// Renaming for symbol
 /// 
-/// l1_renaming: counting for locals
+/// l1_renaming: counting for orgianl symbol
 /// l2_renaming: counting for l1 symbol
 /// constant_map: constant for l2 symbol
 #[derive(Debug, Default, Clone)]

@@ -17,32 +17,14 @@ pub struct Function {
   name: NString,
   args: Args,
   body: Body,
-  locals_without_storage: Vec<Local>,
 }
 
 impl Function {
   pub fn new(def: FnDef) -> Self {
-    let mut locals_with_storage = HashSet::new();
-    for bb in def.body().unwrap().blocks {
-      for s in bb.statements {
-        match s.kind {
-          StatementKind::StorageLive(l) => {
-            locals_with_storage.insert(l);
-          },
-          _ => {},
-        }
-      }
-    }
-    let mut locals_without_storage = Vec::new();
-    for i in 1..def.body().unwrap().locals().len() {
-      if locals_with_storage.contains(&i) { continue; }
-      locals_without_storage.push(i);
-    }
     Function {
       name: NString::from(def.trimmed_name()),
       args: (1..def.body().unwrap().arg_locals().len() + 1).collect(),
-      body: def.body().unwrap(),
-      locals_without_storage,
+      body: def.body().unwrap()
     }
   }
 
@@ -55,10 +37,6 @@ impl Function {
   pub fn local_decl(&self, local: Local) -> &LocalDecl {
     assert!(local < self.locals().len());
     self.body.local_decl(local).unwrap()
-  }
-
-  pub fn local_without_storage(&self) -> Vec<Local> {
-    self.locals_without_storage.clone()
   }
 
   pub fn local_type(&self, local: Local) -> Type {

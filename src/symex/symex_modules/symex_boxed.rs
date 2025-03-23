@@ -80,10 +80,8 @@ impl<'cfg> Symex<'cfg> {
         let symbol = root_object.extract_inner_expr().extract_symbol();
         if root_object != object || 
            pt.ty().pointee_ty() != root_object.ty() ||
-           self.exec_state
-            .is_static_or_stack_symbol(symbol.ident()) { continue; }
-        // Only update the place in heap. Moreover, only update
-        // the root object. If the object is not root obect,
+           symbol.is_stack_symbol() { continue; }
+        // Only update the place in heap. Moreover, only update root object.
         let nplace = NPlace(symbol.l1_name());
         self.top_mut().cur_state.update_place_state(nplace, PlaceState::Own);
       }
@@ -109,8 +107,7 @@ impl<'cfg> Symex<'cfg> {
          object.is_unknown() { continue; }
       let root_object = object.extract_root_object();
       let symbol = root_object.extract_inner_expr().extract_symbol();
-      if root_object != object || 
-         self.exec_state.is_static_or_stack_symbol(symbol.ident()) { continue; }
+      if root_object != object || symbol.is_stack_symbol() { continue; }
       // Only update the place in heap.
       let nplace = NPlace(symbol.l1_name());
       let mut new_place_state =

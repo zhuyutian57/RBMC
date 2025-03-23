@@ -1,4 +1,6 @@
 
+
+// #[kani::proof]
 fn main() {
   let mut a1 = [1, 2, 3 ,4, 5];
   a1[3] = 101;

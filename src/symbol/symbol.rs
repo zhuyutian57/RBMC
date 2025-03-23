@@ -12,16 +12,16 @@ pub enum Level {
 
 /// Symbol are used for variables, objects, and so on.
 /// 
-/// ident: The original name of variable and heap objects.
-///        Usually, it is constructed by function name,
-///        frame number and local number.
+/// `ident`: The original name of variable and heap objects.
+/// where the identifiers of stack variables are in the form
+/// of `FuncId::local` and the identifiers of heap variables
+/// are in the form of `heap_object_{n}` such that n is the 
+/// unique id.
 /// 
-/// l0_num: It is frame number, which is encoded in `ident`.
-/// 
-/// l1_num: Every time we encounter a `StorageLive`, we create a
+/// `l1_num`: Every time we encounter a `StorageLive`, we create a
 ///         fresh l1 symbol.
 /// 
-/// l2_num: Used for constructing verification condition(later used)
+/// `l2_num`: Used for constructing verification condition(later used)
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Symbol {
   ident: NString,
@@ -41,6 +41,11 @@ impl Symbol {
   }
 
   pub fn ident(&self) -> NString { self.ident }
+
+  pub fn is_heap_symbol(&self) -> bool {
+    self.ident.contains("heap_object_".into())
+  }
+  pub fn is_stack_symbol(&self) -> bool { !self.is_heap_symbol() }
 
   pub fn is_level0(&self) -> bool { self.level == Level::Level0 }
   pub fn is_level1(&self) -> bool { self.level == Level::Level1 }
