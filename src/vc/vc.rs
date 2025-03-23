@@ -86,6 +86,14 @@ impl VCSystem {
     self.asserts_map.len()
   }
 
+  pub fn num_valid_vc(&self) -> usize {
+    self.vcs.iter().fold(
+      0,
+      |n, vc|
+      n + if vc.is_sliced { 0 } else { 1 }
+    )
+  }
+
   pub fn assign(&mut self, lhs: Expr, rhs: Expr) {
     self.vcs.push(Vc::new(VcKind::Assign(lhs, rhs)));
   }
@@ -116,6 +124,13 @@ impl VCSystem {
 
   pub fn iter_mut(&mut self) -> IterMut<'_, Vc> {
     self.vcs.iter_mut()
+  }
+
+  pub fn show_info(&self) {
+    println!(
+      "Generating {} VC(s), including {} assertions",
+      self.vcs.len(), self.asserts_map.len()
+    );
   }
 
   pub fn show_vcc(&self) {

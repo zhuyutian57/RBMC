@@ -30,20 +30,28 @@ impl<'cfg> Bmc<'cfg> {
     if self.config.cli.show_program {
       self.config.program.show();
     }
+    
+    let verify_time = std::time::Instant::now();
+    println!("Stat Symex ...");
 
     self.symex.run();
+    println!("Runtime Symex: {}s", verify_time.elapsed().as_secs_f32());
 
-    self.check_properties();
+    self.vc_system.borrow().show_info();
+    
+    self.check_properties(verify_time);
   }
 
-  fn check_properties(&mut self) {
+  fn check_properties(&mut self, time: std::time::Instant) {
+    println!("Verifying with SMT strategy: {:?}", self.config.cli.smt_strategy);
     let res =
       match self.config.cli.smt_strategy {
         SmtStrategy::Forward => self.check_forward(),
         SmtStrategy::Once => self.check_once(),
       };
+    println!("Verfication time: {}", time.elapsed().as_secs_f32());
     println!(
-      "Verification result: {}.",
+      "\nVerification result: {}.",
       match res {
         PResult::PSat => "fail",
         PResult::PUnknow => "unknown",
@@ -56,12 +64,19 @@ impl<'cfg> Bmc<'cfg> {
     let mut slicer = Slicer::default();
     let size = self.vc_system.borrow().num_asserts();
     for i in 0..size {
-      print!("Verifying condition {i} ");
+      println!("Begin checking assertion {i}");
+      if self.config.cli.show_vcc { print!("Verifying condition {i} "); }
 
       self.vc_system.borrow_mut().set_nth_assertion(i);
 
       if !self.config.cli.no_slice {
+        let slice_time = std::time::Instant::now();
         slicer.slice_nth(self.vc_system.clone(), i);
+        println!(
+          "Runtime slicing asssertion {i}: {}s",
+          slice_time.elapsed().as_secs_f32()
+        );
+        println!("After slicing: {} VC(s)", self.vc_system.borrow().num_valid_vc());
       }
 
       if self.config.cli.show_vcc {
@@ -69,20 +84,31 @@ impl<'cfg> Bmc<'cfg> {
       }
       
       self.runtime_solver.reset();
+      let convert_time = std::time::Instant::now();
       self.generate_smt_formula();
+      println!("Runtime Convert SSA: {}s", convert_time.elapsed().as_secs_f32());
       
+      let solver_time = std::time::Instant::now();
       let res = self.smt_result();
-      println!("Result: {res:?}\n");
+      println!("Runtime SMT check: {}s", solver_time.elapsed().as_secs_f32());
+      if self.config.cli.show_vcc { print!("Result: {res:?} "); }
       if res != PResult::PUnsat { return res; }
     }
     PResult::PUnsat
   }
 
   fn check_once(&mut self) -> PResult {
-    println!("Verifying condition:");
+    println!("Begin checking all assertions at once");
+    if self.config.cli.show_vcc { print!("Verifying condition:"); }
     if !self.config.cli.no_slice {
       let mut slicer = Slicer::default();
+      let slice_time = std::time::Instant::now();
       slicer.slice_whole(self.vc_system.clone());
+      println!(
+        "Runtime slicing asssertion: {}s",
+        slice_time.elapsed().as_secs_f32()
+      );
+      println!("After slicing: {} VC(s)", self.vc_system.borrow().num_valid_vc());
     }
 
     if self.config.cli.show_vcc {
@@ -90,10 +116,14 @@ impl<'cfg> Bmc<'cfg> {
     }
 
     self.runtime_solver.reset();
+    let convert_time = std::time::Instant::now();
     self.generate_smt_formula();
+    println!("Runtime Convert SSA: {}s", convert_time.elapsed().as_secs_f32());
 
+    let solver_time = std::time::Instant::now();
     let res = self.smt_result();
-    println!("Result: {res:?}\n");
+    println!("Runtime SMT check: {}s", solver_time.elapsed().as_secs_f32());
+    if self.config.cli.show_vcc { print!("Result: {res:?} "); }
     res
   }
 
