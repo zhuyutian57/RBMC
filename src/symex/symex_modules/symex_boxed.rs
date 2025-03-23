@@ -115,7 +115,7 @@ impl<'cfg> Symex<'cfg> {
       let nplace = NPlace(symbol.l1_name());
       let mut new_place_state =
         self.top().cur_state.get_place_state(nplace);
-      new_place_state.meet(PlaceState::Alloced);
+      new_place_state.meet(PlaceState::Alive);
       self.top_mut().cur_state.update_place_state(nplace, new_place_state);
     }
   }

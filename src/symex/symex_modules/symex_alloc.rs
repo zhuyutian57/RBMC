@@ -43,7 +43,7 @@ impl<'cfg> Symex<'cfg> {
 
     self.track_new_object(object.clone());
 
-    let place_state = PlaceState::Alloced;
+    let place_state = PlaceState::Alive;
     self.exec_state.update_place_state(object, place_state);
   }
 

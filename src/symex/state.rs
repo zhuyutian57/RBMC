@@ -63,7 +63,7 @@ impl State {
     for (object, _) in objects {
       if object.is_unknown() { continue; }
       let place = NPlace::from(object);
-      self.update_place_state(place, PlaceState::Dealloced);
+      self.update_place_state(place, PlaceState::Dead);
     }
   }
 

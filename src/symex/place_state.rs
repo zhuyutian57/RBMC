@@ -13,11 +13,11 @@ pub enum PlaceState {
   /// We don't know whether the place is alloced, owned
   /// or dropped(dealloced). Let SMT solve the puzzle.
   Unknown,
-  /// The place is dealloced(dropped).
-  Dealloced,
-  /// The place is alloced(valid) in memory,
+  /// The place(object) is dead(dealloced, dropped).
+  Dead,
+  /// The place(object) is valid in memory,
   /// but not owned by any variable.
-  Alloced,
+  Alive,
   /// The place is owned by some variables or in stack.
   Own,
 }
@@ -27,12 +27,12 @@ impl PlaceState {
     matches!(self, PlaceState::Unknown)
   }
 
-  pub fn is_dealloced(&self) -> bool {
-    matches!(self, PlaceState::Dealloced)
+  pub fn is_dead(&self) -> bool {
+    matches!(self, PlaceState::Dead)
   }
 
-  pub fn is_alloced(&self) -> bool {
-    matches!(self, PlaceState::Alloced)
+  pub fn is_alive(&self) -> bool {
+    matches!(self, PlaceState::Alive)
   }
 
   pub fn is_own(&self) -> bool {
@@ -40,7 +40,7 @@ impl PlaceState {
   }
 
   pub fn is_valid(&self) -> bool {
-    self.is_alloced() || self.is_own()
+    self.is_alive() || self.is_own()
   }
   
   /// The meet operation. A place is owned by some variables(or frame)
@@ -50,8 +50,8 @@ impl PlaceState {
   /// TODO: design carefully.
   pub fn meet(&mut self, rhs: PlaceState) {
     *self =
-      if self.is_valid() && rhs.is_dealloced() ||
-         self.is_dealloced() && rhs.is_valid() {
+      if self.is_valid() && rhs.is_dead() ||
+         self.is_dead() && rhs.is_valid() {
         PlaceState::Unknown
       } else {
         min(*self, rhs)
