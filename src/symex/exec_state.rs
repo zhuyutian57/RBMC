@@ -128,7 +128,7 @@ impl<'cfg> ExecutionState<'cfg> {
       self.ns.lookup_symbol(ident)
     } else {
       let symbol =
-        Symbol::new(ident,0,0, Level::Level0);
+        Symbol::new(ident, 0, 0, Level::Level0);
       let symbol_expr = self.ctx.mk_symbol(symbol, ty);
       self.ns.insert_symbol(symbol_expr.clone());
       symbol_expr

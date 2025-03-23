@@ -152,14 +152,15 @@ impl<'cfg> Symex<'cfg> {
 
   fn symex_storagelive(&mut self, local: Local) {
     // Set a new l1 local variable
-    self.exec_state.new_local(local, Level::Level1);
+    let l1_local = self.exec_state.new_local(local, Level::Level1);
+    let nplace = NPlace(l1_local.extract_symbol().l1_name());
+    self.top_mut().cur_state.update_place_state(nplace, PlaceState::Own);
   }
 
   fn symex_storagedead(&mut self, local: Local) {
-    let var = self.exec_state.current_local(local, Level::Level1);
-    let move_expr = self.ctx._move(self.ctx.object(var));
-    // Remove the pointer in value set and set a fresh value
-    self.symex_move(move_expr);
+    let l1_local = self.exec_state.current_local(local, Level::Level1);
+    let nplace = NPlace(l1_local.extract_symbol().l1_name());
+    self.top_mut().cur_state.update_place_state(nplace, PlaceState::Dead);
   }
 
   fn symex_terminator(&mut self, terminator: &Terminator) {

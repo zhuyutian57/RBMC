@@ -378,7 +378,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         self._ctx._true()
       };
     let msg =
-      NString::from(format!("valid check: {object:?} is not alloced"));
+      NString::from(format!("valid check: {object:?} is dead"));
     let mut error = guard.clone();
     error.add(invalid);
     self._callback_symex.claim(msg, error.to_expr());
