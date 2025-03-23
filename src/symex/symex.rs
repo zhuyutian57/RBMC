@@ -159,8 +159,12 @@ impl<'cfg> Symex<'cfg> {
 
   fn symex_storagedead(&mut self, local: Local) {
     let l1_local = self.exec_state.current_local(local, Level::Level1);
+    if l1_local.ty().is_any_ptr() {
+      self.top_mut().cur_state.remove_pointer(l1_local.clone());
+    }
     let nplace = NPlace(l1_local.extract_symbol().l1_name());
-    self.top_mut().cur_state.update_place_state(nplace, PlaceState::Dead);
+    // Just remove to safe memory
+    self.top_mut().cur_state.remove_place(nplace);
   }
 
   fn symex_terminator(&mut self, terminator: &Terminator) {

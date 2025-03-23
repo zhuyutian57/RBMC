@@ -207,7 +207,7 @@ impl<'cfg> ExecutionState<'cfg> {
     self.renaming.borrow_mut().constant_propagate(lhs, rhs);
   }
 
-  pub fn get_place_state_for_stack_symbol(&self, ident: NString) -> PlaceState {
+  fn get_place_state_for_stack_symbol(&self, ident: NString) -> PlaceState {
     // Static variables
     for x in self.program.static_variables() {
       if ident == NString::from(x.trimmed_name()) {
