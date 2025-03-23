@@ -7,6 +7,7 @@ use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::symbol::nstring::*;
 use crate::program::program::*;
+use crate::program::function::*;
 use crate::symbol::symbol::*;
 use crate::vc::vc::*;
 use crate::config::config::Config;
@@ -87,6 +88,9 @@ impl<'cfg> Symex<'cfg> {
 
   fn symex(&mut self) {
     while let Some(pc) = self.top_mut().cur_pc() {
+      // Couting loop pc
+      self.top_mut().unwind(pc);
+
       // Merge states
       if self.merge_states(pc) {
         if self.config.cli.enable_display_state_bb() {
