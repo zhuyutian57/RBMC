@@ -18,6 +18,8 @@ impl<'cfg> Symex<'cfg> {
             self.symex_ptr_add(dest, args);
         } else if name == "std::ptr::mut_ptr::<impl *mut T>::offset" {
             self.symex_ptr_offset(dest, args);
+        } else if name == "std::ptr::mut_ptr::<impl *mut T>::is_null" {
+            self.symex_ptr_is_null(dest, args);
         } else {
             panic!("Not support for {name:?}");
         }
@@ -63,6 +65,15 @@ impl<'cfg> Symex<'cfg> {
             count = count.extract_inner_expr();
         }
         let rhs = self.ctx.offset(pt, count);
+
+        self.assign(lhs, rhs, self.ctx._true().into());
+    }
+
+    fn symex_ptr_is_null(&mut self, dest: Expr, args: Vec<Expr>) {
+        let lhs = dest.clone();
+
+        let pt = args[0].clone();
+        let rhs = self.ctx.eq(pt.clone(), self.ctx.null(pt.ty()));
 
         self.assign(lhs, rhs, self.ctx._true().into());
     }

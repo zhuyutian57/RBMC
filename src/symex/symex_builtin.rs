@@ -11,7 +11,7 @@ impl<'cfg> Symex<'cfg> {
         &mut self,
         fndef: &FunctionDef,
         args: Vec<Expr>,
-        dest: Expr
+        dest: Expr,
     ) {
         let name = NString::from(fndef.0.trimmed_name());
         if name == "nondet" {

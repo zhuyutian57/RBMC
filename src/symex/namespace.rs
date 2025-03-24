@@ -41,12 +41,7 @@ impl Namespace {
     }
 
     pub fn lookup_nondet_count(&mut self, ty: Type) -> usize {
-        self
-            ._nondet_counting
-            .entry(ty)
-            .and_modify(|x| *x += 1)
-            .or_insert(1)
-            .clone()
+        self._nondet_counting.entry(ty).and_modify(|x| *x += 1).or_insert(1).clone()
     }
 
     pub fn lookup_symbol(&self, ident: NString) -> Expr {

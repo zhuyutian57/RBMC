@@ -319,9 +319,12 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
 
     fn dereference_null(&mut self, pt: Expr, guard: Guard, mode: Mode) {
         assert!(pt.ty().is_any_ptr());
-        assert!(mode == Mode::Read);
         let null = self._ctx.null(pt.ty());
-        let msg = NString::from(format!("dereference failure: null pointer dereference"));
+        let msg = match mode {
+            Mode::Read => "dereference failure: null pointer dereference".into(),
+            Mode::Dealloc => "dealloc failure: dealloce a null pointer".into(),
+            _ => todo!(),
+        };
         let mut is_null = self._ctx.eq(pt, null);
         self._callback_symex.rename(&mut is_null);
         let mut error = guard.clone();

@@ -194,7 +194,12 @@ impl<'cfg> ExecutionState<'cfg> {
             return;
         }
         assert!(lhs.is_symbol());
-        self.renaming.borrow_mut().constant_propagate(lhs, rhs);
+        let const_rhs = if !lhs.ty().is_layout() && lhs.ty() != rhs.ty() {
+            self.ctx.cast(rhs, self.ctx.mk_type(lhs.ty()))
+        } else {
+            rhs
+        };
+        self.renaming.borrow_mut().constant_propagate(lhs, const_rhs);
     }
 
     fn get_place_state_for_stack_symbol(&self, ident: NString) -> PlaceState {

@@ -80,11 +80,15 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         self.assert(self.mk_gt(&base, &self.mk_smt_int(BigInt::ZERO)));
         // disjoint relationship
         for (b, l) in self.pointer_logic.object_spaces().values() {
-            if space_base == NString::from(b.to_string()) { continue; }
+            if space_base == NString::from(b.to_string()) {
+                continue;
+            }
             // No alloc array is active. That means we know the allocation of current
             // object in symex. No need to encode disjointness.
             // Be careful for this design.
-            if self.cur_alloc_expr == None { continue; }
+            if self.cur_alloc_expr == None {
+                continue;
+            }
 
             let alloc_array_ast = self.cur_alloc_expr.as_ref().unwrap();
             let alive = alloc_array_ast.as_array().unwrap().select(b);

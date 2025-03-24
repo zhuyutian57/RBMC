@@ -6,6 +6,9 @@ use crate::{expr::expr::*, symbol::symbol::Level};
 impl<'cfg> Symex<'cfg> {
     /// `Move` semantic: if a value is move, it becomes uninitialized.
     pub(super) fn symex_move(&mut self, expr: Expr) {
+        if expr.ty().is_layout() {
+            return;
+        }
         if let Some(sub_exprs) = expr.sub_exprs() {
             for e in sub_exprs {
                 self.symex_move(e);

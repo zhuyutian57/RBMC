@@ -62,7 +62,7 @@ impl State {
         let mut objects = HashSet::new();
         self.get_value_set(pt.clone(), &mut objects);
         for (object, _) in objects {
-            if object.is_unknown() {
+            if object.is_unknown() || object.is_null_object() {
                 continue;
             }
             let place = NPlace::from(object);
