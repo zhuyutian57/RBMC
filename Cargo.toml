@@ -1,5 +1,5 @@
 [package]
-name = "mirv"
+name = "mirv-verifier"
 version = "0.1.0"
 edition = "2024"
 
@@ -11,3 +11,7 @@ z3 = {version="0.12", features = ["static-link-z3"]}
 
 [package.metadata.rust-analyzer]
 rustc_private = true
+
+[workspace]
+members = ["library"]
+default-members = [".", "library"]

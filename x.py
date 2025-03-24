@@ -4,6 +4,9 @@
 
 def mirv(file, mirv_args):
   assert(os.path.exists(file))
+  # set MIRV_LIBRARY_PATH
+  mirv_lib = os.path.join(os.path.curdir, "./target/debug/libmirv.rlib")
+  os.environ["MIRV_LIBRARY_PATH"] = str(os.path.abspath(mirv_lib))
   cmd = ["cargo", "run", "--bin", "mirv", file] + mirv_args
   os.system(" ".join(cmd))
   crate = os.path.splitext(os.path.basename(file))[0]

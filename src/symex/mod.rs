@@ -8,6 +8,7 @@ mod state;
 mod value_set;
 
 pub mod symex;
+pub(super) mod symex_builtin;
 pub(super) mod symex_assert;
 pub(super) mod symex_assign;
 pub(super) mod symex_branch;

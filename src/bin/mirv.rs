@@ -13,9 +13,9 @@ use stable_mir::CompilerError;
 use std::ops::ControlFlow;
 use std::process::ExitCode;
 
-use mirv::bmc::bmc::Bmc;
-use mirv::config::cli::{self, Cli};
-use mirv::config::config::Config;
+use mirv_verifier::bmc::bmc::Bmc;
+use mirv_verifier::config::cli::{self, Cli};
+use mirv_verifier::config::config::Config;
 
 fn main() -> ExitCode {
     let cli = Cli::new();

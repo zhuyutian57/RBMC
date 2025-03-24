@@ -3,6 +3,7 @@ use clap::*;
 use crate::symbol::nstring::NString;
 
 pub const MIRV_CRATE: &str = "MIRV_CRATE";
+pub const MIRV_LIBRARY_PATH: &str = "MIRV_LIBRARY_PATH";
 pub const MIRV_FLAGS: &str = "MIRV_FLAGS";
 
 #[derive(clap::ValueEnum, Debug, Default, Clone, Copy)]
@@ -108,6 +109,11 @@ impl Cli {
         args.push("-Copt-level=1".to_string());
         args.push("-Zalways-encode-mir".to_string());
         args.push("-Zmir-enable-passes=+ReorderBasicBlocks".to_string());
+        // Link libmirv.rlib
+        if let Ok(l) = std::env::var(MIRV_LIBRARY_PATH) {
+            args.push("--extern".into());
+            args.push(format!("mirv={l}").to_string());
+        }
         args
     }
 

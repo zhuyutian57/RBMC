@@ -1,11 +1,14 @@
 use std::collections::HashMap;
 
 use crate::expr::expr::*;
+use crate::expr::ty::Type;
 use crate::symbol::nstring::NString;
 
-/// Use for record `l0` symbol and `l0` global objects
+/// Use for record `l0` symbol, `l0` global objects and counting
+/// the number of non-deterministic variable for each type.
 #[derive(Debug, Default)]
 pub(crate) struct Namespace {
+    _nondet_counting: HashMap<Type, usize>,
     objects: HashMap<NString, Expr>,
     symbols: HashMap<NString, Expr>,
 }
@@ -35,6 +38,15 @@ impl Namespace {
 
     pub fn clear_local_symbols(&mut self, function_id: NString) {
         self.symbols.retain(|x, _| !x.contains(function_id));
+    }
+
+    pub fn lookup_nondet_count(&mut self, ty: Type) -> usize {
+        self
+            ._nondet_counting
+            .entry(ty)
+            .and_modify(|x| *x += 1)
+            .or_insert(1)
+            .clone()
     }
 
     pub fn lookup_symbol(&self, ident: NString) -> Expr {

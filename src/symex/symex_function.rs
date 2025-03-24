@@ -26,15 +26,17 @@ impl<'cfg> Symex<'cfg> {
             let i = self.program.function_idx(trimmed_name);
             self.symex_function(i, args, dest, target);
             return;
-        } else if name.contains(NString::from("std::alloc")) {
+        } else if name.contains("mirv".into()) {
+            self.symex_builtin_function(&fndef, args_exprs.clone(), ret);
+        } else if name.contains("std::alloc".into()) {
             self.symex_alloc_api(&fndef, args_exprs.clone(), ret);
-        } else if name.contains(NString::from("std::boxed")) {
+        } else if name.contains("std::boxed".into()) {
             self.symex_boxed_api(&fndef, args_exprs.clone(), ret);
-        } else if name.contains(NString::from("std::ops")) {
+        } else if name.contains("std::ops".into()) {
             self.symex_ops_api(&fndef, args_exprs.clone(), ret);
-        } else if name.contains(NString::from("std::ptr")) {
+        } else if name.contains("std::ptr".into()) {
             self.symex_ptr_api(&fndef, args_exprs.clone(), ret);
-        } else if name.contains(NString::from("std::vec")) {
+        } else if name.contains("std::vec".into()) {
             self.symex_vec_api(&fndef, args_exprs.clone(), ret);
         } else {
             panic!("Do not support {name:?}")
