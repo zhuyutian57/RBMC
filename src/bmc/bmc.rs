@@ -87,7 +87,7 @@ impl<'cfg> Bmc<'cfg> {
             let res = self.smt_result();
             println!("Runtime SMT check: {}s", solver_time.elapsed().as_secs_f32());
             if self.config.cli.show_vcc {
-                print!("Result: {res:?} ");
+                println!("Result: {res:?} ");
             }
             if res != PResult::PUnsat {
                 return res;
