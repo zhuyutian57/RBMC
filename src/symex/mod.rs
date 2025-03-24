@@ -1,4 +1,3 @@
-
 mod exec_state;
 mod frame;
 mod namespace;
@@ -9,12 +8,12 @@ mod state;
 mod value_set;
 
 pub mod symex;
-mod symex_modules;
-pub(super) mod symex_assign;
 pub(super) mod symex_assert;
+pub(super) mod symex_assign;
 pub(super) mod symex_branch;
 pub(super) mod symex_drop;
 pub(super) mod symex_function;
 pub(super) mod symex_memory;
+mod symex_modules;
 pub(super) mod symex_move;
 pub(super) mod symex_util;

@@ -1,0 +1,11 @@
+
+edition = "2024"
+style_edition = "2024"
+use_small_heuristics = "Max"
+merge_derives = false
+
+ignore = [
+  "**/build/",
+  "**/target/",
+  "**/benchmark/",
+]

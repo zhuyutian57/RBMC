@@ -1,11 +1,9 @@
-
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 
 extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate rustc_middle;
-#[macro_use]
 extern crate rustc_smir;
 extern crate stable_mir;
 
