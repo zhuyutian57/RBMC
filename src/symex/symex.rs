@@ -26,7 +26,7 @@ pub struct Symex<'cfg> {
 impl<'cfg> Symex<'cfg> {
     pub fn new(config: &'cfg Config, vc_system: VCSysPtr) -> Self {
         let ctx = config.expr_ctx.clone();
-        let mut exec_state = ExecutionState::new(&config.program, ctx.clone());
+        let mut exec_state = ExecutionState::new(config, ctx.clone());
         exec_state.setup();
 
         let mut symex =
@@ -75,11 +75,10 @@ impl<'cfg> Symex<'cfg> {
 
     fn symex(&mut self) {
         while let Some(pc) = self.top_mut().cur_pc() {
-            // Couting loop pc
-            self.top_mut().unwind(pc);
-
             // Merge states
             if self.merge_states(pc) {
+                // Couting loop pc
+                self.top_mut().unwind(pc);
                 if self.config.cli.enable_display_state_bb() {
                     println!(
                         "Enter {:?} - bb{pc}\n{:?}",

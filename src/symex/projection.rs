@@ -343,7 +343,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let msg = match mode {
             Mode::Read => NString::from("dereference failure: invalid pointer"),
             Mode::Drop => NString::from("drop failure: uninitilized box(smart) pointer"),
-            Mode::Dealloc => NString::from("dealloc failure: invalid pointer"),
+            Mode::Dealloc => NString::from(format!("dealloc failure: invalid pointer {pt:?}")),
             _ => todo!(),
         };
         let mut error = guard.clone();

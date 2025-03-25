@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::collections::HashSet;
 
 use stable_mir::mir::*;
@@ -10,6 +11,8 @@ use crate::symbol::nstring::NString;
 pub type FunctionIdx = usize;
 pub type Args = Vec<Local>;
 pub type Pc = BasicBlockIdx;
+pub type Loop = HashSet<Pc>;
+pub type LoopSet = HashMap<Pc, Loop>;
 
 /// A wrapper for functiom item in MIR
 #[derive(Debug)]
@@ -17,26 +20,55 @@ pub struct Function {
     name: NString,
     args: Args,
     body: Body,
-    _loops: HashSet<Pc>,
+    _loops: LoopSet,
+    /// Used to record loop bound for each bb in loops
+    _bb_unwind_bound: HashMap<Pc, usize>,
 }
 
 impl Function {
     pub fn new(def: FnDef) -> Self {
-        let mut _loops = HashSet::new();
         let body = def.body().unwrap();
-        for (i, bb) in body.blocks.iter().enumerate() {
-            for succ in bb.terminator.successors() {
-                // Back-Edge
-                if succ <= i {
-                    _loops.insert(succ);
-                }
-            }
-        }
-        Function {
+        let mut function = Function {
             name: NString::from(def.trimmed_name()),
             args: (1..def.body().unwrap().arg_locals().len() + 1).collect(),
             body,
-            _loops,
+            _loops: HashMap::new(),
+            _bb_unwind_bound: HashMap::new(),
+        };
+        function.init();
+        function
+    }
+
+    fn init(&mut self) {
+        let mut predecessors: HashMap<usize, HashSet<usize>> = HashMap::new();
+        for i in 0..self.body.blocks.len() {
+            for j in self.body.blocks[i].terminator.successors() {
+                predecessors.entry(j).or_default();
+                predecessors.entry(j).and_modify(|x| { x.insert(i); });
+            }
+        }
+        // Find all loops
+        for i in 0..self.body.blocks.len() {
+            for j in self.body.blocks[i].terminator.successors() {
+                // Back edge
+                if i > j {
+                    let mut _loop = HashSet::new();
+                    _loop.insert(j);
+                    _loop.insert(i);
+                    let mut stack = vec![i];
+                    while !stack.is_empty() {
+                        let n = stack.pop().unwrap();
+                        let preds = predecessors.get(&n).unwrap();
+                        for pred in preds {
+                            if !_loop.contains(pred) {
+                                _loop.insert(*pred);
+                                stack.push(*pred);
+                            }
+                        }
+                    }
+                    self._loops.insert(j, _loop);
+                }
+            }
         }
     }
 
@@ -75,7 +107,12 @@ impl Function {
     }
 
     pub fn is_loop_bb(&self, pc: Pc) -> bool {
-        self._loops.contains(&pc)
+        self._loops.contains_key(&pc)
+    }
+
+    pub fn get_loop(&self, pc: Pc) -> &Loop {
+        assert!(self.is_loop_bb(pc));
+        self._loops.get(&pc).unwrap()
     }
 
     pub fn operand_type(&self, operand: &Operand) -> Type {

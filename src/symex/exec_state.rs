@@ -9,6 +9,7 @@ use super::namespace::Namespace;
 use super::renaming::*;
 use super::state::*;
 use super::value_set::ObjectSet;
+use crate::config::config::Config;
 use crate::expr::context::*;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
@@ -24,7 +25,7 @@ use crate::symex::place_state::*;
 /// Moreover, `func_cnt` is used for identifying each function. It
 /// is used for naming variables later.
 pub struct ExecutionState<'cfg> {
-    program: &'cfg Program,
+    config: &'cfg Config,
     ctx: ExprCtx,
     pub(super) ns: Namespace,
     pub(super) objects: Vec<Expr>,
@@ -34,13 +35,13 @@ pub struct ExecutionState<'cfg> {
 }
 
 impl<'cfg> ExecutionState<'cfg> {
-    pub fn new(program: &'cfg Program, ctx: ExprCtx) -> Self {
+    pub fn new(config: &'cfg Config, ctx: ExprCtx) -> Self {
         ExecutionState {
-            program,
+            config: config,
             ctx,
             ns: Namespace::default(),
             objects: Vec::new(),
-            func_cnt: vec![0; program.size()],
+            func_cnt: vec![0; config.program.size()],
             frames: Vec::new(),
             renaming: RefCell::new(Renaming::default()),
         }
@@ -96,9 +97,9 @@ impl<'cfg> ExecutionState<'cfg> {
     ) {
         self.func_cnt[i] += 1;
         let mut frame = Frame::new(
-            self.ctx.clone(),
+            self.config,
             self.func_cnt[i],
-            self.program.function(i),
+            self.config.program.function(i),
             destination,
             target,
         );
@@ -204,7 +205,7 @@ impl<'cfg> ExecutionState<'cfg> {
 
     fn get_place_state_for_stack_symbol(&self, ident: NString) -> PlaceState {
         // Static variables
-        for x in self.program.static_variables() {
+        for x in self.config.program.static_variables() {
             if ident == NString::from(x.trimmed_name()) {
                 return PlaceState::Own;
             }

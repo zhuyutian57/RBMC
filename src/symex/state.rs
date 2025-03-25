@@ -65,8 +65,10 @@ impl State {
             if object.is_unknown() || object.is_null_object() {
                 continue;
             }
-            let place = NPlace::from(object);
-            self.update_place_state(place, PlaceState::Dead);
+            let nplace = NPlace::from(object);
+            let mut new_state = PlaceState::Dead;
+            new_state.meet(self.get_place_state(nplace));
+            self.update_place_state(nplace, new_state);
         }
     }
 
@@ -253,6 +255,8 @@ impl State {
                 } else {
                     self.get_value_set_rec(inner_object, new_suffix, values);
                 }
+            } else if inner_expr.is_ite() {
+                self.get_value_set_rec(inner_expr, new_suffix, values);
             } else if inner_expr.is_unknown() {
                 values.insert((expr.ctx.unknown(expr.ty().pointee_ty()), None));
             } else {

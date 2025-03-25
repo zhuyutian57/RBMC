@@ -26,9 +26,13 @@ pub enum DisplayState {
 #[derive(Parser, Debug, Default)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
-    /// Source file `.rs`
+    /// Source file '.rs'
     #[arg(default_value_t = NString::EMPTY)]
     pub file: NString,
+
+    /// Loop bound. '0' indicates unbounded
+    #[arg(long, default_value_t = 0)]
+    pub unwind: usize,
 
     /// Show program
     #[arg(long, default_value_t = false)]

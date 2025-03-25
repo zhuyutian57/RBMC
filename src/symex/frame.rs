@@ -3,6 +3,7 @@ use std::collections::*;
 use stable_mir::mir::*;
 
 use super::state::*;
+use crate::config::config::Config;
 use crate::expr::context::*;
 use crate::program::function::*;
 use crate::symbol::nstring::*;
@@ -11,6 +12,7 @@ use crate::symbol::nstring::*;
 /// The id is used for naming variable. It is the unique
 /// identifier for each frame.
 pub struct Frame<'func> {
+    config: &'func Config,
     id: usize,
     function: &'func Function,
     _loop_count: HashMap<Pc, usize>,
@@ -19,28 +21,30 @@ pub struct Frame<'func> {
     pub(super) target: Option<BasicBlockIdx>,
     /// Current Computing
     pc: Pc,
+    loop_stack: Vec<Pc>,
     pub(super) cur_state: State,
     state_map: HashMap<Pc, Vec<State>>,
 }
 
 impl<'func> Frame<'func> {
     pub fn new(
-        ctx: ExprCtx,
+        config: &'func Config,
         id: usize,
         function: &'func Function,
         destination: Option<Place>,
         target: Option<BasicBlockIdx>,
     ) -> Self {
-        let state_map = HashMap::new();
         Frame {
+            config,
             id,
             function,
             _loop_count: HashMap::new(),
             destination,
             target,
             pc: 0,
-            cur_state: State::new(ctx.clone()),
-            state_map,
+            loop_stack: Vec::new(),
+            cur_state: State::new(config.expr_ctx.clone()),
+            state_map: HashMap::new(),
         }
     }
 
@@ -49,21 +53,41 @@ impl<'func> Frame<'func> {
     }
 
     pub fn inc_pc(&mut self) {
-        // To handle loop, we set the small pc every time we inc,
-        // since the basic blocks have been in reverse post-order.
-        self.pc = *self.state_map.keys().min().expect("Impossible");
+        while let Some(&l) = self.loop_stack.last() {
+            let mut mi = self.function.size();
+            for pc in self.function.get_loop(l) {
+                if self.state_map.contains_key(&pc) {
+                    mi = std::cmp::min(mi, *pc);
+                }
+            }
+            if mi != self.function.size() {
+                self.pc = mi;
+                return;
+            } else {
+                self.loop_stack.pop();
+            }
+        }
+        
+        self.pc = *self.state_map.keys().min().unwrap();
     }
 
-    // Counting the number of unwinding of loop
+    /// Counting the number of unwinding of loop
     pub fn unwind(&mut self, pc: Pc) {
         if self.function.is_loop_bb(pc) {
             self._loop_count.entry(pc).and_modify(|c| *c += 1).or_insert(1);
+            self.loop_stack.push(pc);
             println!(
                 "Unwinding loop bb{pc} in {:?} for {} times",
                 self.function.name(),
                 self._loop_count.get(&pc).unwrap()
             );
         }
+    }
+
+    /// Check whether the current loop read loop bound
+    pub fn reach_loop_bound(&self, pc: Pc) -> bool {
+        self.config.cli.unwind != 0 && self._loop_count.contains_key(&pc) &&
+            *self._loop_count.get(&pc).unwrap() >= self.config.cli.unwind
     }
 
     pub fn cur_state(&self) -> &State {
