@@ -162,7 +162,7 @@ impl Type {
     }
 
     /// Size will be in field-level
-    pub fn size(&self) -> Option<usize> {
+    pub fn num_fields(&self) -> Option<usize> {
         if self.is_unit() {
             return Some(0);
         }
@@ -177,7 +177,7 @@ impl Type {
         if self.is_struct() {
             let def = self.struct_def();
             let size = def.1.iter().fold(0, |acc, x| {
-                acc + match x.1.size() {
+                acc + match x.1.num_fields() {
                     Some(s) => s,
                     None => panic!("Impoissible"),
                 }
@@ -188,7 +188,7 @@ impl Type {
         if self.is_tuple() {
             let def = self.tuple_def();
             let size = def.iter().fold(0, |acc, x| {
-                acc + match x.size() {
+                acc + match x.num_fields() {
                     Some(s) => s,
                     None => panic!("Impoissible"),
                 }

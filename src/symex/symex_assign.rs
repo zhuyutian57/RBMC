@@ -19,12 +19,6 @@ impl<'cfg> Symex<'cfg> {
         self.assign(lhs, rhs.clone(), self.ctx._true().into());
     }
 
-    pub(super) fn symex_assign_layout(&mut self, lhs: Expr, ty: Type) {
-        // Use l2 symbol to do assignment
-        let layout = self.ctx.mk_type(ty);
-        self.assign(lhs, layout, self.ctx._true().into());
-    }
-
     pub(super) fn assign(&mut self, lhs: Expr, rhs: Expr, guard: Guard) {
         assert!(lhs.ty().is_layout() || lhs.ty() == rhs.ty());
         self.assign_rec(lhs, rhs.clone(), guard);

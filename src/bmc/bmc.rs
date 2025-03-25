@@ -29,7 +29,7 @@ impl<'cfg> Bmc<'cfg> {
         }
 
         let verify_time = std::time::Instant::now();
-        println!("Stat Symex ...");
+        println!("Start Symex ...");
 
         self.symex.run();
         println!("Runtime Symex: {}s", verify_time.elapsed().as_secs_f32());

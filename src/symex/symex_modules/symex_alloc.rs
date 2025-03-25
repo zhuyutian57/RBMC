@@ -62,6 +62,6 @@ impl<'cfg> Symex<'cfg> {
 
     fn symex_layout_new(&mut self, dest: Expr, fndef: &FunctionDef) {
         let ty = Type::from(fndef.1.0[0].expect_ty());
-        self.symex_assign_layout(dest, ty);
+        self.assign(dest, self.ctx.mk_type(ty), self.ctx._true().into());
     }
 }

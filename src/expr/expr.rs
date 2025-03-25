@@ -297,7 +297,7 @@ impl Expr {
 
         if self.is_slice() {
             let mut offset = self.extract_object().compute_offset();
-            let elem_size = self.ty().elem_type().size().expect("Impossible");
+            let elem_size = self.ty().elem_type().num_fields().expect("Impossible");
             let start = self.extract_slice_start();
             offset = self
                 .ctx
@@ -312,7 +312,7 @@ impl Expr {
             let index = self.extract_index();
 
             let collected_offset = if inner_object.ty().is_array() || inner_object.ty().is_slice() {
-                let elem_size = inner_object.ty().size().expect("Impossible");
+                let elem_size = inner_object.ty().num_fields().expect("Impossible");
                 self.ctx.mul(index, self.ctx.constant_isize(BigInt::from(elem_size)))
             } else if inner_object.ty().is_struct() {
                 assert!(index.is_constant());
@@ -322,7 +322,7 @@ impl Expr {
                 let i = bigint_to_usize(&idx);
                 let mut res = 0;
                 for j in 0..i {
-                    res += def.1[j].1.size().expect("");
+                    res += def.1[j].1.num_fields().expect("");
                 }
                 self.ctx.constant_isize(BigInt::from(res))
             } else {
@@ -334,7 +334,7 @@ impl Expr {
                 let i = bigint_to_usize(&idx);
                 let mut res = 0;
                 for j in 0..i {
-                    res += def[j].size().expect("");
+                    res += def[j].num_fields().expect("");
                 }
                 self.ctx.constant_isize(BigInt::from(res))
             };
