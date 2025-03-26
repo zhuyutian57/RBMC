@@ -23,6 +23,16 @@ impl ValueSet {
         self._points_to_map.insert(pt, objects);
     }
 
+    pub fn union(&mut self, rhs: &ValueSet) {
+        for (&pt, objects) in rhs._points_to_map.iter() {
+            self._points_to_map.entry(pt)
+                .and_modify(|s|
+                    objects.iter().for_each(|o| { s.insert(o.clone()); })
+                )
+                .or_insert(objects.clone());
+        } 
+    }
+
     pub fn remove(&mut self, pt: NString) {
         self._points_to_map.remove(&pt);
     }

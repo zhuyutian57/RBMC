@@ -36,7 +36,7 @@ impl<'cfg> Symex<'cfg> {
             if let Some(s) = slice {
                 let rhs = self.ctx.address_of(self.ctx.object(s), ty);
                 self.assign(lhs, rhs, self.ctx._true().into());
-                self.symex_move(pt);
+                // self.symex_move(pt);
             }
             return;
         }

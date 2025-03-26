@@ -23,7 +23,7 @@ impl<'cfg> Symex<'cfg> {
         assert!(lhs.ty().is_layout() || lhs.ty() == rhs.ty());
         self.assign_rec(lhs, rhs.clone(), guard);
         // move semantic
-        self.symex_move(rhs);
+        // self.symex_move(rhs);
     }
 
     fn assign_symbol(&mut self, mut lhs: Expr, mut rhs: Expr, guard: Guard) {

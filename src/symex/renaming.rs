@@ -84,11 +84,15 @@ impl Renaming {
         Symbol::new(ident, l1_num, l2_num, Level::Level2)
     }
 
-    pub fn constant_propagate(&mut self, lhs: Expr, constant: Expr) {
-        self.constant_map
-            .entry(lhs.extract_symbol())
-            .and_modify(|x| *x = constant.clone())
-            .or_insert(constant);
+    pub fn constant_propagate(&mut self, lhs: Expr, constant: Option<Expr>) {
+        if let Some(c) = constant {
+            self.constant_map
+                .entry(lhs.extract_symbol())
+                .and_modify(|x| *x = c.clone())
+                .or_insert(c);
+        } else {
+            self.constant_map.remove(&lhs.extract_symbol());
+        };
     }
 
     pub fn l1_rename(&mut self, expr: &mut Expr) {

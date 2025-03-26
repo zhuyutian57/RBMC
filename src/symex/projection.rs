@@ -104,7 +104,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
             // Valid check
             let place_state = self._callback_symex.exec_state.get_place_state(&root_object);
             if place_state.is_unknown() || place_state.is_dead() {
-                self.valid_check(root_object.clone(), pointer_guard.clone(), place_state);
+                self.valid_check(root_object.clone(), place_state, mode, pointer_guard.clone());
             }
 
             if mode == Mode::Drop || mode == Mode::Dealloc {
@@ -289,11 +289,16 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         self._ctx.object(l1_symbol)
     }
 
-    fn valid_check(&mut self, object: Expr, guard: Guard, state: PlaceState) {
+    fn valid_check(&mut self, object: Expr, state: PlaceState, mode: Mode, guard: Guard) {
         assert!(object.is_object());
         let invalid =
             if state.is_unknown() { self._ctx.invalid(object.clone()) } else { self._ctx._true() };
-        let msg = NString::from(format!("valid check: {object:?} is dead"));
+        let msg = match mode {
+            Mode::Read | Mode::Slice(..)
+                => NString::from(format!("valid check: {object:?} is dead")),
+            Mode::Dealloc | Mode::Drop
+                => NString::from(format!("double {mode:?}: {object:?} is dead"))
+        };
         let mut error = guard.clone();
         error.add(invalid);
         self._callback_symex.claim(msg, error.to_expr());

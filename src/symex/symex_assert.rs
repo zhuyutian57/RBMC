@@ -25,7 +25,7 @@ impl<'cfg> Symex<'cfg> {
         }
         self.vc_system.borrow_mut().assert(msg, cond);
 
-        self.symex_move(expr);
+        // self.symex_move(expr);
 
         self.register_state(*target, self.top().cur_state.clone());
     }

@@ -80,9 +80,6 @@ impl State {
 
     pub fn assign(&mut self, expr: Expr, mut values: ObjectSet) {
         assert!(expr.ty().is_any_ptr());
-        if values.len() == 1 && values.iter().fold(true, |acc, x| acc & x.0.is_unknown()) {
-            values.clear();
-        }
         self.assign_rec(expr, NString::EMPTY, values);
     }
 
@@ -122,34 +119,17 @@ impl State {
         todo!("assign value set for {expr:?}");
     }
 
-    pub fn merge(&mut self, other: &State) {
+    pub fn merge(&mut self, rhs: &State) {
         if self.guard.is_false() {
-            self.place_states = other.place_states.clone();
-            self.value_set = other.value_set.clone();
+            self.place_states = rhs.place_states.clone();
+            self.value_set = rhs.value_set.clone();
         } else {
             // Merge place states
-            self.place_states.merge(&other.place_states);
+            self.place_states.merge(&rhs.place_states);
             // Merge value set
-            let pointers = self
-                .value_set
-                .pointers()
-                .union(&other.value_set.pointers())
-                .map(|x| *x)
-                .collect::<HashSet<_>>();
-            for pt in pointers {
-                let mut new_objects = HashSet::new();
-                self.value_set.get(pt, &mut new_objects);
-                other.value_set.get(pt, &mut new_objects);
-                // If any of state does not contain the pointer,
-                // the pointer is uninitialized.
-                if !self.value_set.contains(pt) || !other.value_set.contains(pt) {
-                    let ty = new_objects.iter().next().unwrap().0.ty();
-                    new_objects.insert((self.ctx.unknown(ty), None));
-                }
-                self.value_set.insert(pt, new_objects);
-            }
+            self.value_set.union(&rhs.value_set);
         }
-        self.guard |= &other.guard;
+        self.guard |= &rhs.guard;
     }
 
     pub fn get_value_set(&self, expr: Expr, values: &mut ObjectSet) {

@@ -24,15 +24,15 @@ fn append(plist : *mut *mut item) {
     }
 }
 
-#[cfg(kani)]
-#[kani::proof]
+extern crate mirv;
+
 fn main() {
     let mut list : *mut item = ptr::null_mut();
 
     loop {
         append(&mut list as *mut *mut item);
         
-        if kani::any::<i32>() == 0 { break; }
+        if mirv::nondet::<i32>() == 0 { break; }
     }
 
     if !list.is_null() {
@@ -58,49 +58,6 @@ fn main() {
 
             dealloc(list as *mut u8, Layout::new::<item>());
 
-            list = next;
-        }
-    }
-}
-
-#[cfg(verifier = "smack")]
-extern crate smack;
-
-#[cfg(verifier = "smack")]
-use smack::*;
-
-#[cfg(verifier = "smack")]
-fn main() {
-    let mut list : *mut item = ptr::null_mut();
-
-    loop {
-        append(&mut list as *mut *mut item);
-        
-        if unsafe { smack::__VERIFIER_nondet_i32() } == 0 { break; }
-    }
-
-    if !list.is_null() {
-        let mut next = unsafe { (*list).next };
-
-        unsafe {
-            dealloc((*list).data as *mut u8, Layout::new::<item>());
-            
-            dealloc(list as *mut u8, Layout::new::<item>());
-
-            list = next;
-        }
-    }
-
-    while !list.is_null() {
-        let mut next = unsafe { (*list).next };
-
-        unsafe {
-            if !next.is_null() {
-                // invalid-free, double free
-                dealloc((*list).data as *mut u8, Layout::new::<item>());
-            }
-
-            dealloc(list as *mut u8, Layout::new::<item>());
             list = next;
         }
     }

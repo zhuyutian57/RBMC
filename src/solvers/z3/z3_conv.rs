@@ -35,7 +35,7 @@ impl<'ctx> Z3Conv<'ctx> {
             tuple_sorts: HashMap::new(),
             pointer_logic: PointerLogic::new(),
             cache: HashMap::new(),
-            cur_alloc_expr: None,
+            cur_alloc_expr: None
         }
     }
 
@@ -45,7 +45,7 @@ impl<'ctx> Z3Conv<'ctx> {
     }
 
     pub(super) fn assert(&self, e: z3::ast::Dynamic<'ctx>) {
-        self.z3_solver.assert(&e.as_bool().expect("the assertion is not bool"));
+        self.z3_solver.assert(&e.as_bool().unwrap());
     }
 }
 
@@ -77,9 +77,11 @@ impl<'ctx> SmtSolver<'ctx> for Z3Conv<'ctx> {
         self.cache.clear();
         // Clear memory space
         self.pointer_logic.clear();
+        // Reset alloc array
+        self.cur_alloc_expr = None;
     }
 
-    fn check(&self) -> PResult {
+    fn check(&self) -> PResult {        
         match self.z3_solver.check() {
             z3::SatResult::Sat => PResult::PSat,
             z3::SatResult::Unknown => PResult::PUnknow,

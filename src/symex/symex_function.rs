@@ -43,9 +43,9 @@ impl<'cfg> Symex<'cfg> {
         }
 
         // Move semantic
-        for arg_expr in args_exprs {
-            self.symex_move(arg_expr);
-        }
+        // for arg_expr in args_exprs {
+        //     self.symex_move(arg_expr);
+        // }
 
         if let Some(t) = target {
             let state = self.top_mut().cur_state().clone();

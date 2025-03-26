@@ -60,6 +60,7 @@ impl<'cfg> Bmc<'cfg> {
         let mut slicer = Slicer::default();
         let size = self.vc_system.borrow().num_asserts();
         for i in 0..size {
+            if i < 19 || i > 22 { continue; }
             println!("Begin checking assertion {i}");
             if self.config.cli.show_vcc {
                 print!("Verifying condition {i} ");
@@ -151,6 +152,17 @@ impl<'cfg> Bmc<'cfg> {
                     self.runtime_solver.assert_assign(lhs.clone(), rhs.clone());
                 }
                 VcKind::Assert(_, c) => {
+                    // let asserts = c.unwrap_and();
+                    // println!(" Complete {asserts:?}");
+                    // for (i, e) in asserts.iter().enumerate() {
+                    //     if e.is_unary() && e.extract_inner_expr().is_symbol()
+                    //         && e.extract_inner_expr().extract_symbol()
+                    //             .name() == "main_1::19::1::1" {
+                    //         println!("Assert {e:?}");
+                    //         assertions.push(e.clone());
+                    //         break;
+                    //     }
+                    // }
                     assertions.push(ctx.implies(assumetion.clone(), c.clone()));
                 }
                 VcKind::Assume(c) => {
