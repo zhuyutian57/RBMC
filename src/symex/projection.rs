@@ -295,10 +295,9 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
             if state.is_unknown() { self._ctx.invalid(object.clone()) } else { self._ctx._true() };
         let msg = match mode {
             Mode::Read | Mode::Slice(..) => format!("invalid deref: {object:?} is dead").into(),
-            Mode::Dealloc | Mode::Drop => format!(
-                "double {}: {object:?} is dead",
-                format!("{mode:?}").to_lowercase()
-            ).into(),
+            Mode::Dealloc | Mode::Drop => {
+                format!("double {}: {object:?} is dead", format!("{mode:?}").to_lowercase()).into()
+            }
         };
         let mut error = guard.clone();
         error.add(invalid);

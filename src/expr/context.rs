@@ -416,8 +416,8 @@ impl ExprBuilder for ExprCtx {
     fn add(&self, lhs: Expr, rhs: Expr) -> Expr {
         assert!(
             lhs.ty().is_integer() && rhs.ty().is_integer() ||
-      // The offset must be rhs
-      lhs.ty().is_ptr() && rhs.ty().is_integer()
+            // The offset must be rhs
+            lhs.ty().is_ptr() && rhs.ty().is_integer()
         );
         let kind = NodeKind::Binary(BinOp::Add, lhs.id, rhs.id);
         // Carefully, don't use rhs.ty()
@@ -430,8 +430,8 @@ impl ExprBuilder for ExprCtx {
     fn sub(&self, lhs: Expr, rhs: Expr) -> Expr {
         assert!(
             lhs.ty().is_integer() && rhs.ty().is_integer() ||
-      // The offset must be rhs
-      lhs.ty().is_ptr() && rhs.ty().is_integer()
+            // The offset must be rhs
+            lhs.ty().is_ptr() && rhs.ty().is_integer()
         );
         let kind = NodeKind::Binary(BinOp::Sub, lhs.id, rhs.id);
         let ty = lhs.ty();

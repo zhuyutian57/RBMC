@@ -49,12 +49,14 @@ impl Function {
             for bb in &self.body.blocks {
                 for st in &bb.statements {
                     match &st.kind {
-                        StatementKind::StorageLive(l) => { is_alive &= (local != *l)},
-                        _ => {},
+                        StatementKind::StorageLive(l) => is_alive &= (local != *l),
+                        _ => {}
                     }
                 }
             }
-            if is_alive { self._local_alive.insert(local); }
+            if is_alive {
+                self._local_alive.insert(local);
+            }
         }
         // Find all loops
         let mut predecessors: HashMap<usize, HashSet<usize>> = HashMap::new();

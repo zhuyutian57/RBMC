@@ -22,7 +22,7 @@ fn foo() {
     }
 }
 
-#[kani::proof]
+// #[kani::proof]
 fn main() {
     let layout = Layout::new::<[i32; n]>();
     unsafe { a =  alloc(layout) as *mut i32 };

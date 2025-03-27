@@ -182,7 +182,9 @@ impl<'cfg> Bmc<'cfg> {
         } else {
             for n in 0..self.vc_system.borrow().num_asserts() {
                 let assertion = self.vc_system.borrow().nth_assertion(n);
-                Bmc::bug_info(&assertion);
+                if self.runtime_solver.eval_bool(assertion.cond()) {
+                    Bmc::bug_info(&assertion);
+                }
             }
         }
         println!("");

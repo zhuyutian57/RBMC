@@ -200,11 +200,17 @@ impl<'cfg> ExecutionState<'cfg> {
         }
         assert!(lhs.is_symbol());
         let const_rhs = if !lhs.ty().is_layout() && lhs.ty() != rhs.ty() {
-            self.ctx.cast(rhs, self.ctx.mk_type(lhs.ty()))
+            self.cast_constant(rhs, lhs.ty())
         } else {
             rhs
         };
         self.renaming.borrow_mut().constant_propagate(lhs, Some(const_rhs));
+    }
+
+    fn cast_constant(&mut self, expr: Expr, ty: Type) -> Expr {
+        assert!(ty.is_integer());
+        let integer = expr.extract_constant().to_integer();
+        self.ctx.constant_integer(integer, ty)
     }
 
     pub fn get_place_state(&self, place: &Expr) -> PlaceState {
