@@ -1,7 +1,6 @@
 
 fn index() -> usize { 100 }
 
-// #[kani::proof]
 fn main() {
   let mut array = [0; 5];
   // The assert is builtin in Rust. No need to generate bound check.

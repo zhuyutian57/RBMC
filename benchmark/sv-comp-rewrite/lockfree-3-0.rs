@@ -99,7 +99,6 @@ fn pop() {
 
 extern crate mirv;
 
-// #[kani::proof]
 fn main() {
     while unsafe { 
         !S.is_null() || pc1 != 1 || pc4 != 1

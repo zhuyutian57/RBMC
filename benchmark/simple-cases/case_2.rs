@@ -1,6 +1,5 @@
 use std::alloc::{alloc, dealloc, Layout};
 
-// #[kani::proof]
 fn main() {
     let layout = Layout::new::<i32>();
     // The memory allocated by `alloc` should be

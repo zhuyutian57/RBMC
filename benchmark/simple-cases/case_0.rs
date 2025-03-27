@@ -10,7 +10,6 @@ fn g(x: i32) -> i32 {
   1910 * x
 }
 
-// #[kani::proof]
 fn main() {
   let mut n1 = Node { x : -12, y : 100 };
   let mut n2 = Node { x : 13, y : 100 };
@@ -27,9 +26,5 @@ fn main() {
   let bn = if n1.x == n2.x { &mut n1 } else { &mut n2 };
   unsafe { *pn = Node { x : 190, y : 54 }; }
   let t = &mut *boxn;
-  // for i in 0..10 {
-  //   let x = 10;
-  //   t.x *= x;
-  // }
   t.x = g(t.x);
 }

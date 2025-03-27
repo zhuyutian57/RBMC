@@ -1,6 +1,5 @@
 use std::{alloc::{alloc, dealloc, Layout}, ptr};
 
-// #[kani::proof]
 fn main() {
     struct T {
         next : *const T,

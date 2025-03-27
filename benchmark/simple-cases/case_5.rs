@@ -3,8 +3,6 @@ use std::{alloc::{alloc, dealloc, Layout}, ptr};
 
 unsafe fn create_ref_from_raw(p: *mut i32) -> &'static mut i32 { &mut *p }
 
-
-// #[kani::proof]
 fn main() {
   let p = unsafe { alloc(Layout::new::<i32>()) as *mut i32 };
   // let bp = unsafe { Box::from_raw(p) };

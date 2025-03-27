@@ -9,7 +9,6 @@ fn prepend(n : *mut Node) -> Node {
     Node { x : 0, nxt : n }
 }
 
-// #[kani::proof]
 fn main() {
     let mut hn = 
         &mut Node {

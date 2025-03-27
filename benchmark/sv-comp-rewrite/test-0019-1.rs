@@ -22,7 +22,6 @@ fn free_data(data : TData) {
     }
 }
 
-// #[kani::proof]
 fn main() {
     let mut data = TData {
         lo : ptr::null_mut() as *mut u8,
