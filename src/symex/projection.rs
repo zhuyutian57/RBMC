@@ -294,13 +294,11 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let invalid =
             if state.is_unknown() { self._ctx.invalid(object.clone()) } else { self._ctx._true() };
         let msg = match mode {
-            Mode::Read | Mode::Slice(..) => {
-                NString::from(format!("valid check: {object:?} is dead"))
-            }
-            Mode::Dealloc | Mode::Drop => NString::from(format!(
+            Mode::Read | Mode::Slice(..) => format!("invalid deref: {object:?} is dead").into(),
+            Mode::Dealloc | Mode::Drop => format!(
                 "double {}: {object:?} is dead",
                 format!("{mode:?}").to_lowercase()
-            )),
+            ).into(),
         };
         let mut error = guard.clone();
         error.add(invalid);
@@ -350,8 +348,9 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         self._callback_symex.rename(&mut not_alloced);
         let msg = match mode {
             Mode::Read => NString::from("dereference failure: invalid pointer"),
-            Mode::Drop => NString::from("drop failure: uninitilized box(smart) pointer"),
-            Mode::Dealloc => NString::from(format!("dealloc failure: invalid pointer {pt:?}")),
+            // TODO: support more smart pointer
+            Mode::Drop => NString::from("drop failure: uninitilized box pointer"),
+            Mode::Dealloc => NString::from("dealloc failure: invalid pointer"),
             _ => todo!(),
         };
         let mut error = guard.clone();

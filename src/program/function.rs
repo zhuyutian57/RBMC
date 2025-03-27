@@ -20,6 +20,8 @@ pub struct Function {
     name: NString,
     args: Args,
     body: Body,
+    /// Record the locals without StorageLive
+    _local_alive: HashSet<Local>,
     _loops: LoopSet,
     /// Used to record loop bound for each bb in loops
     _bb_unwind_bound: HashMap<Pc, usize>,
@@ -32,6 +34,7 @@ impl Function {
             name: NString::from(def.trimmed_name()),
             args: (1..def.body().unwrap().arg_locals().len() + 1).collect(),
             body,
+            _local_alive: HashSet::new(),
             _loops: HashMap::new(),
             _bb_unwind_bound: HashMap::new(),
         };
@@ -40,6 +43,20 @@ impl Function {
     }
 
     fn init(&mut self) {
+        // Find locals without StorageLive
+        for local in 1..self.locals().len() {
+            let mut is_alive = true;
+            for bb in &self.body.blocks {
+                for st in &bb.statements {
+                    match &st.kind {
+                        StatementKind::StorageLive(l) => { is_alive &= (local != *l)},
+                        _ => {},
+                    }
+                }
+            }
+            if is_alive { self._local_alive.insert(local); }
+        }
+        // Find all loops
         let mut predecessors: HashMap<usize, HashSet<usize>> = HashMap::new();
         for i in 0..self.body.blocks.len() {
             for j in self.body.blocks[i].terminator.successors() {
@@ -49,7 +66,6 @@ impl Function {
                 });
             }
         }
-        // Find all loops
         for i in 0..self.body.blocks.len() {
             for j in self.body.blocks[i].terminator.successors() {
                 // Back edge
@@ -84,6 +100,10 @@ impl Function {
 
     pub fn locals(&self) -> &[LocalDecl] {
         self.body.locals()
+    }
+
+    pub fn locals_alive(&self) -> &HashSet<Local> {
+        &self._local_alive
     }
 
     pub fn local_decl(&self, local: Local) -> &LocalDecl {

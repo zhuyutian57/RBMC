@@ -207,24 +207,6 @@ impl<'cfg> ExecutionState<'cfg> {
         self.renaming.borrow_mut().constant_propagate(lhs, Some(const_rhs));
     }
 
-    fn get_place_state_for_stack_symbol(&self, ident: NString) -> PlaceState {
-        // Static variables
-        for x in self.config.program.static_variables() {
-            if ident == NString::from(x.trimmed_name()) {
-                return PlaceState::Own;
-            }
-        }
-        // Local without storagelive
-        assert!(ident.contains("::".into()));
-        let func = ident.sub_str(0, ident.find(":".into()).unwrap());
-        for frame in self.frames.iter().rev() {
-            if func == frame.function_id() {
-                return PlaceState::Own;
-            }
-        }
-        PlaceState::Dead
-    }
-
     pub fn get_place_state(&self, place: &Expr) -> PlaceState {
         if place.is_object() {
             return self.get_place_state(&place.extract_inner_expr());
@@ -236,7 +218,8 @@ impl<'cfg> ExecutionState<'cfg> {
         let nplace = NPlace(l1_name);
         let state = self.top().cur_state.get_place_state(nplace);
         if state.is_unknown() && symbol.is_stack_symbol() {
-            return self.get_place_state_for_stack_symbol(symbol.ident());
+            // The place state of a local after StorageDead is removed.
+            return PlaceState::Dead;
         }
         state
     }

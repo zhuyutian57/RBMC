@@ -1,10 +1,13 @@
 use stable_mir::CrateDef;
 use stable_mir::mir::*;
 
+use super::place_state::NPlace;
+use super::place_state::PlaceState;
 use super::symex::*;
 use crate::expr::expr::*;
 use crate::program::function::FunctionIdx;
 use crate::symbol::nstring::NString;
+use crate::symbol::symbol::Level;
 
 impl<'cfg> Symex<'cfg> {
     pub(super) fn symex_call(
@@ -65,9 +68,15 @@ impl<'cfg> Symex<'cfg> {
         for arg in args {
             arg_exprs.push(self.make_operand(arg));
         }
-        // push frame for new name
+        // Push frame for new name
         self.exec_state.push_frame(i, Some(dest.clone()), *target);
-        // set arguements
+        // Set alive local place state
+        for local in self.top().function().locals_alive() {
+            let l1_local = self.exec_state.current_local(*local, Level::Level1);
+            let nplace = NPlace(l1_local.extract_symbol().l1_name());
+            self.top_mut().cur_state.update_place_state(nplace, PlaceState::Own);
+        }
+        // Set arguements
         let args = self.top_mut().function().args();
         if !args.is_empty() {
             for arg_local in args.iter() {
