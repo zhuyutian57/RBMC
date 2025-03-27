@@ -1,0 +1,493 @@
+Crate:lockfree_3_0, Endian:Little, MachineSize:8
+
+--->>> Function: main
+fn main() -> () {
+    let mut _0: ();
+    let mut _1: bool;
+    let mut _2: bool;
+    let mut _3: *mut cell;
+    let mut _4: *mut *mut cell;
+    let mut _5: i32;
+    let mut _6: *mut i32;
+    let mut _7: i32;
+    let mut _8: *mut i32;
+    let mut _9: i32;
+    let mut _10: i32;
+    let  _11: ();
+    let  _12: ();
+    let mut _13: usize;
+    let mut _14: *mut cell;
+    let mut _15: *mut *mut cell;
+    let  _16: *mut cell;
+    let  _17: ();
+    let mut _18: *mut u8;
+    let mut _19: *mut cell;
+    let mut _20: std::alloc::Layout;
+    let mut _21: *mut cell;
+    debug next => _16;
+    bb0: {
+        goto -> bb1;
+    }
+    bb1: {
+        StorageLive(_1);
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = {alloc1: *mut *mut cell};
+        _3 = (*_4);
+        _2 = std::ptr::mut_ptr::<impl *mut cell>::is_null(move _3) -> [return: bb2, unwind continue];
+    }
+    bb2: {
+        switchInt(move _2) -> [0: bb3, otherwise: bb4];
+    }
+    bb3: {
+        StorageDead(_3);
+        StorageDead(_4);
+        goto -> bb16;
+    }
+    bb4: {
+        StorageDead(_3);
+        StorageDead(_4);
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = {alloc6: *mut i32};
+        _5 = (*_6);
+        switchInt(move _5) -> [1: bb5, otherwise: bb15];
+    }
+    bb5: {
+        StorageDead(_6);
+        StorageDead(_5);
+        StorageLive(_7);
+        StorageLive(_8);
+        _8 = {alloc7: *mut i32};
+        _7 = (*_8);
+        switchInt(move _7) -> [1: bb6, otherwise: bb14];
+    }
+    bb6: {
+        StorageDead(_8);
+        StorageDead(_7);
+        StorageLive(_9);
+        _9 = mirv::nondet::<i32>() -> [return: bb7, unwind continue];
+    }
+    bb7: {
+        _1 = Ne(move _9, 0_i32);
+        StorageDead(_9);
+        StorageDead(_2);
+        switchInt(move _1) -> [0: bb8, otherwise: bb17];
+    }
+    bb8: {
+        StorageDead(_1);
+        goto -> bb9;
+    }
+    bb9: {
+        StorageLive(_13);
+        StorageLive(_14);
+        _15 = {alloc18: *mut *mut cell};
+        _14 = (*_15);
+        _13 = move _14 as usize;
+        StorageDead(_14);
+        switchInt(move _13) -> [0: bb10, otherwise: bb11];
+    }
+    bb10: {
+        StorageDead(_13);
+        return;
+    }
+    bb11: {
+        StorageDead(_13);
+        _21 = (*_15);
+        _16 = ((*_21).1: *mut cell);
+        StorageLive(_18);
+        StorageLive(_19);
+        _19 = (*_15);
+        _18 = move _19 as *mut u8;
+        StorageDead(_19);
+        StorageLive(_20);
+        _20 = std::alloc::Layout::new::<cell>() -> [return: bb12, unwind continue];
+    }
+    bb12: {
+        _17 = std::alloc::dealloc(move _18, move _20) -> [return: bb13, unwind continue];
+    }
+    bb13: {
+        StorageDead(_20);
+        StorageDead(_18);
+        (*_15) = _16;
+        goto -> bb9;
+    }
+    bb14: {
+        StorageDead(_8);
+        StorageDead(_7);
+        goto -> bb16;
+    }
+    bb15: {
+        StorageDead(_6);
+        StorageDead(_5);
+        goto -> bb16;
+    }
+    bb16: {
+        StorageDead(_2);
+        goto -> bb17;
+    }
+    bb17: {
+        StorageLive(_10);
+        _10 = mirv::nondet::<i32>() -> [return: bb18, unwind continue];
+    }
+    bb18: {
+        switchInt(move _10) -> [0: bb19, otherwise: bb20];
+    }
+    bb19: {
+        StorageDead(_10);
+        _12 = pop() -> [return: bb21, unwind continue];
+    }
+    bb20: {
+        StorageDead(_10);
+        _11 = push() -> [return: bb21, unwind continue];
+    }
+    bb21: {
+        StorageDead(_1);
+        goto -> bb1;
+    }
+}
+<<<--- End: main
+
+--->>> Function: push
+fn push() -> () {
+    let mut _0: ();
+    let mut _1: i32;
+    let mut _2: *mut i32;
+    let mut _3: *mut u8;
+    let mut _4: std::alloc::Layout;
+    let mut _5: *mut *mut cell;
+    let mut _6: *mut cell;
+    let mut _7: *mut *mut cell;
+    let mut _8: *mut cell;
+    let mut _9: *mut *mut cell;
+    let mut _10: *mut *mut cell;
+    let mut _11: *mut cell;
+    let mut _12: *mut *mut cell;
+    let mut _13: *mut *mut cell;
+    let mut _14: bool;
+    let mut _15: *mut cell;
+    let mut _16: *mut *mut cell;
+    let mut _17: *mut cell;
+    let mut _18: *mut *mut cell;
+    let mut _19: *mut cell;
+    let mut _20: *mut *mut cell;
+    let mut _21: *mut cell;
+    let mut _22: *mut cell;
+    let mut _23: *mut cell;
+    let mut _24: *mut cell;
+    bb0: {
+        StorageLive(_1);
+        _2 = {alloc6: *mut i32};
+        _1 = (*_2);
+        switchInt(_1) -> [1: bb1, 2: bb5, 3: bb6, 4: bb7, 5: bb8, 6: bb12, otherwise: bb14];
+    }
+    bb1: {
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = std::alloc::Layout::new::<cell>() -> [return: bb2, unwind continue];
+    }
+    bb2: {
+        _3 = std::alloc::alloc(move _4) -> [return: bb3, unwind continue];
+    }
+    bb3: {
+        StorageDead(_4);
+        _5 = {alloc13: *mut *mut cell};
+        (*_5) = move _3 as *mut cell;
+        StorageDead(_3);
+        _23 = (*_5);
+        ((*_23).0: i32) = 0_i32;
+        StorageLive(_6);
+        _6 = std::ptr::null_mut::<cell>() -> [return: bb4, unwind continue];
+    }
+    bb4: {
+        _24 = (*_5);
+        ((*_24).1: *mut cell) = move _6;
+        StorageDead(_6);
+        goto -> bb14;
+    }
+    bb5: {
+        StorageLive(_7);
+        _7 = {alloc13: *mut *mut cell};
+        _22 = (*_7);
+        ((*_22).0: i32) = 4_i32;
+        StorageDead(_7);
+        goto -> bb13;
+    }
+    bb6: {
+        StorageLive(_8);
+        StorageLive(_9);
+        _9 = {alloc1: *mut *mut cell};
+        _8 = (*_9);
+        StorageLive(_10);
+        _10 = {alloc8: *mut *mut cell};
+        (*_10) = move _8;
+        StorageDead(_8);
+        StorageDead(_10);
+        StorageDead(_9);
+        goto -> bb13;
+    }
+    bb7: {
+        StorageLive(_11);
+        StorageLive(_12);
+        _12 = {alloc8: *mut *mut cell};
+        _11 = (*_12);
+        StorageLive(_13);
+        _13 = {alloc13: *mut *mut cell};
+        _21 = (*_13);
+        ((*_21).1: *mut cell) = move _11;
+        StorageDead(_11);
+        StorageDead(_13);
+        StorageDead(_12);
+        goto -> bb13;
+    }
+    bb8: {
+        StorageLive(_14);
+        StorageLive(_15);
+        _16 = {alloc1: *mut *mut cell};
+        _15 = (*_16);
+        StorageLive(_17);
+        StorageLive(_18);
+        _18 = {alloc8: *mut *mut cell};
+        _17 = (*_18);
+        _14 = Eq(move _15, move _17);
+        StorageDead(_17);
+        StorageDead(_15);
+        switchInt(move _14) -> [0: bb9, otherwise: bb10];
+    }
+    bb9: {
+        StorageDead(_18);
+        (*_2) = 3_i32;
+        goto -> bb11;
+    }
+    bb10: {
+        StorageDead(_18);
+        StorageLive(_19);
+        StorageLive(_20);
+        _20 = {alloc13: *mut *mut cell};
+        _19 = (*_20);
+        (*_16) = move _19;
+        StorageDead(_19);
+        StorageDead(_20);
+        goto -> bb11;
+    }
+    bb11: {
+        StorageDead(_14);
+        goto -> bb13;
+    }
+    bb12: {
+        (*_2) = 1_i32;
+        goto -> bb13;
+    }
+    bb13: {
+        StorageDead(_1);
+        goto -> bb15;
+    }
+    bb14: {
+        StorageDead(_1);
+        (*_2) = Add((*_2), 1_i32);
+        goto -> bb15;
+    }
+    bb15: {
+        return;
+    }
+}
+<<<--- End: push
+
+--->>> Function: pop
+fn pop() -> () {
+    let mut _0: ();
+    let mut _1: i32;
+    let mut _2: *mut i32;
+    let mut _3: *mut cell;
+    let mut _4: *mut *mut cell;
+    let mut _5: *mut *mut cell;
+    let mut _6: bool;
+    let mut _7: *mut cell;
+    let mut _8: *mut *mut cell;
+    let mut _9: *mut cell;
+    let mut _10: *mut *mut cell;
+    let mut _11: *mut *mut cell;
+    let mut _12: bool;
+    let mut _13: *mut cell;
+    let mut _14: *mut *mut cell;
+    let mut _15: *mut cell;
+    let mut _16: *mut *mut cell;
+    let mut _17: *mut cell;
+    let mut _18: *mut *mut cell;
+    let mut _19: i32;
+    let mut _20: *mut *mut cell;
+    let mut _21: *mut i32;
+    let mut _22: *mut cell;
+    let mut _23: *mut *mut cell;
+    let mut _24: *mut cell;
+    let mut _25: *mut cell;
+    let mut _26: *mut cell;
+    let mut _27: *mut cell;
+    bb0: {
+        StorageLive(_1);
+        _2 = {alloc7: *mut i32};
+        _1 = (*_2);
+        switchInt(_1) -> [1: bb1, 2: bb2, 3: bb7, 4: bb8, 5: bb13, otherwise: bb14];
+    }
+    bb1: {
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = {alloc1: *mut *mut cell};
+        _3 = (*_4);
+        StorageLive(_5);
+        _5 = {alloc23: *mut *mut cell};
+        (*_5) = move _3;
+        StorageDead(_3);
+        StorageDead(_5);
+        StorageDead(_4);
+        goto -> bb12;
+    }
+    bb2: {
+        StorageLive(_6);
+        StorageLive(_7);
+        StorageLive(_8);
+        _8 = {alloc23: *mut *mut cell};
+        _7 = (*_8);
+        _6 = std::ptr::mut_ptr::<impl *mut cell>::is_null(move _7) -> [return: bb3, unwind continue];
+    }
+    bb3: {
+        switchInt(move _6) -> [0: bb4, otherwise: bb5];
+    }
+    bb4: {
+        StorageDead(_8);
+        StorageDead(_7);
+        goto -> bb6;
+    }
+    bb5: {
+        StorageDead(_8);
+        StorageDead(_7);
+        (*_2) = 1_i32;
+        goto -> bb6;
+    }
+    bb6: {
+        StorageDead(_6);
+        goto -> bb12;
+    }
+    bb7: {
+        StorageLive(_9);
+        StorageLive(_10);
+        _10 = {alloc23: *mut *mut cell};
+        _27 = (*_10);
+        _9 = ((*_27).1: *mut cell);
+        StorageLive(_11);
+        _11 = {alloc28: *mut *mut cell};
+        (*_11) = move _9;
+        StorageDead(_9);
+        StorageDead(_11);
+        StorageDead(_10);
+        goto -> bb12;
+    }
+    bb8: {
+        StorageLive(_12);
+        StorageLive(_13);
+        _14 = {alloc1: *mut *mut cell};
+        _13 = (*_14);
+        StorageLive(_15);
+        StorageLive(_16);
+        _16 = {alloc23: *mut *mut cell};
+        _15 = (*_16);
+        _12 = Eq(move _13, move _15);
+        StorageDead(_15);
+        StorageDead(_13);
+        switchInt(move _12) -> [0: bb9, otherwise: bb10];
+    }
+    bb9: {
+        StorageDead(_16);
+        (*_2) = 1_i32;
+        goto -> bb11;
+    }
+    bb10: {
+        StorageDead(_16);
+        StorageLive(_17);
+        StorageLive(_18);
+        _18 = {alloc28: *mut *mut cell};
+        _17 = (*_18);
+        (*_14) = move _17;
+        StorageDead(_17);
+        StorageDead(_18);
+        goto -> bb11;
+    }
+    bb11: {
+        StorageDead(_12);
+        goto -> bb12;
+    }
+    bb12: {
+        StorageDead(_1);
+        goto -> bb15;
+    }
+    bb13: {
+        StorageLive(_19);
+        _20 = {alloc23: *mut *mut cell};
+        _25 = (*_20);
+        _19 = ((*_25).0: i32);
+        StorageLive(_21);
+        _21 = {alloc33: *mut i32};
+        (*_21) = move _19;
+        StorageDead(_19);
+        StorageDead(_21);
+        StorageLive(_22);
+        _23 = {alloc18: *mut *mut cell};
+        _22 = (*_23);
+        _26 = (*_20);
+        ((*_26).1: *mut cell) = move _22;
+        StorageDead(_22);
+        StorageLive(_24);
+        _24 = (*_20);
+        (*_23) = move _24;
+        StorageDead(_24);
+        (*_2) = 1_i32;
+        goto -> bb14;
+    }
+    bb14: {
+        StorageDead(_1);
+        (*_2) = Add((*_2), 1_i32);
+        goto -> bb15;
+    }
+    bb15: {
+        return;
+    }
+}
+<<<--- End: pop
+
+Start Symex ...
+Enter main - bb0
+Enter main - bb1
+Unwinding loop bb1 in main for 1 times
+Enter main - bb2
+Enter main - bb4
+Enter main - bb15
+Enter main - bb16
+Enter main - bb17
+Enter main - bb18
+Enter main - bb19
+Enter pop - bb0
+Enter pop - bb14
+Enter pop - bb15
+Enter main - bb20
+Enter push - bb0
+Enter push - bb14
+Enter push - bb15
+Enter main - bb21
+Enter main - bb1
+Unwinding loop bb1 in main for 2 times
+Enter main - bb2
+Enter main - bb4
+Enter main - bb15
+Enter main - bb16
+Enter main - bb17
+Enter main - bb18
+Enter main - bb19
+Enter pop - bb0
+Enter pop - bb14
+Enter pop - bb15
+Enter main - bb20
+Enter push - bb0
+Enter push - bb14
+Enter push - bb15
+Enter main - bb21

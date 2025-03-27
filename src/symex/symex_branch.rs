@@ -36,7 +36,7 @@ impl<'cfg> Symex<'cfg> {
     fn make_branch_guard(&mut self, discr_expr: Expr, i: u128) -> Expr {
         if discr_expr.ty().is_integer() {
             self.ctx
-                .eq(discr_expr.clone(), self.ctx.constant_integer(BigInt::ZERO, discr_expr.ty()))
+                .eq(discr_expr.clone(), self.ctx.constant_integer(BigInt::from(i), discr_expr.ty()))
         } else if discr_expr.ty().is_bool() {
             if i == 0 { self.ctx.not(discr_expr) } else { discr_expr }
         } else {

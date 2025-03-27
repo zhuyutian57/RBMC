@@ -208,8 +208,14 @@ impl<'cfg> ExecutionState<'cfg> {
     }
 
     fn cast_constant(&mut self, expr: Expr, ty: Type) -> Expr {
-        assert!(ty.is_integer());
-        let integer = expr.extract_constant().to_integer();
+        assert!(expr.is_constant() && ty.is_integer());
+        let integer =
+            if expr.ty().is_integer() {
+                expr.extract_constant().to_integer()
+            } else {
+                assert!(expr.ty().is_any_ptr());
+                BigInt::ZERO
+            };
         self.ctx.constant_integer(integer, ty)
     }
 

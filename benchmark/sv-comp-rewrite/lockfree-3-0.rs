@@ -10,12 +10,11 @@ static mut S : *mut cell = ptr::null_mut();
 static mut pc1 : i32 = 1;
 static mut pc4 : i32 = 1;
 
-static mut t1 : *mut cell = ptr::null_mut();
-static mut x1 : *mut cell = ptr::null_mut();
-
 fn push() {
-
-    match unsafe { pc1 } {
+    static mut t1 : *mut cell = ptr::null_mut();
+    static mut x1 : *mut cell = ptr::null_mut();
+    unsafe { pc1 += 1; }
+    match unsafe { pc1 - 1 } {
         1 => {
             unsafe { 
                 x1 = alloc(Layout::new::<cell>()) as *mut cell;
@@ -36,12 +35,10 @@ fn push() {
             return;
         },
         5 => {
-            unsafe {
-                if S == t4  {
-                    S = x4;
-                } else {
-                    pc4 = 1;
-                }
+            if unsafe { S == t1 }  {
+                unsafe { S = x1; }
+            } else {
+                unsafe { pc1 = 3; }
             }
             return;
         },
@@ -51,18 +48,17 @@ fn push() {
         },
         _ => {},
     }
-    unsafe { pc1 += 1; }
 }
 
 static mut garbage : *mut cell = ptr::null_mut();
 
-static mut t4 : *mut cell = ptr::null_mut();
-static mut x4 : *mut cell = ptr::null_mut();
-
 fn pop() {
+    static mut t4 : *mut cell = ptr::null_mut();
+    static mut x4 : *mut cell = ptr::null_mut();
     static mut res4 : i32 = 0;
 
-    match unsafe { pc4 } {
+    unsafe { pc4 += 1; }
+    match unsafe { pc4 - 1 } {
         1 => {
             unsafe { t4 = S; }
             return;
@@ -99,22 +95,17 @@ fn pop() {
         },
         _ => {},
     }
-    unsafe { pc4 += 1; }
 }
 
-#[cfg(verifier = "smack")]
-extern crate smack;
+extern crate mirv;
 
-#[cfg(verifier = "smack")]
-use smack::*;
-
-#[cfg(verifier = "smack")]
+// #[kani::proof]
 fn main() {
     while unsafe { 
-        !S.is_null()| pc4 != 1
-        || unsafe { smack::__VERIFIER_nondet_i32() } != 0 // smack nonderterministic
+        !S.is_null() || pc1 != 1 || pc4 != 1
+        || mirv::nondet::<i32>() != 0 // nondeterministic
     } {
-        if unsafe { smack::__VERIFIER_nondet_i32() } != 0 {
+        if mirv::nondet::<i32>() != 0 {
             push();
         } else {
             pop();
@@ -128,47 +119,6 @@ fn main() {
             garbage = next;
         }
     }
-
-    unsafe {
-        S = ptr::null_mut();
-        t1 = ptr::null_mut();
-        x1 = ptr::null_mut();
-        t4 = ptr::null_mut();
-        x4 = ptr::null_mut();
-    }
-
-    // memory-leak
 }
 
-#[cfg(kani)]
-#[kani::proof]
-fn main() {
-    while unsafe { 
-        !S.is_null() || pc4 != 1
-        || kani::any::<i32>() != 0 // kani nondeterministic
-    } {
-        if kani::any::<i32>() != 0 {
-            push();
-        } else {
-            pop();
-        }
-    }
-
-    while unsafe { garbage as usize != 0 } {
-        let next = unsafe { (*garbage).next };
-        unsafe {
-            dealloc(garbage as *mut u8, Layout::new::<cell>());
-            garbage = next;
-        }
-    }
-
-    unsafe {
-        S = ptr::null_mut();
-        t1 = ptr::null_mut();
-        x1 = ptr::null_mut();
-        t4 = ptr::null_mut();
-        x4 = ptr::null_mut();
-    }
-
-    // memory-leak
-}
+// safe

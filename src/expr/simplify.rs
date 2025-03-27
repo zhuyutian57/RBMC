@@ -140,17 +140,35 @@ impl Expr {
 
     fn simplify_cmp(&mut self, lhs: Expr, rhs: Expr) {
         if lhs.is_constant() && rhs.is_constant() {
-            let a = lhs.extract_constant().to_integer();
-            let b = rhs.extract_constant().to_integer();
-            let res = match self.extract_bin_op() {
-                BinOp::Eq => a == b,
-                BinOp::Ne => a != b,
-                BinOp::Ge => a >= b,
-                BinOp::Gt => a > b,
-                BinOp::Le => a <= b,
-                BinOp::Lt => a < b,
-                _ => todo!("Impossible"),
-            };
+            let res = 
+                if lhs.ty().is_integer() {
+                    let a = lhs.extract_constant().to_integer();
+                    let b = rhs.extract_constant().to_integer();
+                    match self.extract_bin_op() {
+                        BinOp::Eq => a == b,
+                        BinOp::Ne => a != b,
+                        BinOp::Ge => a >= b,
+                        BinOp::Gt => a > b,
+                        BinOp::Le => a <= b,
+                        BinOp::Lt => a < b,
+                        _ => todo!("Impossible"),
+                    }
+                } else if lhs.ty().is_bool() {
+                    let a = lhs.extract_constant().to_bool();
+                    let b = rhs.extract_constant().to_bool();
+                    match self.extract_bin_op() {
+                        BinOp::Eq => a == b,
+                        BinOp::Ne => a != b,
+                        BinOp::Ge => a >= b,
+                        BinOp::Gt => a > b,
+                        BinOp::Le => a <= b,
+                        BinOp::Lt => a < b,
+                        _ => todo!("Impossible"),
+                    }
+                } else {
+                    assert!(lhs.ty().is_any_ptr());
+                    true
+                };
             *self = self.ctx.constant_bool(res);
         } else {
             *self = match self.extract_bin_op() {

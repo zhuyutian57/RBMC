@@ -82,8 +82,8 @@ impl<'cfg> Symex<'cfg> {
                 if self.config.cli.enable_display_state_bb() {
                     println!(
                         "Enter {:?} - bb{pc}\n{:?}",
-                        self.top_mut().function().name(),
-                        self.top_mut().cur_state()
+                        self.top().function().name(),
+                        self.top().cur_state()
                     );
                 }
                 let bb = self.top_mut().function().basicblock(pc);
@@ -104,6 +104,7 @@ impl<'cfg> Symex<'cfg> {
     }
 
     pub(super) fn register_state(&mut self, pc: Pc, mut state: State) {
+        if state.guard.is_false() { return; }
         state.renaming = Some(self.exec_state.renaming.clone());
         self.top_mut().add_state(pc, state);
     }

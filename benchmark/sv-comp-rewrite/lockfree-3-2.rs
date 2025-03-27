@@ -15,7 +15,8 @@ static mut x1 : *mut cell = ptr::null_mut();
 
 fn push() {
 
-    match unsafe { pc1 } {
+    unsafe { pc1 += 1; }
+    match unsafe { pc1 - 1 } {
         1 => {
             unsafe { 
                 x1 = alloc(Layout::new::<cell>()) as *mut cell;
@@ -51,7 +52,6 @@ fn push() {
         },
         _ => {},
     }
-    unsafe { pc1 += 1; }
 }
 
 static mut garbage : *mut cell = ptr::null_mut();
@@ -62,7 +62,8 @@ static mut x4 : *mut cell = ptr::null_mut();
 fn pop() {
     static mut res4 : i32 = 0;
 
-    match unsafe { pc4 } {
+    unsafe { pc4 += 1; }
+    match unsafe { pc4 - 1 } {
         1 => {
             unsafe { t4 = S; }
             return;
@@ -99,55 +100,16 @@ fn pop() {
         },
         _ => {},
     }
-    unsafe { pc4 += 1; }
 }
 
-#[cfg(verifier = "smack")]
-extern crate smack;
+extern crate mirv;
 
-#[cfg(verifier = "smack")]
-use smack::*;
-
-#[cfg(verifier = "smack")]
 fn main() {
     while unsafe { 
-        !S.is_null()| pc1 != 1
-        || unsafe { smack::__VERIFIER_nondet_i32() } != 0 // smack nonderterministic
+        !S.is_null() || pc4 != 1
+        || mirv::nondet::<i32>() != 0 // nondeterministic
     } {
-        if unsafe { smack::__VERIFIER_nondet_i32() } != 0 {
-            push();
-        } else {
-            pop();
-        }
-    }
-
-    while unsafe { garbage as usize != 0 } {
-        let next = unsafe { (*garbage).next };
-        unsafe {
-            dealloc(garbage as *mut u8, Layout::new::<cell>());
-            garbage = next;
-        }
-    }
-
-    unsafe {
-        S = ptr::null_mut();
-        t1 = ptr::null_mut();
-        x1 = ptr::null_mut();
-        t4 = ptr::null_mut();
-        x4 = ptr::null_mut();
-    }
-
-    // memory-leak
-}
-
-#[cfg(kani)]
-#[kani::proof]
-fn main() {
-    while unsafe { 
-        !S.is_null() || pc1 != 1
-        || kani::any::<i32>() != 0 // kani nondeterministic
-    } {
-        if kani::any::<i32>() != 0 {
+        if mirv::nondet::<i32>() != 0 {
             push();
         } else {
             pop();

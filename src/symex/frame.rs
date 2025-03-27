@@ -68,6 +68,10 @@ impl<'func> Frame<'func> {
             }
         }
 
+        if self.state_map.is_empty() {
+            panic!("We stuck in a loop, please increase the loop bound");
+        }
+
         self.pc = *self.state_map.keys().min().unwrap();
     }
 
