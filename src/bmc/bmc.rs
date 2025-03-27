@@ -45,7 +45,7 @@ impl<'cfg> Bmc<'cfg> {
             SmtStrategy::Forward => self.check_forward(),
             SmtStrategy::Once => (self.check_once(), None),
         };
-        println!("\nVerfication time: {}", time.elapsed().as_secs_f32());
+        println!("\nVerification time: {}s", time.elapsed().as_secs_f32());
         println!(
             "Verification result: {}.",
             match res {

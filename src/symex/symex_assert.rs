@@ -12,7 +12,7 @@ impl<'cfg> Symex<'cfg> {
         msg: &AssertMessage,
         target: &usize,
     ) {
-        let msg = NString::from(msg.description().unwrap());
+        let msg = NString::from("built-in check: ") + msg.description().unwrap();
 
         let expr = self.make_operand(cond);
 

@@ -49,7 +49,7 @@ if __name__ == "__main__":
     mirv(args.file, mirv_args)
   elif args.install:
     os.system("cd ./library && cargo build --release")
-    os.system("cargo install --path .")
+    os.system("cargo install --path . --offline")
   elif args.uninstall:
     os.system("cargo uninstall mirv")
   else:

@@ -61,13 +61,14 @@ impl State {
         assert!(pt.ty().is_any_ptr());
         let mut objects = HashSet::new();
         self.get_value_set(pt.clone(), &mut objects);
+        let n = objects.len();
         for (object, _) in objects {
             if object.is_unknown() || object.is_null_object() {
                 continue;
             }
             let nplace = NPlace::from(object);
             let mut new_state = PlaceState::Dead;
-            new_state.meet(self.get_place_state(nplace));
+            if n > 1 { new_state.meet(self.get_place_state(nplace)); }
             self.update_place_state(nplace, new_state);
         }
     }

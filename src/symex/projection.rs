@@ -294,9 +294,9 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let invalid =
             if state.is_unknown() { self._ctx.invalid(object.clone()) } else { self._ctx._true() };
         let msg = match mode {
-            Mode::Read | Mode::Slice(..) => format!("invalid deref: {object:?} is dead").into(),
+            Mode::Read | Mode::Slice(..) => format!("dereference failure: {object:?} is dead").into(),
             Mode::Dealloc | Mode::Drop => {
-                format!("double {}: {object:?} is dead", format!("{mode:?}").to_lowercase()).into()
+                format!("{} failure: {object:?} is dead", format!("{mode:?}").to_lowercase()).into()
             }
         };
         let mut error = guard.clone();
@@ -315,7 +315,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
             );
             self._callback_symex.rename(&mut out_of_bound);
             out_of_bound.simplify();
-            let msg = NString::from(format!("bound check: {object:?}[{index:?}] is out-of-bound"));
+            let msg = NString::from(format!("dereference failure: index out of bound"));
             let mut error = guard.clone();
             error.add(out_of_bound);
             self._callback_symex.claim(msg, error.to_expr());
@@ -383,7 +383,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         };
         let total_offset = tmp_object.compute_offset();
         let msg = format!(
-            "{} {object:?} fail: the offset is {total_offset:?} != 0",
+            "{} failure: the offset is {total_offset:?} != 0",
             format!("{mode:?}").to_lowercase()
         )
         .into();
@@ -395,7 +395,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         // Check layout
         if object.ty() != ty {
             let msg = format!(
-                "{} {object:?} fail: the layout is {ty:?} where {:?} is required",
+                "{} failure: the layout is {ty:?} where {:?} is required",
                 format!("{mode:?}").to_lowercase(),
                 object.ty()
             )
