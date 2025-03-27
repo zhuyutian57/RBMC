@@ -48,12 +48,9 @@ if __name__ == "__main__":
   elif args.file is not None:
     mirv(args.file, mirv_args)
   elif args.install:
+    os.system("cd ./library && cargo build --release")
     os.system("cargo install --path .")
   elif args.uninstall:
     os.system("cargo uninstall mirv")
   else:
     parser.print_help(sys.stdout)
-
-
-
-  
