@@ -4,6 +4,8 @@ use std::fmt::Debug;
 use std::rc::Rc;
 use std::slice::{Iter, IterMut};
 
+use stable_mir::ty::Span;
+
 use crate::expr::expr::*;
 use crate::symbol::nstring::NString;
 
@@ -27,12 +29,13 @@ impl Debug for VcKind {
 #[derive(Clone)]
 pub struct Vc {
     pub kind: VcKind,
+    pub span: Option<Span>,
     pub is_sliced: bool,
 }
 
 impl Vc {
-    pub fn new(kind: VcKind) -> Self {
-        Vc { kind, is_sliced: false }
+    pub fn new(kind: VcKind, span: Option<Span>) -> Self {
+        Vc { kind, span, is_sliced: false }
     }
 
     pub fn is_assign(&self) -> bool {
@@ -85,25 +88,22 @@ impl VCSystem {
         self.vcs.iter().fold(0, |n, vc| n + if vc.is_sliced { 0 } else { 1 })
     }
 
-    pub fn assign(&mut self, lhs: Expr, rhs: Expr) {
-        self.vcs.push(Vc::new(VcKind::Assign(lhs, rhs)));
+    pub fn assign(&mut self, lhs: Expr, rhs: Expr, span: Option<Span>) {
+        self.vcs.push(Vc::new(VcKind::Assign(lhs, rhs), span));
     }
 
-    pub fn assert(&mut self, msg: NString, cond: Expr) {
+    pub fn assert(&mut self, msg: NString, cond: Expr, span: Option<Span>) {
         self.asserts_map.insert(self.asserts_map.len(), self.vcs.len());
-        self.vcs.push(Vc::new(VcKind::Assert(msg, cond)));
+        self.vcs.push(Vc::new(VcKind::Assert(msg, cond), span));
     }
 
-    pub fn assume(&mut self, cond: Expr) {
-        self.vcs.push(Vc::new(VcKind::Assume(cond)));
+    pub fn assume(&mut self, cond: Expr, span: Option<Span>) {
+        self.vcs.push(Vc::new(VcKind::Assume(cond), span));
     }
 
-    pub fn nth_assertion(&self, n: usize) -> (NString, Expr) {
+    pub fn nth_assertion(&self, n: usize) -> Vc {
         assert!(n < self.asserts_map.len());
-        match &self.vcs[*self.asserts_map.get(&n).unwrap()].kind {
-            VcKind::Assert(msg, cond) => (*msg, cond.clone()),
-            _ => panic!("Impossible"),
-        }
+        self.vcs[*self.asserts_map.get(&n).unwrap()].clone()
     }
 
     pub fn set_nth_assertion(&mut self, n: usize) {
@@ -139,7 +139,14 @@ impl VCSystem {
             if self.vcs[m].is_sliced {
                 continue;
             }
-            println!("-> {:?}", self.vcs[m].msg());
+            let span = self.vcs[m].span.expect("Span must exist");
+            println!(
+                "\nAssertion {i}: {}:{}:{}",
+                span.get_filename(),
+                span.get_lines().start_line,
+                span.get_lines().start_col
+            );
+            println!("-> Check: {:?}", self.vcs[m].msg());
             let mut n = 0;
             for j in 0..m {
                 if self.vcs[j].is_sliced {
@@ -151,7 +158,7 @@ impl VCSystem {
                 println!("#{n} {:?}", self.vcs[j]);
                 n += 1;
             }
-            println!("-> ASSERT: {:?}\n", self.vcs[m].cond());
+            println!("-> ASSERT: {:?}", self.vcs[m].cond());
         }
     }
 }

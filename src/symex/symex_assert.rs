@@ -23,7 +23,7 @@ impl<'cfg> Symex<'cfg> {
         if *expected == true {
             cond = self.ctx.not(cond);
         }
-        self.vc_system.borrow_mut().assert(msg, cond);
+        self.vc_system.borrow_mut().assert(msg, cond, self.exec_state.span);
 
         // self.symex_move(expr);
 

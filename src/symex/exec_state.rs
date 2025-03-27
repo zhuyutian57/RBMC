@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use num_bigint::BigInt;
 use stable_mir::CrateDef;
 use stable_mir::mir::*;
+use stable_mir::ty::Span;
 
 use super::frame::*;
 use super::namespace::Namespace;
@@ -27,10 +28,11 @@ use crate::symex::place_state::*;
 pub struct ExecutionState<'cfg> {
     config: &'cfg Config,
     ctx: ExprCtx,
+    pub(super) span: Option<Span>,
     pub(super) ns: Namespace,
-    pub(super) objects: Vec<Expr>,
     func_cnt: Vec<usize>,
     frames: Vec<Frame<'cfg>>,
+    pub(super) objects: Vec<Expr>,
     pub(super) renaming: RefCell<Renaming>,
 }
 
@@ -39,10 +41,11 @@ impl<'cfg> ExecutionState<'cfg> {
         ExecutionState {
             config: config,
             ctx,
+            span: None,
             ns: Namespace::default(),
-            objects: Vec::new(),
             func_cnt: vec![0; config.program.size()],
             frames: Vec::new(),
+            objects: Vec::new(),
             renaming: RefCell::new(Renaming::default()),
         }
     }

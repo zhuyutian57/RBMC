@@ -55,7 +55,7 @@ impl<'cfg> Bmc<'cfg> {
             }
         );
         if res == PResult::PSat {
-            self.show_bugs(bug);
+            self.bug_report(bug);
         }
     }
 
@@ -174,19 +174,29 @@ impl<'cfg> Bmc<'cfg> {
         });
     }
 
-    fn show_bugs(&self, bug: Option<usize>) {
-        println!("\nMemory safety bugs:");
+    fn bug_report(&self, bug: Option<usize>) {
+        println!("\nBug Report:");
         if self.config.cli.smt_strategy == SmtStrategy::Forward {
-            let assert_id = bug.unwrap();
-            println!(" -> {:?}", self.vc_system.borrow().nth_assertion(assert_id).0);
+            let assertion = self.vc_system.borrow().nth_assertion(bug.unwrap());
+            Bmc::bug_info(&assertion);
         } else {
             for n in 0..self.vc_system.borrow().num_asserts() {
-                let (msg, cond) = self.vc_system.borrow().nth_assertion(n);
-                if self.runtime_solver.eval_bool(cond) {
-                    println!(" -> {msg:?}");
-                }
+                let assertion = self.vc_system.borrow().nth_assertion(n);
+                Bmc::bug_info(&assertion);
             }
         }
         println!("");
+    }
+
+    #[inline]
+    fn bug_info(assertion: &Vc) {
+        let span = assertion.span.expect("Span must exist");
+        println!(
+            "-> {}:{}:{}: {:?}",
+            span.get_filename(),
+            span.get_lines().start_line,
+            span.get_lines().start_col,
+            assertion.msg()
+        );
     }
 }

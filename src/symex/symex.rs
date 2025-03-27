@@ -110,11 +110,13 @@ impl<'cfg> Symex<'cfg> {
 
     fn symex_basicblock(&mut self, bb: &BasicBlock) {
         for (i, statement) in bb.statements.iter().enumerate() {
+            self.exec_state.span = Some(statement.span);
             self.symex_statement(statement);
             if self.config.cli.enable_display_state_statement() {
                 println!("After symex {i}\n{:?}", self.top_mut().cur_state());
             }
         }
+        self.exec_state.span = Some(bb.terminator.span);
         self.symex_terminator(&bb.terminator);
         if self.config.cli.enable_display_state_terminator() {
             println!("After symex terminator\n{:?}", self.top_mut().cur_state());

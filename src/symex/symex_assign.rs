@@ -47,7 +47,7 @@ impl<'cfg> Symex<'cfg> {
         }
 
         // Build VC system
-        self.vc_system.borrow_mut().assign(lhs, rhs);
+        self.vc_system.borrow_mut().assign(lhs, rhs, self.exec_state.span);
     }
 
     fn assign_rec(&mut self, lhs: Expr, rhs: Expr, guard: Guard) {

@@ -90,7 +90,7 @@ impl<'cfg> Symex<'cfg> {
 
             self.exec_state.assign(lhs.clone(), rhs.clone());
 
-            self.vc_system.borrow_mut().assign(lhs, rhs);
+            self.vc_system.borrow_mut().assign(lhs, rhs, None);
         }
     }
 
@@ -300,6 +300,6 @@ impl<'cfg> Symex<'cfg> {
         if cond.is_false() {
             return;
         }
-        self.vc_system.borrow_mut().assert(msg, cond);
+        self.vc_system.borrow_mut().assert(msg, cond, self.exec_state.span);
     }
 }
