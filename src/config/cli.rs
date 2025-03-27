@@ -6,7 +6,7 @@ pub const MIRV_CRATE: &str = "MIRV_CRATE";
 pub const MIRV_LIBRARY_PATH: &str = "MIRV_LIBRARY_PATH";
 pub const MIRV_FLAGS: &str = "MIRV_FLAGS";
 
-#[derive(clap::ValueEnum, Debug, Default, Clone, Copy)]
+#[derive(clap::ValueEnum, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum SmtStrategy {
     #[default]
     Forward,

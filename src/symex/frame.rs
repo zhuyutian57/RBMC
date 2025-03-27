@@ -56,7 +56,7 @@ impl<'func> Frame<'func> {
         while let Some(&l) = self.loop_stack.last() {
             let mut mi = self.function.size();
             for pc in self.function.get_loop(l) {
-                if self.state_map.contains_key(&pc) {
+                if self.state_map.contains_key(pc) {
                     mi = std::cmp::min(mi, *pc);
                 }
             }

@@ -41,9 +41,9 @@ impl<'cfg> Bmc<'cfg> {
 
     fn check_properties(&mut self, time: std::time::Instant) {
         println!("Verifying with SMT strategy: {:?}", self.config.cli.smt_strategy);
-        let res = match self.config.cli.smt_strategy {
+        let (res, bug) = match self.config.cli.smt_strategy {
             SmtStrategy::Forward => self.check_forward(),
-            SmtStrategy::Once => self.check_once(),
+            SmtStrategy::Once => (self.check_once(), None),
         };
         println!("Verfication time: {}", time.elapsed().as_secs_f32());
         println!(
@@ -54,13 +54,13 @@ impl<'cfg> Bmc<'cfg> {
                 PResult::PUnsat => "success",
             }
         );
+        if res == PResult::PSat { self.show_bugs(bug); }
     }
 
-    fn check_forward(&mut self) -> PResult {
+    fn check_forward(&mut self) -> (PResult, Option<usize>) {
         let mut slicer = Slicer::default();
         let size = self.vc_system.borrow().num_asserts();
         for i in 0..size {
-            if i < 19 || i > 22 { continue; }
             println!("Begin checking assertion {i}");
             if self.config.cli.show_vcc {
                 print!("Verifying condition {i} ");
@@ -90,11 +90,13 @@ impl<'cfg> Bmc<'cfg> {
             if self.config.cli.show_vcc {
                 println!("Result: {res:?} ");
             }
-            if res != PResult::PUnsat {
-                return res;
+            match res {
+                PResult::PSat => return (res, Some(i)),
+                PResult::PUnknow => return (res, None),
+                _ => {},
             }
         }
-        PResult::PUnsat
+        (PResult::PUnsat, None)
     }
 
     fn check_once(&mut self) -> PResult {
@@ -152,17 +154,6 @@ impl<'cfg> Bmc<'cfg> {
                     self.runtime_solver.assert_assign(lhs.clone(), rhs.clone());
                 }
                 VcKind::Assert(_, c) => {
-                    // let asserts = c.unwrap_and();
-                    // println!(" Complete {asserts:?}");
-                    // for (i, e) in asserts.iter().enumerate() {
-                    //     if e.is_unary() && e.extract_inner_expr().is_symbol()
-                    //         && e.extract_inner_expr().extract_symbol()
-                    //             .name() == "main_1::19::1::1" {
-                    //         println!("Assert {e:?}");
-                    //         assertions.push(e.clone());
-                    //         break;
-                    //     }
-                    // }
                     assertions.push(ctx.implies(assumetion.clone(), c.clone()));
                 }
                 VcKind::Assume(c) => {
@@ -179,5 +170,21 @@ impl<'cfg> Bmc<'cfg> {
             assertion.simplify();
             assertion
         });
+    }
+
+    fn show_bugs(&self, bug: Option<usize>) {
+        println!("\nMemory safety bugs:");
+        if self.config.cli.smt_strategy == SmtStrategy::Forward {
+            let assert_id = bug.unwrap();
+            println!(" -> {:?}", self.vc_system.borrow().nth_assertion(assert_id).0);
+        } else {
+            for n in 0..self.vc_system.borrow().num_asserts() {
+                let (msg, cond) = self.vc_system.borrow().nth_assertion(n);
+                if self.runtime_solver.eval_bool(cond) {
+                    println!(" -> {msg:?}");
+                }
+            }
+        }
+        println!("");
     }
 }

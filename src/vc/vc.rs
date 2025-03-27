@@ -98,6 +98,14 @@ impl VCSystem {
         self.vcs.push(Vc::new(VcKind::Assume(cond)));
     }
 
+    pub fn nth_assertion(&self, n: usize) -> (NString, Expr){
+        assert!(n < self.asserts_map.len());
+        match &self.vcs[*self.asserts_map.get(&n).unwrap()].kind {
+            VcKind::Assert(msg, cond) => (*msg, cond.clone()),
+            _ => panic!("Impossible"),
+        }
+    }
+
     pub fn set_nth_assertion(&mut self, n: usize) {
         let m = *self.asserts_map.get(&n).unwrap();
         for (i, vc) in self.vcs.iter_mut().enumerate() {
