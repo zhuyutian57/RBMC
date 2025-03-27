@@ -21,7 +21,7 @@ if __name__ == "__main__":
   parser.add_argument(
     "--build",
     action="store_true",
-    help="Run `cargo build`")
+    help="Run `cargo build --all`")
   parser.add_argument(
     "--clean",
     action="store_true",
@@ -42,7 +42,7 @@ if __name__ == "__main__":
   args, mirv_args = parser.parse_known_args()
 
   if args.build:
-    os.system("cargo build")
+    os.system("cargo build --all")
   elif args.clean:
     os.system("cargo clean")
   elif args.file is not None:

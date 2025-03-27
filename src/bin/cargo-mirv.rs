@@ -8,7 +8,7 @@ extern crate stable_mir;
 
 use std::process::Command;
 
-use mirv_verifier::config::cli;
+use mir_v::config::cli;
 
 fn parse_mirv_flags() -> String {
     let mut args = std::env::args().into_iter().collect::<Vec<_>>();
