@@ -35,7 +35,7 @@ impl<'ctx> Z3Conv<'ctx> {
             tuple_sorts: HashMap::new(),
             pointer_logic: PointerLogic::new(),
             cache: HashMap::new(),
-            cur_alloc_expr: None
+            cur_alloc_expr: None,
         }
     }
 
@@ -81,7 +81,7 @@ impl<'ctx> SmtSolver<'ctx> for Z3Conv<'ctx> {
         self.cur_alloc_expr = None;
     }
 
-    fn check(&self) -> PResult {        
+    fn check(&self) -> PResult {
         match self.z3_solver.check() {
             z3::SatResult::Sat => PResult::PSat,
             z3::SatResult::Unknown => PResult::PUnknow,

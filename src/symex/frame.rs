@@ -67,7 +67,7 @@ impl<'func> Frame<'func> {
                 self.loop_stack.pop();
             }
         }
-        
+
         self.pc = *self.state_map.keys().min().unwrap();
     }
 
@@ -86,8 +86,9 @@ impl<'func> Frame<'func> {
 
     /// Check whether the current loop read loop bound
     pub fn reach_loop_bound(&self, pc: Pc) -> bool {
-        self.config.cli.unwind != 0 && self._loop_count.contains_key(&pc) &&
-            *self._loop_count.get(&pc).unwrap() >= self.config.cli.unwind
+        self.config.cli.unwind != 0
+            && self._loop_count.contains_key(&pc)
+            && *self._loop_count.get(&pc).unwrap() >= self.config.cli.unwind
     }
 
     pub fn cur_state(&self) -> &State {

@@ -98,7 +98,7 @@ impl VCSystem {
         self.vcs.push(Vc::new(VcKind::Assume(cond)));
     }
 
-    pub fn nth_assertion(&self, n: usize) -> (NString, Expr){
+    pub fn nth_assertion(&self, n: usize) -> (NString, Expr) {
         assert!(n < self.asserts_map.len());
         match &self.vcs[*self.asserts_map.get(&n).unwrap()].kind {
             VcKind::Assert(msg, cond) => (*msg, cond.clone()),

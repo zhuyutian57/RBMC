@@ -294,10 +294,13 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let invalid =
             if state.is_unknown() { self._ctx.invalid(object.clone()) } else { self._ctx._true() };
         let msg = match mode {
-            Mode::Read | Mode::Slice(..)
-                => NString::from(format!("valid check: {object:?} is dead")),
-            Mode::Dealloc | Mode::Drop
-                => NString::from(format!("double {mode:?}: {object:?} is dead"))
+            Mode::Read | Mode::Slice(..) => {
+                NString::from(format!("valid check: {object:?} is dead"))
+            }
+            Mode::Dealloc | Mode::Drop => NString::from(format!(
+                "double {}: {object:?} is dead",
+                format!("{mode:?}").to_lowercase()
+            )),
         };
         let mut error = guard.clone();
         error.add(invalid);

@@ -44,7 +44,9 @@ impl Function {
         for i in 0..self.body.blocks.len() {
             for j in self.body.blocks[i].terminator.successors() {
                 predecessors.entry(j).or_default();
-                predecessors.entry(j).and_modify(|x| { x.insert(i); });
+                predecessors.entry(j).and_modify(|x| {
+                    x.insert(i);
+                });
             }
         }
         // Find all loops

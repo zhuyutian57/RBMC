@@ -45,16 +45,18 @@ impl<'cfg> Bmc<'cfg> {
             SmtStrategy::Forward => self.check_forward(),
             SmtStrategy::Once => (self.check_once(), None),
         };
-        println!("Verfication time: {}", time.elapsed().as_secs_f32());
+        println!("\nVerfication time: {}", time.elapsed().as_secs_f32());
         println!(
-            "\nVerification result: {}.",
+            "Verification result: {}.",
             match res {
                 PResult::PSat => "fail",
                 PResult::PUnknow => "unknown",
                 PResult::PUnsat => "success",
             }
         );
-        if res == PResult::PSat { self.show_bugs(bug); }
+        if res == PResult::PSat {
+            self.show_bugs(bug);
+        }
     }
 
     fn check_forward(&mut self) -> (PResult, Option<usize>) {
@@ -93,7 +95,7 @@ impl<'cfg> Bmc<'cfg> {
             match res {
                 PResult::PSat => return (res, Some(i)),
                 PResult::PUnknow => return (res, None),
-                _ => {},
+                _ => {}
             }
         }
         (PResult::PUnsat, None)

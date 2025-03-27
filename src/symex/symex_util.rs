@@ -23,7 +23,9 @@ impl<'cfg> Symex<'cfg> {
         let state_vec = self.top_mut().states_from(pc);
 
         // If pc is the entry of a loop and reaches loop bound, do not unwind the loop
-        if self.top().function().is_loop_bb(pc) && self.top().reach_loop_bound(pc) { return false; }
+        if self.top().function().is_loop_bb(pc) && self.top().reach_loop_bound(pc) {
+            return false;
+        }
 
         // We have put all states that reach current pc in the
         // queue. Thus, we first construct an empty state.
