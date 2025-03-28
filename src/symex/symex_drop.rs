@@ -15,9 +15,7 @@ impl<'cfg> Symex<'cfg> {
         let object = self.ctx.object(place);
         self.symex_drop_rec(object, self.ctx._true().into());
 
-        let state = self.top_mut().cur_state().clone();
-        self.register_state(*target, state);
-        self.top_mut().inc_pc();
+        self.goto(*target, self.ctx._true());
     }
 
     fn symex_drop_rec(&mut self, expr: Expr, guard: Guard) {

@@ -77,11 +77,11 @@ impl<'cfg> ExecutionState<'cfg> {
     }
 
     pub fn cur_state(&self) -> &State {
-        self.top().cur_state()
+        &self.top().cur_state
     }
 
     pub fn cur_state_mut(&mut self) -> &mut State {
-        self.top_mut().cur_state_mut()
+        &mut self.top_mut().cur_state
     }
 
     pub fn top(&self) -> &Frame<'cfg> {
@@ -209,13 +209,12 @@ impl<'cfg> ExecutionState<'cfg> {
 
     fn cast_constant(&mut self, expr: Expr, ty: Type) -> Expr {
         assert!(expr.is_constant() && ty.is_integer());
-        let integer =
-            if expr.ty().is_integer() {
-                expr.extract_constant().to_integer()
-            } else {
-                assert!(expr.ty().is_any_ptr());
-                BigInt::ZERO
-            };
+        let integer = if expr.ty().is_integer() {
+            expr.extract_constant().to_integer()
+        } else {
+            assert!(expr.ty().is_any_ptr());
+            BigInt::ZERO
+        };
         self.ctx.constant_integer(integer, ty)
     }
 

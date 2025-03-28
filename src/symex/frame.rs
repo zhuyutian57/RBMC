@@ -15,13 +15,12 @@ pub struct Frame<'func> {
     config: &'func Config,
     id: usize,
     function: &'func Function,
-    _loop_count: HashMap<Pc, usize>,
     /// Previous info. Used for recovering
     pub(super) destination: Option<Place>,
     pub(super) target: Option<BasicBlockIdx>,
     /// Current Computing
     pc: Pc,
-    loop_stack: Vec<Pc>,
+    loop_stack: Vec<(Pc, usize)>,
     pub(super) cur_state: State,
     state_map: HashMap<Pc, Vec<State>>,
 }
@@ -38,7 +37,6 @@ impl<'func> Frame<'func> {
             config,
             id,
             function,
-            _loop_count: HashMap::new(),
             destination,
             target,
             pc: 0,
@@ -53,9 +51,9 @@ impl<'func> Frame<'func> {
     }
 
     pub fn inc_pc(&mut self) {
-        while let Some(&l) = self.loop_stack.last() {
+        while let Some((l, c)) = self.loop_stack.last() {
             let mut mi = self.function.size();
-            for pc in self.function.get_loop(l) {
+            for pc in self.function.get_loop(*l) {
                 if self.state_map.contains_key(pc) {
                     mi = std::cmp::min(mi, *pc);
                 }
@@ -64,6 +62,7 @@ impl<'func> Frame<'func> {
                 self.pc = mi;
                 return;
             } else {
+                // No pc in loop
                 self.loop_stack.pop();
             }
         }
@@ -78,29 +77,35 @@ impl<'func> Frame<'func> {
     /// Counting the number of unwinding of loop
     pub fn unwind(&mut self, pc: Pc) {
         if self.function.is_loop_bb(pc) {
-            self._loop_count.entry(pc).and_modify(|c| *c += 1).or_insert(1);
-            self.loop_stack.push(pc);
+            if let Some(l) = self.loop_stack.last_mut() {
+                if l.0 == pc {
+                    // Increase the loop unwinding
+                    l.1 += 1;
+                } else {
+                    // New loop
+                    self.loop_stack.push((pc, 1));
+                }
+            } else {
+                // new loop
+                self.loop_stack.push((pc, 1));
+            }
             println!(
                 "Unwinding loop bb{pc} in {:?} for {} times",
                 self.function.name(),
-                self._loop_count.get(&pc).unwrap()
+                self.loop_stack.last().unwrap().1
             );
         }
+    }
+
+    pub fn cur_loop(&self) -> Option<&(Pc, usize)> {
+        self.loop_stack.last()
     }
 
     /// Check whether the current loop read loop bound
     pub fn reach_loop_bound(&self, pc: Pc) -> bool {
         self.config.cli.unwind != 0
-            && self._loop_count.contains_key(&pc)
-            && *self._loop_count.get(&pc).unwrap() >= self.config.cli.unwind
-    }
-
-    pub fn cur_state(&self) -> &State {
-        &self.cur_state
-    }
-
-    pub fn cur_state_mut(&mut self) -> &mut State {
-        &mut self.cur_state
+            && !self.loop_stack.is_empty()
+            && self.loop_stack.last().unwrap().1 >= self.config.cli.unwind
     }
 
     pub fn add_state(&mut self, pc: Pc, state: State) {

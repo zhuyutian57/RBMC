@@ -290,7 +290,7 @@ impl<'cfg> Symex<'cfg> {
         self.rename(&mut error);
         error.simplify();
         // The guard of current state is path condition.
-        let mut guard = self.exec_state.cur_state().guard();
+        let mut guard = self.exec_state.cur_state().guard.clone();
         guard.add(error);
         if guard.is_false() {
             return;

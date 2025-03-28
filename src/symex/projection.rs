@@ -294,7 +294,9 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let invalid =
             if state.is_unknown() { self._ctx.invalid(object.clone()) } else { self._ctx._true() };
         let msg = match mode {
-            Mode::Read | Mode::Slice(..) => format!("dereference failure: {object:?} is dead").into(),
+            Mode::Read | Mode::Slice(..) => {
+                format!("dereference failure: {object:?} is dead").into()
+            }
             Mode::Dealloc | Mode::Drop => {
                 format!("{} failure: {object:?} is dead", format!("{mode:?}").to_lowercase()).into()
             }

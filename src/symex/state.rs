@@ -18,8 +18,7 @@ pub struct State {
     pub(super) guard: Guard,
     pub(super) place_states: PlaceStates,
     pub(super) value_set: ValueSet,
-    /// Renaming at some program pointer. Used for
-    /// doing phi function while merging states.
+    /// Renaming at some program pointer. Used for doing phi function while merging states.
     pub(super) renaming: Option<RefCell<Renaming>>,
 }
 
@@ -32,10 +31,6 @@ impl State {
             value_set: ValueSet::default(),
             renaming: None,
         }
-    }
-
-    pub fn guard(&self) -> Guard {
-        self.guard.clone()
     }
 
     pub fn get_place_state(&self, nplace: NPlace) -> PlaceState {
@@ -68,7 +63,9 @@ impl State {
             }
             let nplace = NPlace::from(object);
             let mut new_state = PlaceState::Dead;
-            if n > 1 { new_state.meet(self.get_place_state(nplace)); }
+            if n > 1 {
+                new_state.meet(self.get_place_state(nplace));
+            }
             self.update_place_state(nplace, new_state);
         }
     }

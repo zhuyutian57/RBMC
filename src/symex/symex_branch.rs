@@ -2,34 +2,25 @@ use num_bigint::BigInt;
 use stable_mir::mir::*;
 
 use super::symex::*;
-use crate::expr::expr::*;
+use crate::{expr::expr::*, program::function::Pc};
 
 impl<'cfg> Symex<'cfg> {
     pub(super) fn symex_goto(&mut self, target: &BasicBlockIdx) {
-        let state = self.top_mut().cur_state().clone();
-        self.register_state(*target, state);
+        self.goto(*target, self.ctx._true());
         self.top_mut().inc_pc();
     }
 
     pub(super) fn symex_switchint(&mut self, discr: &Operand, targets: &SwitchTargets) {
         let mut discr_expr = self.make_operand(discr);
-        self.replace_predicates(&mut discr_expr);
         let mut otherwise_guard = self.ctx._true();
         for (i, bb) in targets.branches() {
-            let mut state = self.top_mut().cur_state().clone();
             // branches
-            let mut branch_guard = self.make_branch_guard(discr_expr.clone(), i);
-            self.rename(&mut branch_guard);
-            state.guard.add(branch_guard.clone());
-            self.register_state(bb, state.clone());
+            let branch_guard = self.make_branch_guard(discr_expr.clone(), i);
+            self.goto(bb, branch_guard.clone());
             otherwise_guard = self.ctx.and(otherwise_guard, self.ctx.not(branch_guard));
         }
         // otherwise
-        otherwise_guard.simplify();
-        let mut otherwise_state = self.top_mut().cur_state().clone();
-        otherwise_state.guard.add(otherwise_guard);
-        self.register_state(targets.otherwise(), otherwise_state);
-
+        self.goto(targets.otherwise(), otherwise_guard);
         self.top_mut().inc_pc();
     }
 
@@ -42,5 +33,32 @@ impl<'cfg> Symex<'cfg> {
         } else {
             panic!("Not support for this type of SwitchInt")
         }
+    }
+
+    /// Register state in state_map
+    pub fn goto(&mut self, pc: Pc, mut branch_guard: Expr) {
+        self.replace_predicates(&mut branch_guard);
+        self.rename(&mut branch_guard);
+        branch_guard.simplify();
+        // TODO: using solver to solve the path condition
+        if branch_guard.is_false() {
+            return;
+        }
+        if let Some(l) = self.top().cur_loop() {
+            let _loop = self.top().function().get_loop(l.0);
+            // Not exceed loop bound, keep unwinding.
+            // However, if the branch guard is true, the loop stop unwinding.
+            if !_loop.contains(&pc) && !self.top().reach_loop_bound(l.0) && !branch_guard.is_true()
+            {
+                return;
+            }
+        }
+        let mut state = self.top().cur_state.clone();
+        state.guard.add(branch_guard);
+        if state.guard.is_false() {
+            return;
+        }
+        state.renaming = Some(self.exec_state.renaming.clone());
+        self.top_mut().add_state(pc, state);
     }
 }

@@ -27,6 +27,6 @@ impl<'cfg> Symex<'cfg> {
 
         // self.symex_move(expr);
 
-        self.register_state(*target, self.top().cur_state.clone());
+        self.goto(*target, self.ctx._true());
     }
 }

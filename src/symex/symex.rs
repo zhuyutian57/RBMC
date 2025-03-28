@@ -63,7 +63,7 @@ impl<'cfg> Symex<'cfg> {
         self.assign(alloc_array, const_array, self.ctx._true().into());
 
         // Register the initial state
-        self.register_state(0, self.top().cur_state.clone());
+        self.goto(0, self.ctx._true());
     }
 
     pub fn run(&mut self) {
@@ -83,7 +83,7 @@ impl<'cfg> Symex<'cfg> {
                     println!(
                         "Enter {:?} - bb{pc}\n{:?}",
                         self.top().function().name(),
-                        self.top().cur_state()
+                        self.top().cur_state
                     );
                 }
                 let bb = self.top_mut().function().basicblock(pc);
@@ -103,24 +103,18 @@ impl<'cfg> Symex<'cfg> {
         self.exec_state.top_mut()
     }
 
-    pub(super) fn register_state(&mut self, pc: Pc, mut state: State) {
-        if state.guard.is_false() { return; }
-        state.renaming = Some(self.exec_state.renaming.clone());
-        self.top_mut().add_state(pc, state);
-    }
-
     fn symex_basicblock(&mut self, bb: &BasicBlock) {
         for (i, statement) in bb.statements.iter().enumerate() {
             self.exec_state.span = Some(statement.span);
             self.symex_statement(statement);
             if self.config.cli.enable_display_state_statement() {
-                println!("After symex {i}\n{:?}", self.top_mut().cur_state());
+                println!("After symex {i}\n{:?}", self.top_mut().cur_state);
             }
         }
         self.exec_state.span = Some(bb.terminator.span);
         self.symex_terminator(&bb.terminator);
         if self.config.cli.enable_display_state_terminator() {
-            println!("After symex terminator\n{:?}", self.top_mut().cur_state());
+            println!("After symex terminator\n{:?}", self.top_mut().cur_state);
         }
     }
 
@@ -163,6 +157,17 @@ impl<'cfg> Symex<'cfg> {
                 self.symex_assert(cond, expected, msg, target)
             }
             _ => {}
+        }
+        let is_unwind = match &terminator.kind {
+            TerminatorKind::Call { func, .. } => {
+                let fndef = self.top_mut().function().operand_type(func).fn_def();
+                let trimmed_name = NString::from(fndef.0.trimmed_name());
+                self.program.contains_function(trimmed_name)
+            }
+            _ => false,
+        };
+        if !is_unwind {
+            self.top_mut().inc_pc();
         }
     }
 }

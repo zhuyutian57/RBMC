@@ -51,9 +51,9 @@ impl<'cfg> Symex<'cfg> {
         // }
 
         if let Some(t) = target {
-            let state = self.top_mut().cur_state().clone();
-            self.register_state(*t, state);
-            self.top_mut().inc_pc();
+            self.goto(*t, self.ctx._true());
+        } else {
+            panic!("Target must exists");
         }
     }
 
@@ -85,16 +85,12 @@ impl<'cfg> Symex<'cfg> {
                 self.assign(lhs, rhs, self.ctx._true().into());
             }
         }
-        let state = self.top_mut().cur_state().clone();
-        self.register_state(0, state);
+        self.goto(0, self.ctx._true());
     }
 
     pub(super) fn symex_return(&mut self) {
         let n = self.top_mut().function().size();
-        let state = self.top_mut().cur_state().clone();
-        self.register_state(n, state);
-
-        self.top_mut().inc_pc();
+        self.goto(n, self.ctx._true());
     }
 
     pub(super) fn symex_end_function(&mut self) {
