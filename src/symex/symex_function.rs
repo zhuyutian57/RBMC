@@ -17,7 +17,7 @@ impl<'cfg> Symex<'cfg> {
         dest: &Place,
         target: &Option<BasicBlockIdx>,
     ) {
-        let ty = self.top_mut().function().operand_type(func);
+        let ty = self.top_mut().function.operand_type(func);
         let fndef = ty.fn_def();
         let name = NString::from(fndef.0.name());
         let trimmed_name = NString::from(fndef.0.trimmed_name());
@@ -71,13 +71,13 @@ impl<'cfg> Symex<'cfg> {
         // Push frame for new name
         self.exec_state.push_frame(i, Some(dest.clone()), *target);
         // Set alive local place state
-        for local in self.top().function().locals_alive() {
+        for local in self.top().function.locals_alive() {
             let l1_local = self.exec_state.current_local(*local, Level::Level1);
             let nplace = NPlace(l1_local.extract_symbol().l1_name());
             self.top_mut().cur_state.update_place_state(nplace, PlaceState::Own);
         }
         // Set arguements
-        let args = self.top_mut().function().args();
+        let args = self.top_mut().function.args();
         if !args.is_empty() {
             for arg_local in args.iter() {
                 let lhs = self.exec_state.l0_local(*arg_local);
@@ -89,12 +89,12 @@ impl<'cfg> Symex<'cfg> {
     }
 
     pub(super) fn symex_return(&mut self) {
-        let n = self.top_mut().function().size();
+        let n = self.top_mut().function.size();
         self.goto(n, self.ctx._true());
     }
 
     pub(super) fn symex_end_function(&mut self) {
-        let pc = self.top().function().size();
+        let pc = self.top().function.size();
         // Must exist
         assert!(self.merge_states(pc));
         if !self.exec_state.can_exec() {
@@ -105,11 +105,11 @@ impl<'cfg> Symex<'cfg> {
         self.top_mut().cur_state = frame.cur_state.clone();
 
         // Assign return value
-        if !frame.function().local_type(0).is_unit() {
+        if !frame.function.local_type(0).is_unit() {
             if let Some(ret) = &frame.destination {
                 let lhs = self.make_project(ret);
                 let rhs_ident = frame.local_ident(0);
-                let rhs_ty = frame.function().local_type(0);
+                let rhs_ty = frame.function.local_type(0);
                 let rhs = self.exec_state.l0_symbol(rhs_ident, rhs_ty);
                 self.assign(lhs, rhs, self.ctx._true().into());
             }

@@ -5,3 +5,6 @@
 
 # output
 */output
+
+# log
+*.log

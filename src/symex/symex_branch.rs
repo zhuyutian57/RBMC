@@ -7,7 +7,6 @@ use crate::{expr::expr::*, program::function::Pc};
 impl<'cfg> Symex<'cfg> {
     pub(super) fn symex_goto(&mut self, target: &BasicBlockIdx) {
         self.goto(*target, self.ctx._true());
-        self.top_mut().inc_pc();
     }
 
     pub(super) fn symex_switchint(&mut self, discr: &Operand, targets: &SwitchTargets) {
@@ -21,7 +20,6 @@ impl<'cfg> Symex<'cfg> {
         }
         // otherwise
         self.goto(targets.otherwise(), otherwise_guard);
-        self.top_mut().inc_pc();
     }
 
     fn make_branch_guard(&mut self, discr_expr: Expr, i: u128) -> Expr {
@@ -40,12 +38,8 @@ impl<'cfg> Symex<'cfg> {
         self.replace_predicates(&mut branch_guard);
         self.rename(&mut branch_guard);
         branch_guard.simplify();
-        // TODO: using solver to solve the path condition
-        if branch_guard.is_false() {
-            return;
-        }
         if let Some(l) = self.top().cur_loop() {
-            let _loop = self.top().function().get_loop(l.0);
+            let _loop = self.top().function.get_loop(l.0);
             // Not exceed loop bound, keep unwinding.
             // However, if the branch guard is true, the loop stop unwinding.
             if !_loop.contains(&pc) && !self.top().reach_loop_bound(l.0) && !branch_guard.is_true()

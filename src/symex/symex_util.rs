@@ -23,7 +23,7 @@ impl<'cfg> Symex<'cfg> {
         let state_vec = self.top_mut().states_from(pc);
 
         // If pc is the entry of a loop and reaches loop bound, do not unwind the loop
-        if self.top().function().is_loop_bb(pc) && self.top().reach_loop_bound(pc) {
+        if self.top().function.is_loop_bb(pc) && self.top().reach_loop_bound(pc) {
             return false;
         }
 
@@ -91,6 +91,28 @@ impl<'cfg> Symex<'cfg> {
             self.exec_state.assign(lhs.clone(), rhs.clone());
 
             self.vc_system.borrow_mut().assign(lhs, rhs, None);
+        }
+    }
+
+    /// Unwind loop if `pc` is the entry of a loop
+    pub(super) fn unwind(&mut self, pc: Pc) {
+        if self.top().function.is_loop_bb(pc) {
+            let mut is_new_loop = true;
+            if let Some(l) = self.top_mut().cur_loop_mut() {
+                if l.0 == pc {
+                    // Increase the loop unwinding
+                    l.1 += 1;
+                    is_new_loop = false
+                }
+            }
+            if is_new_loop {
+                self.top_mut().new_loop(pc)
+            }
+            println!(
+                "Unwinding loop bb{pc} in {:?} for {} times",
+                self.top().function.name(),
+                self.top().cur_loop().unwrap().1
+            );
         }
     }
 

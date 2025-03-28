@@ -78,15 +78,15 @@ impl<'cfg> Symex<'cfg> {
             // Merge states
             if self.merge_states(pc) {
                 // Couting loop pc
-                self.top_mut().unwind(pc);
+                self.unwind(pc);
                 if self.config.cli.enable_display_state_bb() {
                     println!(
                         "Enter {:?} - bb{pc}\n{:?}",
-                        self.top().function().name(),
+                        self.top().function.name(),
                         self.top().cur_state
                     );
                 }
-                let bb = self.top_mut().function().basicblock(pc);
+                let bb = self.top_mut().function.basicblock(pc);
                 self.symex_basicblock(bb);
             } else {
                 self.top_mut().inc_pc();
@@ -160,7 +160,7 @@ impl<'cfg> Symex<'cfg> {
         }
         let is_unwind = match &terminator.kind {
             TerminatorKind::Call { func, .. } => {
-                let fndef = self.top_mut().function().operand_type(func).fn_def();
+                let fndef = self.top_mut().function.operand_type(func).fn_def();
                 let trimmed_name = NString::from(fndef.0.trimmed_name());
                 self.program.contains_function(trimmed_name)
             }

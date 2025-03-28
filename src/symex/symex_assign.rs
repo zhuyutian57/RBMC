@@ -103,7 +103,7 @@ impl<'cfg> Symex<'cfg> {
     }
 
     fn make_rvalue(&mut self, rvalue: &Rvalue) -> Expr {
-        let ty = self.top_mut().function().rvalue_type(rvalue);
+        let ty = self.top_mut().function.rvalue_type(rvalue);
         match rvalue {
             Rvalue::AddressOf(_, p) => {
                 let place = self.make_project(p);

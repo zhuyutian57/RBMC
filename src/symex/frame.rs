@@ -14,7 +14,7 @@ use crate::symbol::nstring::*;
 pub struct Frame<'func> {
     config: &'func Config,
     id: usize,
-    function: &'func Function,
+    pub(super) function: &'func Function,
     /// Previous info. Used for recovering
     pub(super) destination: Option<Place>,
     pub(super) target: Option<BasicBlockIdx>,
@@ -74,31 +74,17 @@ impl<'func> Frame<'func> {
         self.pc = *self.state_map.keys().min().unwrap();
     }
 
-    /// Counting the number of unwinding of loop
-    pub fn unwind(&mut self, pc: Pc) {
-        if self.function.is_loop_bb(pc) {
-            if let Some(l) = self.loop_stack.last_mut() {
-                if l.0 == pc {
-                    // Increase the loop unwinding
-                    l.1 += 1;
-                } else {
-                    // New loop
-                    self.loop_stack.push((pc, 1));
-                }
-            } else {
-                // new loop
-                self.loop_stack.push((pc, 1));
-            }
-            println!(
-                "Unwinding loop bb{pc} in {:?} for {} times",
-                self.function.name(),
-                self.loop_stack.last().unwrap().1
-            );
-        }
+    pub fn new_loop(&mut self, pc: Pc) {
+        assert!(self.function.is_loop_bb(pc));
+        self.loop_stack.push((pc, 1));
     }
 
     pub fn cur_loop(&self) -> Option<&(Pc, usize)> {
         self.loop_stack.last()
+    }
+
+    pub fn cur_loop_mut(&mut self) -> Option<&mut (Pc, usize)> {
+        self.loop_stack.last_mut()
     }
 
     /// Check whether the current loop read loop bound
@@ -114,10 +100,6 @@ impl<'func> Frame<'func> {
 
     pub fn states_from(&mut self, pc: Pc) -> Option<Vec<State>> {
         self.state_map.remove(&pc)
-    }
-
-    pub fn function(&self) -> &'func Function {
-        self.function
     }
 
     pub fn function_id(&self) -> NString {

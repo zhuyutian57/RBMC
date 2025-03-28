@@ -111,7 +111,7 @@ impl<'cfg> ExecutionState<'cfg> {
         }
         self.frames.push(frame);
         // init namspace
-        for i in 0..self.top().function().locals().len() {
+        for i in 0..self.top().function.locals().len() {
             self.l0_local(i);
         }
     }
@@ -147,7 +147,7 @@ impl<'cfg> ExecutionState<'cfg> {
 
     pub fn l0_local(&mut self, local: Local) -> Expr {
         let ident = self.top().local_ident(local);
-        let ty = self.top().function().local_type(local);
+        let ty = self.top().function.local_type(local);
         self.l0_symbol(ident, ty)
     }
 
@@ -159,7 +159,7 @@ impl<'cfg> ExecutionState<'cfg> {
         } else {
             self.renaming.borrow_mut().current_l2_symbol(ident, 0)
         };
-        let ty = self.top().function().local_type(local);
+        let ty = self.top().function.local_type(local);
         self.ctx.mk_symbol(symbol, ty)
     }
 
@@ -171,7 +171,7 @@ impl<'cfg> ExecutionState<'cfg> {
         } else {
             self.renaming.borrow_mut().new_l2_symbol(ident, 0)
         };
-        let ty = self.top().function().local_type(local);
+        let ty = self.top().function.local_type(local);
         self.ctx.mk_symbol(symbol, ty)
     }
 

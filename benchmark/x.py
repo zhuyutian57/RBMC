@@ -7,7 +7,7 @@ MIRV_OUTPUT = OUT_DIR + "mirv/"
 KANI_OUTPUT = OUT_DIR + "kani/"
 
 loop_bound = {
-  "lockfree-3-0": 10,
+  "lockfree-3-0": 12,
   "lockfree-3-1": 7,
   "lockfree-3-2": 7,
   "lockfree-3-3": 7,
