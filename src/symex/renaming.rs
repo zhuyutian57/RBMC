@@ -127,16 +127,16 @@ impl Renaming {
 
         if expr.is_terminal() {
             if expr.is_symbol() {
-                let mut symbol = expr.extract_symbol();
-
-                if !symbol.is_level2() {
-                    symbol = self.current_l2_symbol(symbol.ident(), symbol.l1_num());
-                }
+                if expr.extract_symbol().is_level2() { return; }
+                
+                self.l1_rename(expr);
+                let symbol = expr.extract_symbol();
 
                 if propagate && self.constant_map.contains_key(&symbol) {
                     *expr = self.constant_map.get(&symbol).unwrap().clone();
                 } else {
-                    *expr = expr.ctx.mk_symbol(symbol, expr.ty());
+                    let l2_symbol = self.current_l2_symbol(symbol.ident(), symbol.l1_num());
+                    *expr = expr.ctx.mk_symbol(l2_symbol, expr.ty());
                 }
             }
             return;

@@ -125,9 +125,17 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         value: Expr,
     ) -> z3::ast::Dynamic<'ctx> {
         assert!(object.ty().is_tuple() || object.ty().is_struct());
-        let mut name = object.ty().name();
-        if object.ty().is_struct() {
+        let ty = object.ty();
+        let mut name = ty.name();
+        if ty.is_struct() {
             name = NString::from("_struct_") + name;
+        }
+        if !self.tuple_sorts.contains_key(&name) {
+            if ty.is_struct() {
+                self.mk_struct_sort(ty);
+            } else {
+                self.mk_tuple_sort(ty);
+            }
         }
         let n = self.tuple_sorts.get(&name).unwrap().variants[0].accessors.len();
         let mut fields_values = Vec::with_capacity(n);

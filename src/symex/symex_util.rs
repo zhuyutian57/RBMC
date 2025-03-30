@@ -86,11 +86,7 @@ impl<'cfg> Symex<'cfg> {
             };
 
             let mut lhs = self.exec_state.ns.lookup_symbol(var);
-            lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
-
-            self.exec_state.assign(lhs.clone(), rhs.clone());
-
-            self.vc_system.borrow_mut().assign(lhs, rhs, None);
+            self.assign(lhs, rhs, self.ctx._true().into());
         }
     }
 
@@ -126,10 +122,14 @@ impl<'cfg> Symex<'cfg> {
             }
 
             let msg = NString::from(format!("memory leak: {object:?} is not dealloced"));
-            let alloac_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
-            let address_of = self.ctx.address_of(object.clone(), object.extract_address_type());
-            let ident = self.ctx.pointer_base(address_of);
-            let is_leak = self.ctx.index(alloac_array, ident, Type::bool_type());
+            let is_leak = if object_state.is_unknown() {
+                let alloac_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
+                let address_of = self.ctx.address_of(object.clone(), object.extract_address_type());
+                let ident = self.ctx.pointer_base(address_of);
+                self.ctx.index(alloac_array, ident, Type::bool_type())
+            } else {
+                self.ctx._true()
+            };
             self.claim(msg, is_leak.into());
         }
     }

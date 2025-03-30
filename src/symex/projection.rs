@@ -47,7 +47,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
                 }
                 ProjectionElem::Index(local) => {
                     let mut index =
-                        self._callback_symex.exec_state.current_local(*local, Level::Level2);
+                        self._callback_symex.exec_state.current_local(*local, Level::Level1);
                     self._callback_symex.rename(&mut index);
                     self.project_index(ret.clone(), index)
                 }

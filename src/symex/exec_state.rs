@@ -184,38 +184,48 @@ impl<'cfg> ExecutionState<'cfg> {
     }
 
     fn constant_propagate(&mut self, lhs: Expr, rhs: Expr) {
-        if rhs.is_cast() {
-            self.constant_propagate(lhs, rhs.extract_src());
-            return;
-        }
-
         if rhs.is_object() {
             self.constant_propagate(lhs, rhs.extract_inner_expr());
             return;
         }
 
-        if !rhs.is_constant() && !rhs.is_type() {
+        if !self.is_constant_value(rhs.clone()){
             self.renaming.borrow_mut().constant_propagate(lhs, None);
             return;
         }
         assert!(lhs.is_symbol());
-        let const_rhs = if !lhs.ty().is_layout() && lhs.ty() != rhs.ty() {
-            self.cast_constant(rhs, lhs.ty())
-        } else {
-            rhs
-        };
-        self.renaming.borrow_mut().constant_propagate(lhs, Some(const_rhs));
+        self.renaming.borrow_mut().constant_propagate(lhs, Some(rhs));
     }
 
-    fn cast_constant(&mut self, expr: Expr, ty: Type) -> Expr {
-        assert!(expr.is_constant() && ty.is_integer());
-        let integer = if expr.ty().is_integer() {
-            expr.extract_constant().to_integer()
-        } else {
-            assert!(expr.ty().is_any_ptr());
-            BigInt::ZERO
-        };
-        self.ctx.constant_integer(integer, ty)
+    fn is_constant_value(&self, expr: Expr) -> bool {
+        if expr.is_constant() || expr.is_type() { return true; }
+        if expr.is_cast() {
+            return self.is_constant_value(expr.extract_src());
+        }
+        // Address is fixed when the memory is alloced
+        if expr.is_address_of() {
+            return self.is_constant_address(expr.extract_object());
+        }
+        false
+    }
+
+    fn is_constant_address(&self, expr: Expr) -> bool {
+        if expr.is_symbol() {
+            return true;    
+        }
+
+        if expr.is_object() {
+            return self.is_constant_address(expr.extract_inner_expr());
+        }
+
+        if expr.is_index() {
+            let inner_object = expr.extract_object();
+            let index = expr.extract_index();
+            return self.is_constant_address(inner_object) &&
+                self.is_constant_value(index)
+        }
+
+        false
     }
 
     pub fn get_place_state(&self, place: &Expr) -> PlaceState {
@@ -228,10 +238,6 @@ impl<'cfg> ExecutionState<'cfg> {
         let l1_name = symbol.l1_name();
         let nplace = NPlace(l1_name);
         let state = self.top().cur_state.get_place_state(nplace);
-        if state.is_unknown() && symbol.is_stack_symbol() {
-            // The place state of a local after StorageDead is removed.
-            return PlaceState::Dead;
-        }
         state
     }
 
@@ -255,8 +261,12 @@ impl<'cfg> ExecutionState<'cfg> {
         panic!("Do not support place state: {place:?}");
     }
 
-    pub fn assign(&mut self, lhs: Expr, rhs: Expr) {
-        assert!(lhs.is_symbol());
+    pub fn assignment(&mut self, mut lhs: Expr, rhs: Expr) {
+        assert!(lhs.is_symbol() && !lhs.extract_symbol().is_level2());
+
+        if lhs.extract_symbol().is_level0() {
+            self.rename(&mut lhs, Level::Level1);
+        }
 
         // Constant propagation
         self.constant_propagate(lhs.clone(), rhs.clone());

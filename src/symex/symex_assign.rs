@@ -37,10 +37,11 @@ impl<'cfg> Symex<'cfg> {
         self.replace_predicates(&mut rhs);
         self.rename(&mut rhs);
         rhs.simplify();
+
+        self.exec_state.assignment(lhs.clone(), rhs.clone());
+        
         // New l2 symbol
         lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
-
-        self.exec_state.assign(lhs.clone(), rhs.clone());
 
         if rhs.is_type() {
             return;

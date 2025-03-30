@@ -13,14 +13,25 @@ impl Expr {
         if self.is_binary() {
             self.simplify_binary();
         }
+
         if self.is_unary() {
             self.simplify_unary();
         }
+
         if self.is_ite() {
             self.simplify_ite();
         }
+
+        if self.is_cast() {
+            self.simplify_cast();
+        }
+
         if self.is_same_object() {
             self.simplify_same_object();
+        }
+
+        if self.is_index() {
+            self.simplify_index();
         }
     }
 
@@ -88,11 +99,12 @@ impl Expr {
         let lhs = sub_exprs[0].clone();
         let rhs = sub_exprs[1].clone();
         match self.extract_bin_op() {
-            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => self.simplify_arith(lhs, rhs),
-            BinOp::Eq | BinOp::Ne | BinOp::Ge | BinOp::Gt | BinOp::Le | BinOp::Lt => {
-                self.simplify_cmp(lhs, rhs)
-            }
-            BinOp::And | BinOp::Or | BinOp::Implies => self.simplify_logic(lhs, rhs),
+            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div
+                => self.simplify_arith(lhs, rhs),
+            BinOp::Eq | BinOp::Ne | BinOp::Ge | BinOp::Gt | BinOp::Le | BinOp::Lt
+                => self.simplify_cmp(lhs, rhs),
+            BinOp::And | BinOp::Or | BinOp::Implies
+                => self.simplify_logic(lhs, rhs),
         };
     }
 
@@ -268,6 +280,21 @@ impl Expr {
         }
     }
 
+    fn simplify_cast(&mut self) {
+        let mut src = self.extract_src();
+        let ty = self.extract_target_type();
+        src.simplify();
+        if src.is_constant() && ty.is_integer() {
+            let integer = if src.ty().is_integer() {
+                src.extract_constant().to_integer()
+            } else {
+                assert!(src.ty().is_any_ptr());
+                BigInt::ZERO
+            };
+            *self = self.ctx.constant_integer(integer, ty)
+        }
+    }
+
     fn simplify_same_object(&mut self) {
         let sub_exprs = self.simplify_args();
         let lhs = sub_exprs[0].clone();
@@ -276,6 +303,23 @@ impl Expr {
             self.id = Context::TRUE_ID;
         } else {
             *self = self.ctx.same_object(lhs, rhs)
+        }
+    }
+
+    /// Read-Write simplify
+    fn simplify_index(&mut self) {
+        let mut object = self.extract_object().extract_inner_expr();
+        let mut index = self.extract_index();
+        object.simplify();
+        if object.is_store() {
+            index.simplify();
+            let mut update_index = object.extract_index();
+            let mut update_value = object.extract_update_value();
+            update_index.simplify();
+            if index == update_index {
+                update_value.simplify();
+                *self = update_value;
+            }
         }
     }
 }

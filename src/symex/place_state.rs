@@ -81,7 +81,7 @@ pub struct PlaceStates {
 
 impl PlaceStates {
     pub fn place_state(&self, nplace: NPlace) -> PlaceState {
-        self._place_states_map.get(&nplace).map_or(PlaceState::Unknown, |x| *x)
+        self._place_states_map.get(&nplace).map_or(PlaceState::Dead, |x| *x)
     }
 
     pub fn update(&mut self, nplace: NPlace, state: PlaceState) {
@@ -92,12 +92,16 @@ impl PlaceStates {
         self._place_states_map.remove(&nplace);
     }
 
+    pub fn remove_stack_places(&mut self, function_id: NString) {
+        self._place_states_map.retain(|k, _| !k.0.contains(function_id));
+    }
+
     pub fn merge(&mut self, rhs: &PlaceStates) {
         for (&place, &state) in rhs._place_states_map.iter() {
             self._place_states_map
                 .entry(place)
                 .and_modify(|s| s.meet(state))
-                .or_insert(PlaceState::Unknown);
+                .or_insert(state);
         }
     }
 }

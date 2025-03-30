@@ -4,6 +4,7 @@ use super::super::symex::*;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::symbol::nstring::*;
+use crate::symex::value_set::ObjectSet;
 
 /// This mod defines symbolic execution of api in std::ptr
 
@@ -73,7 +74,20 @@ impl<'cfg> Symex<'cfg> {
         let lhs = dest.clone();
 
         let pt = args[0].clone();
-        let rhs = self.ctx.eq(pt.clone(), self.ctx.null(pt.ty()));
+        // Use value_set to optimize
+        let mut objects = ObjectSet::new();
+        self.top().cur_state.get_value_set(pt.clone(), &mut objects);
+        let rhs =
+            if objects.iter().fold(true, |acc, x| acc & !x.0.is_null_object()) {
+                // Do not points to NULL object
+                self.ctx._false()
+            } else if objects.iter().fold(true, |acc, x| acc & x.0.is_null_object()) {
+                // Only contains NULL object
+                self.ctx._true()
+            } else {
+                // May be NULL
+                self.ctx.eq(pt.clone(), self.ctx.null(pt.ty()))
+            };
 
         self.assign(lhs, rhs, self.ctx._true().into());
     }

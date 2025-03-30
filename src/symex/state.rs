@@ -46,6 +46,7 @@ impl State {
     }
 
     pub fn remove_stack_places(&mut self, function_id: NString) {
+        self.place_states.remove_stack_places(function_id);
         self.value_set.remove_stack_places(function_id);
         if let Some(renaming) = &self.renaming {
             renaming.borrow_mut().cleanr_locals(function_id);
