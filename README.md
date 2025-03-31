@@ -8,7 +8,7 @@ We recommend using `x.py` to build and install the binary tools. Alternatively, 
 
 ## Binary
 
-We provide two binary tools, `mirv` and `cargo-mirv`. `mirv` is a wrapper of Rust. It will handle the commands and run the compiler. After compiling, `mirv` will start verifying the current crate by running BMC as a callback function of rustc. More details are shown by `-h`. `cargo-mirv` is used for a project. `cargo-mirv` will build the project by using `mirv` as the compiler. It is still under development.
+We provide two binary tools, `mirv` and `cargo-mirv`. `mirv` is a wrapper of Rust. It will handle the commands and run the compiler. After compiling, `mirv` will start verifying the `.rs` by running BMC as a callback function of rustc. More details are shown by `-h`. `cargo-mirv` is used for a project. `cargo-mirv` will build the project by using `mirv` as the compiler. It is still under development.
 
 ## Rustc
 
