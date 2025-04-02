@@ -36,16 +36,15 @@ impl<'cfg> Bmc<'cfg> {
 
         self.vc_system.borrow().show_info();
 
-        self.check_properties(verify_time);
-    }
+        let res = 
+            if self.vc_system.borrow().num_asserts() == 0 {
+                println!("No assertions should be checked");
+                PResult::PUnsat
+            } else {
+                self.check_properties()
+            };
 
-    fn check_properties(&mut self, time: std::time::Instant) {
-        println!("Verifying with SMT strategy: {:?}", self.config.cli.smt_strategy);
-        let (res, bug) = match self.config.cli.smt_strategy {
-            SmtStrategy::Forward => self.check_forward(),
-            SmtStrategy::Once => (self.check_once(), None),
-        };
-        println!("\nVerification time: {}s", time.elapsed().as_secs_f32());
+        println!("\nVerification time: {}s", verify_time.elapsed().as_secs_f32());
         println!(
             "Verification result: {}.",
             match res {
@@ -54,9 +53,18 @@ impl<'cfg> Bmc<'cfg> {
                 PResult::PUnsat => "success",
             }
         );
+    }
+
+    fn check_properties(&mut self) -> PResult {
+        println!("Verifying with SMT strategy: {:?}", self.config.cli.smt_strategy);
+        let (res, bug) = match self.config.cli.smt_strategy {
+            SmtStrategy::Forward => self.check_forward(),
+            SmtStrategy::Once => (self.check_once(), None),
+        };
         if res == PResult::PSat {
             self.bug_report(bug);
         }
+        res
     }
 
     fn check_forward(&mut self) -> (PResult, Option<usize>) {
