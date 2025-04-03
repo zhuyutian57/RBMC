@@ -140,7 +140,7 @@ def analysis_kani_result():
   # crate: (VCs, assertions, bugs, forward-time, once-time)
   results = {}
   for logfile in os.listdir(f"{KANI_OUTPUT}"):
-    if logfile.endswith(".rs"): continue
+    if not logfile.endswith(".log"): continue
     res = [0, 0, set(), ""]
     with open(os.path.join(KANI_OUTPUT, logfile)) as log:
       for line in log.readlines():
