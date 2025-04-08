@@ -213,10 +213,10 @@ def analysis_esbmc_result():
         if "forgotten memory:" in line:
           res[2].add("ML")
         
-        if line.startswith("GOTO program creation time:"):
-          res[3] += float(line.split(" ")[-1].strip('\n').strip('s'))
-        if line.startswith("GOTO program processing time:"):
-          res[3] += float(line.split(" ")[-1].strip('\n').strip('s'))
+        # if line.startswith("GOTO program creation time:"):
+        #   res[3] += float(line.split(" ")[-1].strip('\n').strip('s'))
+        # if line.startswith("GOTO program processing time:"):
+        #   res[3] += float(line.split(" ")[-1].strip('\n').strip('s'))
         if line.startswith("Symex completed in:"):
           res[3] += float(line.split(" ")[3].strip('s'))
         if line.startswith("Slicing time:"):
