@@ -5,6 +5,7 @@
 OUT_DIR = "./output/"
 MIRV_OUTPUT = OUT_DIR + "mirv/"
 KANI_OUTPUT = OUT_DIR + "kani/"
+ESBMC_OUTPUT = OUT_DIR + "esbmc/"
 
 loop_bound = {
   "lockfree-3-0": 12,
@@ -14,6 +15,12 @@ loop_bound = {
   "test-0232-1": 1,
   "test-0232-2": 10,
   "test-0232-3": 3,
+
+  # C file
+  "lockfree-3.0": 12,
+  "lockfree-3.1": 7,
+  "lockfree-3.2": 7,
+  "lockfree-3.3": 11,
 }
 
 def run_on_single_file(cmd, env, smt_strategy):
@@ -22,21 +29,19 @@ def run_on_single_file(cmd, env, smt_strategy):
   out = ""
   log_file = ""
   extra_args = []
+  
+  # set bound
+  if crate in loop_bound:
+    extra_args.append("--unwind")
+    extra_args.append(str(loop_bound[crate]))
+
   if cmd[0] == "mirv":
-    # set bound
-    if crate in loop_bound:
-      extra_args.append("--unwind")
-      extra_args.append(str(loop_bound[crate]))
     out = MIRV_OUTPUT
     log_file = out + f"{crate}-{smt_strategy}.log"
   else:
-    # set bound
-    if crate in loop_bound:
-      extra_args.append("--unwind")
-      extra_args.append(str(loop_bound[crate]))
-    out = KANI_OUTPUT
+    out = KANI_OUTPUT if cmd[0] == "kani" else ESBMC_OUTPUT
     log_file = out + f"{crate}.log"
-  extra_args += [">", log_file]
+  extra_args += [">", log_file, "2>&1"]
   final_cmd = cmd + extra_args
   print("Go " + " ".join(final_cmd))
   if env == None: os.system(" ".join(final_cmd))
@@ -84,23 +89,48 @@ def kani(file):
   ]
   run_on_single_file(cmd, None, None)
 
+def esbmc(file):
+  assert(os.path.exists(file) and file.endswith(".c"))
+
+  # ESBMC path
+  esbmc = "../../esbmc/build/src/esbmc/esbmc"
+
+  cmd = [
+    esbmc,
+    file,
+    "--force-malloc-success",
+    "--memory-leak-check",
+    "--no-unwinding-assertions"
+  ]
+  run_on_single_file(cmd, None, None)
+
 def run_expriment(dir, tool):
   print(f"Run experiment in {dir} with {tool.upper()}")
 
   if not os.path.exists(OUT_DIR): os.mkdir(OUT_DIR)
   if tool == "mirv" and not os.path.exists(MIRV_OUTPUT): os.mkdir(MIRV_OUTPUT)
   if tool == "kani" and not os.path.exists(KANI_OUTPUT): os.mkdir(KANI_OUTPUT)
+  if tool == "esbmc" and not os.path.exists(ESBMC_OUTPUT): os.mkdir(ESBMC_OUTPUT)
 
   crates = []
   for crate in os.listdir(f"{dir}"):
     if crate.endswith(".rs"):
+      crates.append(crate)
+    elif crate.endswith(".c") and tool == "esbmc":
       crates.append(crate)
   crates.sort()
 
   for crate in crates:
     file = os.path.join(dir, crate)
     if tool == "mirv" : mirv(file)
-    else: kani(file)
+    elif tool == "kani": kani(file)
+    else: esbmc(file)
+
+def format_res(results):
+  for crate in sorted(results):
+    res = [crate] + results[crate]
+    res[3] = "/".join(res[3])
+    print("{:<20} {:<10} {:<10} {:<10} {:.5f}s".format(*res))
 
 def analysis_mirv_result():
   assert(os.path.exists(MIRV_OUTPUT))
@@ -108,14 +138,14 @@ def analysis_mirv_result():
   results = {}
   for logfile in os.listdir(f"{MIRV_OUTPUT}"):
     if logfile.endswith("-forward.log"):
-      res = [0, 0, set(), "", ""]
+      res = [0, 0, set(), 0.0]
       with open(os.path.join(MIRV_OUTPUT, logfile)) as log:
         for line in log.readlines():
           if line.startswith("Generating"):
             res[0] = int(line.split(' ')[1])
             res[1] = int(line.split(' ')[4])
           if line.startswith("Verification time"):
-            res[3] = line.split(" ")[2].strip("\n")
+            res[3] = float(line.split(" ")[2].strip("\n")[:-1])
       once_logfile = logfile.replace("-forward.log", "-once.log")
       with open(os.path.join(MIRV_OUTPUT, once_logfile)) as log:
         for line in log.readlines():
@@ -126,22 +156,17 @@ def analysis_mirv_result():
             res[2].add("IF")
           if "memory leak" in line:
             res[2].add("ML")
-          if line.startswith("Verification time"):
-            res[4] = line.split(" ")[2].strip("\n")
       crate = logfile.replace("-forward.log", ".rs")
       results[crate] = res
-  for crate in sorted(results):
-    res = [crate] + results[crate]
-    res[3] = "/".join(res[3])
-    print("{:<20} {:<10} {:<5} {:<5} {:<15} {:<15}".format(*res))
+  format_res(results)
   
 def analysis_kani_result():
   assert(os.path.exists(KANI_OUTPUT))
-  # crate: (VCs, assertions, bugs, forward-time, once-time)
+  # crate: (VCs, assertions, bugs, time)
   results = {}
   for logfile in os.listdir(f"{KANI_OUTPUT}"):
     if not logfile.endswith(".log"): continue
-    res = [0, 0, set(), ""]
+    res = [0, 0, set(), 0.0]
     with open(os.path.join(KANI_OUTPUT, logfile)) as log:
       for line in log.readlines():
         if line.startswith("Generated"):
@@ -160,23 +185,68 @@ def analysis_kani_result():
           if "dynamically allocated memory never freed" in line:
             res[2].add("ML")
         if line.startswith("Verification Time"):
-          res[3] = line.split(" ")[2].strip("\n")
+          res[3] = float(line.split(" ")[2].strip("\n"))
     crate = logfile.replace(".log", ".rs")
     results[crate] = res
-  for crate in sorted(results):
-    res = [crate] + results[crate]
-    res[3] = "/".join(res[3])
-    print("{:<20} {:<10} {:<5} {:<10} {:<15}".format(*res))
+  format_res(results)
+
+def analysis_esbmc_result():
+  assert(os.path.exists(ESBMC_OUTPUT))
+  # crate: (VCs, assertions, bugs, time)
+  results = {}
+  for logfile in os.listdir(f"{ESBMC_OUTPUT}"):
+    if not logfile.endswith(".log"): continue
+    res = [0, 0, set(), 0.0]
+    with open(os.path.join(ESBMC_OUTPUT, logfile)) as log:
+      for line in log.readlines():
+        if line.startswith("Symex completed in:"):
+          res[0] = int(line.split(" ")[4][1:])
+        if line.startswith("Generated"):
+          res[1] = int(line.split(" ")[3])
+
+        if "array bounds violated" in line:
+          res[2].add("ID")
+        if "Operand of free must have zero pointer offset" in line \
+          or "dereference failure: invalidated dynamic object freed" in line \
+          or "invalid pointer freed" in line:
+          res[2].add("IF")        
+        if "forgotten memory:" in line:
+          res[2].add("ML")
+        
+        if line.startswith("GOTO program creation time:"):
+          res[3] += float(line.split(" ")[-1].strip('\n').strip('s'))
+        if line.startswith("GOTO program processing time:"):
+          res[3] += float(line.split(" ")[-1].strip('\n').strip('s'))
+        if line.startswith("Symex completed in:"):
+          res[3] += float(line.split(" ")[3].strip('s'))
+        if line.startswith("Slicing time:"):
+          res[3] += float(line.split(" ")[2].strip('s'))
+        if line.startswith("Encoding to solver time:"):
+          res[3] += float(line.split(" ")[-1].strip('\n').strip('s'))
+        if line.startswith("Runtime decision procedure:"):
+          res[3] += float(line.split(" ")[-1].strip('\n').strip('s'))
+
+        if line.startswith("Assertions:"):
+          res[1] = int(line.split(" ")[1].strip('\n'))
+
+    crate = logfile.replace(".log", ".c")
+    results[crate] = res
+  format_res(results)
 
 if __name__ == "__main__":
   import argparse
   import os
+  import subprocess
 
   parser = argparse.ArgumentParser()
   parser.add_argument(
     "--kani",
     action="store_true",
     help="Using kani as tool")
+  parser.add_argument(
+    "--esbmc",
+    action="store_true",
+    help="Using esbmc as tool")
   parser.add_argument(
     "--analysis",
     action="store_true",
@@ -185,9 +255,14 @@ if __name__ == "__main__":
   args, dir = parser.parse_known_args()
   if not args.analysis:
     assert(len(dir) == 1)
-    run_expriment(dir[0], "mirv" if not args.kani else "kani")
+    assert(args.kani + args.esbmc <= 1)
+    if args.kani: run_expriment(dir[0], "kani")
+    elif args.esbmc: run_expriment(dir[0], "esbmc")
+    else: run_expriment(dir[0], "mirv")
   else:
-    if not args.kani:
-      analysis_mirv_result()
-    else:
+    if args.kani:
       analysis_kani_result()
+    elif args.esbmc:
+      analysis_esbmc_result()
+    else:
+      analysis_mirv_result()

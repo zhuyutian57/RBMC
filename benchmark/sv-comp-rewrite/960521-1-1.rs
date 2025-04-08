@@ -1,8 +1,6 @@
 use std::{alloc::{alloc, dealloc, Layout}, ptr};
 
-// static n : usize = 32768;
-
-static n : usize = 327;
+static n : usize = 128;
 static mut a : *mut i32 = ptr::null_mut();
 static mut b : *mut i32 = ptr::null_mut();
 
