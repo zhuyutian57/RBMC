@@ -6,6 +6,7 @@ use crate::expr::constant::Constant;
 use crate::expr::expr::*;
 use crate::expr::op::*;
 use crate::expr::ty::*;
+use crate::program::program::bigint_to_usize;
 use crate::solvers::solver::PResult;
 use crate::symbol::nstring::NString;
 
@@ -55,6 +56,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
 
     fn convert_struct_sort(&mut self, ty: Type) -> Sort;
     fn convert_tuple_sort(&mut self, ty: Type) -> Sort;
+    fn convert_enum_sort(&mut self, ty: Type) -> Sort;
 
     fn convert_ast(&mut self, expr: Expr) -> Ast {
         if let Some(a) = self.get_cache_ast(&expr) {
@@ -63,7 +65,8 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
 
         // convert sub exprs firstly
         let mut args: Vec<Ast> = Vec::new();
-        if !expr.is_address_of() && !expr.is_index() && !expr.is_cast() && !expr.is_store() {
+        if !expr.is_address_of() && !expr.is_index() && !expr.is_cast() && !expr.is_store() &&
+           !expr.is_match_variant() && !expr.is_as_variant() {
             if let Some(sub_exrps) = expr.sub_exprs() {
                 for e in sub_exrps {
                     args.push(self.convert_ast(e));
@@ -189,6 +192,23 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             a = Some(self.convert_pointer_meta(pt));
         }
 
+        if expr.is_enum() {
+            let ty = expr.ty();
+            let idx = expr.extract_variant_idx();
+            let data = if args.len() == 1 { None } else { Some(args[1].clone()) };
+            a = Some(self.convert_enum(idx, data, ty))
+        }
+
+        if expr.is_as_variant() {
+            todo!();
+        }
+
+        if expr.is_match_variant() {
+            let x = expr.extract_enum();
+            let idx = expr.extract_variant_idx();
+            a = Some(self.convert_match_variant(x, idx));
+        }
+
         match a {
             Some(ast) => {
                 self.cache_ast(expr, ast.clone());
@@ -228,7 +248,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
                 let val = self.convert_constant(&**c, *t);
                 self.mk_smt_const_array(&domain, &val)
             }
-            Constant::Struct(constants) => {
+            Constant::Struct(constants, _) => {
                 let mut fields = Vec::new();
                 for (c, st) in constants {
                     fields.push(self.convert_constant(c, st.clone()));
@@ -257,6 +277,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
 
     fn convert_struct(&mut self, fields: &Vec<Ast>, ty: Type) -> Ast;
     fn convert_tuple(&mut self, fields: &Vec<Ast>, ty: Type) -> Ast;
+    fn convert_enum(&mut self, idx: usize, data: Option<Ast>, ty: Type) -> Ast;
 
     fn convert_symbol(&mut self, name: NString, ty: Type) -> Ast {
         if ty.is_bool() {
@@ -279,8 +300,12 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             return self.mk_tuple_symbol(name, &sort);
         }
         if ty.is_tuple() {
-            let sort = self.convert_tuple_sort(ty);
+            let sort = self.convert_enum_sort(ty);
             return self.mk_tuple_symbol(name, &sort);
+        }
+        if ty.is_enum() {
+            let sort = self.convert_enum_sort(ty);
+            return self.mk_enum_symbol(name, &sort);
         }
         panic!("{name:?} {ty:?} symbol is not support?")
     }
@@ -397,6 +422,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
 
     fn convert_struct_update(&mut self, object: Expr, field: Expr, value: Expr) -> Ast;
     fn convert_tuple_update(&mut self, object: Expr, field: Expr, value: Expr) -> Ast;
+    fn convert_match_variant(&mut self, _enum: Expr, idx: usize) -> Ast;
 
     // fresh variable
     fn mk_fresh(&mut self, prefix: NString, ty: Type) -> Ast;
@@ -418,6 +444,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     fn mk_int_symbol(&self, name: NString) -> Ast;
     fn mk_array_symbol(&self, name: NString, domain: &Sort, range: &Sort) -> Ast;
     fn mk_tuple_symbol(&self, name: NString, sort: &Sort) -> Ast;
+    fn mk_enum_symbol(&self, name: NString, sort: &Sort) -> Ast;
 
     // pointer
     fn project(&self, pt: &Ast, ty: Type) -> Ast;

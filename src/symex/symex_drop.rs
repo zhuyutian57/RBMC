@@ -72,7 +72,7 @@ impl<'cfg> Symex<'cfg> {
             }
             let object = self.ctx.object(self.ctx.index(
                 st.clone(),
-                self.ctx.constant_isize(BigInt::from(i)),
+                self.ctx.constant_isize(i as isize),
                 *ty,
             ));
             self.symex_drop_rec(object, guard.clone());

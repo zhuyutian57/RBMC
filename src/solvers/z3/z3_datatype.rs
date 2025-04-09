@@ -7,12 +7,11 @@ use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::program::program::*;
 use crate::solvers::smt::smt_conv::*;
-use crate::solvers::smt::smt_tuple::Variants;
-use crate::solvers::smt::smt_tuple::*;
+use crate::solvers::smt::smt_datatype::*;
 use crate::symbol::nstring::NString;
 
-impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
-    fn create_tuple_sort(&mut self, name: NString, variants: Variants) -> z3::Sort<'ctx> {
+impl<'ctx> DataType<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
+    fn create_datatype(&mut self, name: NString, variants: Variants) -> z3::Sort<'ctx> {
         let mut builder = z3::DatatypeBuilder::new(&self.z3_ctx, name.to_string());
         for variant in &variants {
             let mut fields = Vec::new();
@@ -24,46 +23,58 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         }
         let dtsort = builder.finish();
         let sort = dtsort.sort.clone();
-        self.tuple_sorts.insert(name, dtsort);
+        self.datatypes.insert(name, dtsort);
         sort
     }
 
     fn mk_struct_sort(&mut self, ty: Type) -> z3::Sort<'ctx> {
         assert!(ty.is_struct());
         let def = ty.struct_def();
-        let tuple_name = NString::from("_struct_") + def.0;
+        let datatype_name = NString::from("_struct_") + def.0;
 
-        if self.tuple_sorts.contains_key(&tuple_name) {
-            return self.tuple_sorts.get(&tuple_name).unwrap().sort.clone();
+        if self.datatypes.contains_key(&datatype_name) {
+            return self.datatypes.get(&datatype_name).unwrap().sort.clone();
         }
 
         let mut fields = Vec::new();
         for (field, ty) in def.1.iter() {
-            let field_name = tuple_name + "_" + *field;
+            let field_name = datatype_name + "_" + *field;
             fields.push((field_name, *ty));
         }
 
-        let variants = vec![(tuple_name, fields)];
-        self.create_tuple_sort(tuple_name, variants)
+        let variants = vec![(datatype_name, fields)];
+        self.create_datatype(datatype_name, variants)
     }
 
     fn mk_tuple_sort(&mut self, ty: Type) -> z3::Sort<'ctx> {
         assert!(ty.is_tuple() && !ty.is_unit());
         let def = ty.tuple_def();
-        let tuple_name = ty.name();
+        let datatype_name = ty.name();
 
-        if self.tuple_sorts.contains_key(&tuple_name) {
-            return self.tuple_sorts.get(&tuple_name).unwrap().sort.clone();
+        if self.datatypes.contains_key(&datatype_name) {
+            return self.datatypes.get(&datatype_name).unwrap().sort.clone();
         }
 
         let mut fields = Vec::new();
         for (i, ty) in def.iter().enumerate() {
-            let field_name = tuple_name + "_" + i.to_string();
+            let field_name = datatype_name + "_" + i.to_string();
             fields.push((field_name, *ty));
         }
 
-        let variants = vec![(tuple_name, fields)];
-        self.create_tuple_sort(tuple_name, variants)
+        let variants = vec![(datatype_name, fields)];
+        self.create_datatype(datatype_name, variants)
+    }
+
+    fn mk_enum_sort(&mut self, ty: Type) -> z3::Sort<'ctx> {
+        assert!(ty.is_enum());
+        let def = ty.enum_def();
+        let datatype_name = ty.name();
+        
+        if self.datatypes.contains_key(&datatype_name) {
+            return self.datatypes.get(&datatype_name).unwrap().sort.clone();
+        }
+
+        self.create_datatype(datatype_name, def.1.clone())
     }
 
     fn mk_struct(
@@ -73,10 +84,10 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     ) -> z3::ast::Dynamic<'ctx> {
         assert!(ty.is_struct());
         let name = NString::from("_struct_") + ty.name();
-        if !self.tuple_sorts.contains_key(&name) {
+        if !self.datatypes.contains_key(&name) {
             self.mk_struct_sort(ty);
         }
-        let dtsort = self.tuple_sorts.get(&name).unwrap();
+        let dtsort = self.datatypes.get(&name).unwrap();
         let f = &dtsort.variants[0].constructor;
         let mut args = Vec::new();
         for arg in fields.iter() {
@@ -92,10 +103,10 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     ) -> z3::ast::Dynamic<'ctx> {
         assert!(ty.is_tuple());
         let name = ty.name();
-        if !self.tuple_sorts.contains_key(&name) {
+        if !self.datatypes.contains_key(&name) {
             self.mk_tuple_sort(ty);
         }
-        let dtsort = self.tuple_sorts.get(&name).unwrap();
+        let dtsort = self.datatypes.get(&name).unwrap();
         let f = &dtsort.variants[0].constructor;
         let mut args = Vec::new();
         for arg in fields.iter() {
@@ -112,7 +123,7 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         }
         let args = &[&self.convert_ast(object.clone()) as &dyn Ast];
         let dtsort =
-            self.tuple_sorts.get(&name).expect(format!("{object:?} is not struct").as_str());
+            self.datatypes.get(&name).expect(format!("{object:?} is not struct").as_str());
         assert!(field >= BigInt::ZERO);
         assert!(field < dtsort.variants[0].accessors.len().into());
         dtsort.variants[0].accessors[bigint_to_usize(&field)].apply(args)
@@ -130,14 +141,14 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         if ty.is_struct() {
             name = NString::from("_struct_") + name;
         }
-        if !self.tuple_sorts.contains_key(&name) {
+        if !self.datatypes.contains_key(&name) {
             if ty.is_struct() {
                 self.mk_struct_sort(ty);
             } else {
                 self.mk_tuple_sort(ty);
             }
         }
-        let n = self.tuple_sorts.get(&name).unwrap().variants[0].accessors.len();
+        let n = self.datatypes.get(&name).unwrap().variants[0].accessors.len();
         let mut fields_values = Vec::with_capacity(n);
         let update_value = self.convert_ast(value);
         for i in 0..n {
@@ -148,6 +159,38 @@ impl<'ctx> Tuple<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
             }
         }
         let args = fields_values.iter().map(|x| x as &dyn Ast).collect::<Vec<_>>();
-        self.tuple_sorts.get(&name).unwrap().variants[0].constructor.apply(&args.as_slice())
+        self.datatypes.get(&name).unwrap().variants[0].constructor.apply(&args.as_slice())
+    }
+
+    fn mk_variant(
+        &mut self,
+        idx: usize,
+        data: Option<z3::ast::Dynamic<'ctx>>,
+        ty: Type
+    ) -> z3::ast::Dynamic<'ctx> {
+        assert!(ty.is_enum());
+        let name = ty.name();
+        if !self.datatypes.contains_key(&name) {
+            self.mk_enum_sort(ty);
+        }
+        let dtsort = self.datatypes.get(&name).unwrap();
+        let f = &dtsort.variants[idx].constructor;
+        let mut args = Vec::new();
+        if let Some(x) = &data {
+            args.push(x as &dyn Ast<'_>);
+        }
+        f.apply(args.as_slice())
+    }
+
+    fn mk_match_variant(&mut self, _enum: Expr, idx: usize) -> z3::ast::Dynamic<'ctx> {
+        let ty = _enum.ty();
+        let name = ty.name();
+        if !self.datatypes.contains_key(&name) {
+            self.mk_enum_sort(ty);
+        }
+        let x = self.convert_ast(_enum);
+        let dtsort = self.datatypes.get(&name).unwrap();
+        let f = &dtsort.variants[idx].tester;
+        f.apply(&[&x as &dyn Ast])
     }
 }

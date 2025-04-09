@@ -12,7 +12,7 @@ pub enum Constant {
     Integer(BigInt),
     Null(Type),
     Array(Box<Constant>, Type),
-    Struct(Vec<StructFieldDef>),
+    Struct(Vec<StructFieldDef>, Type),
 }
 
 impl Constant {
@@ -52,7 +52,7 @@ impl Constant {
 
     pub fn to_struct_fields(&self) -> Vec<StructFieldDef> {
         match self {
-            Constant::Struct(fields) => fields.clone(),
+            Constant::Struct(fields, _) => fields.clone(),
             _ => panic!("Not constant struct"),
         }
     }
@@ -65,7 +65,7 @@ impl Debug for Constant {
             Constant::Integer(i) => write!(f, "{i:?}"),
             Constant::Null(..) => write!(f, "null"),
             Constant::Array(v, _) => write!(f, "as-const {:?}", *v),
-            Constant::Struct(v) => write!(f, "{v:?}"),
+            Constant::Struct(v, ty) => write!(f, "{ty:?} {v:?}"),
         }
     }
 }

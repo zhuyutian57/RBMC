@@ -9,7 +9,7 @@ use crate::expr::expr::*;
 use crate::expr::ty::Type;
 use crate::solvers::smt::smt_conv::*;
 use crate::solvers::smt::smt_memspace::*;
-use crate::solvers::smt::smt_tuple::*;
+use crate::solvers::smt::smt_datatype::*;
 use crate::solvers::solver::PResult;
 use crate::symbol::nstring::NString;
 
@@ -17,7 +17,7 @@ pub struct Z3Conv<'ctx> {
     pub(super) z3_ctx: &'ctx z3::Context,
     z3_solver: z3::Solver<'ctx>,
     pub(super) fresh_count: HashMap<NString, usize>,
-    pub(super) tuple_sorts: HashMap<NString, z3::DatatypeSort<'ctx>>,
+    pub(super) datatypes: HashMap<NString, z3::DatatypeSort<'ctx>>,
     pub(super) pointer_logic: PointerLogic<z3::ast::Dynamic<'ctx>>,
     /// Cache Ast
     cache: HashMap<Expr, z3::ast::Dynamic<'ctx>>,
@@ -32,7 +32,7 @@ impl<'ctx> Z3Conv<'ctx> {
             z3_ctx,
             z3_solver,
             fresh_count: HashMap::new(),
-            tuple_sorts: HashMap::new(),
+            datatypes: HashMap::new(),
             pointer_logic: PointerLogic::new(),
             cache: HashMap::new(),
             cur_alloc_expr: None,
@@ -134,6 +134,10 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         self.mk_tuple_sort(ty)
     }
 
+    fn convert_enum_sort(&mut self, ty: Type) -> z3::Sort<'ctx> {
+        self.mk_enum_sort(ty)
+    }
+
     fn convert_null(&self, ty: Type) -> z3::ast::Dynamic<'ctx> {
         let null_pt =
             self.mk_pointer(&self.mk_smt_int(BigInt::ZERO), &self.mk_smt_int(BigInt::ZERO), None);
@@ -191,6 +195,15 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         self.mk_tuple(fields, ty)
     }
 
+    fn convert_enum(
+        &mut self,
+        idx: usize,
+        data: Option<z3::ast::Dynamic<'ctx>>,
+        ty: Type
+    ) -> z3::ast::Dynamic<'ctx> {
+        self.mk_variant(idx, data, ty)
+    }
+
     fn convert_object_space(&mut self, object: &Expr) -> z3::ast::Dynamic<'ctx> {
         assert!(object.is_object() && object.extract_inner_expr().is_symbol());
         self.create_object_space(&object.extract_inner_expr())
@@ -224,6 +237,10 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     ) -> z3::ast::Dynamic<'ctx> {
         let i = field.extract_constant().to_integer();
         self.mk_tuple_store(object, i, value)
+    }
+
+    fn convert_match_variant(&mut self, _enum: Expr, idx: usize) -> z3::ast::Dynamic<'ctx> {
+        self.mk_match_variant(_enum, idx)
     }
 
     fn mk_fresh(&mut self, prefix: NString, ty: Type) -> z3::ast::Dynamic<'ctx> {
@@ -293,6 +310,10 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     }
 
     fn mk_tuple_symbol(&self, name: NString, sort: &z3::Sort<'ctx>) -> z3::ast::Dynamic<'ctx> {
+        z3::ast::Dynamic::from(z3::ast::Datatype::new_const(&self.z3_ctx, name.to_string(), sort))
+    }
+
+    fn mk_enum_symbol(&self, name: NString, sort: &z3::Sort<'ctx>) -> z3::ast::Dynamic<'ctx> {
         z3::ast::Dynamic::from(z3::ast::Datatype::new_const(&self.z3_ctx, name.to_string(), sort))
     }
 

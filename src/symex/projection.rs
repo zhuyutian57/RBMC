@@ -1,5 +1,6 @@
 use num_bigint::BigInt;
 use stable_mir::mir::*;
+use stable_mir::ty::IndexedVal;
 
 use super::place_state::PlaceState;
 use super::symex::Symex;
@@ -62,9 +63,15 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
                 }
                 ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
                     let i = if from_end { min_length - offset } else { offset };
-                    let index = self._ctx.constant_usize(BigInt::from(i));
+                    let index = self._ctx.constant_usize(i as usize);
                     self.project_index(ret.clone(), index)
                 }
+                ProjectionElem::Downcast(i) => {
+                    assert!(ret.ty().is_enum());
+                    let idx = i.to_index();
+                    let def = ret.ty().enum_def();
+                    self._ctx.as_variant(ret, self._ctx.constant_usize(idx))
+                },
                 _ => panic!("Not support {elem:?} for {ret:?}"),
             };
         }
@@ -143,7 +150,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
 
     /// Visit a field of a struct. Return `Index(object, i)`.
     fn project_field(&mut self, object: Expr, field: usize, ty: Type) -> Expr {
-        assert!(object.ty().is_struct() || object.ty().is_tuple());
+        assert!(object.ty().is_struct() || object.ty().is_tuple() || object.is_as_variant());
         self.build_with_const_offset(
             object,
             BigInt::from(field),
@@ -314,8 +321,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let s = array_ty.array_size();
         if let Some(len) = s {
             let mut out_of_bound = self._ctx.or(
-                self._ctx.lt(index.clone(), self._ctx.constant_isize(BigInt::ZERO)),
-                self._ctx.ge(index.clone(), self._ctx.constant_isize(BigInt::from(len))),
+                self._ctx.lt(index.clone(), self._ctx.constant_isize(0)),
+                self._ctx.ge(index.clone(), self._ctx.constant_isize(len as isize)),
             );
             self._callback_symex.rename(&mut out_of_bound);
             out_of_bound.simplify();
@@ -392,7 +399,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         )
         .into();
         let mut new_guard = guard.clone();
-        let zero = self._ctx.constant_isize(BigInt::ZERO);
+        let zero = self._ctx.constant_isize(0);
         new_guard.add(self._ctx.ne(total_offset, zero));
         self._callback_symex.claim(msg, new_guard.to_expr());
 

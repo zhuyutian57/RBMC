@@ -37,12 +37,12 @@ impl<'cfg> Bmc<'cfg> {
         self.vc_system.borrow().show_info();
 
         let res = 
-            if self.vc_system.borrow().num_asserts() == 0 {
-                println!("No assertions should be checked");
-                PResult::PUnsat
-            } else {
-                self.check_properties()
-            };
+            // if self.vc_system.borrow().num_asserts() == 0 {
+            //     println!("No assertions should be checked");
+            //     PResult::PUnsat
+            // } else {
+                self.check_properties();
+            // };
 
         println!("\nVerification time: {}s", verify_time.elapsed().as_secs_f32());
         println!(
@@ -156,9 +156,10 @@ impl<'cfg> Bmc<'cfg> {
         let mut assertions = Vec::new();
 
         for vc in self.vc_system.borrow().iter() {
-            if vc.is_sliced {
-                continue;
-            }
+            // if vc.is_sliced {
+            //     continue;
+            // }
+            println!("{:?}", vc.kind);
             match &vc.kind {
                 VcKind::Assign(lhs, rhs) => {
                     self.runtime_solver.assert_assign(lhs.clone(), rhs.clone());

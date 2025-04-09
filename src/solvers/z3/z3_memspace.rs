@@ -21,7 +21,7 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
                 ],
             )
             .finish();
-        self.tuple_sorts.insert(NString::from("pointer"), pointer_tuple_sort);
+        self.datatypes.insert(NString::from("pointer"), pointer_tuple_sort);
 
         // General pointer sort
         let pointer_sort = self.pointer_sort();
@@ -30,11 +30,11 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         let pointer_tuple_sort = z3::DatatypeBuilder::new(&self.z3_ctx, "box")
             .variant("box", vec![("box_ptr", DatatypeAccessor::Sort(pointer_sort.clone()))])
             .finish();
-        self.tuple_sorts.insert(NString::from("box"), pointer_tuple_sort);
+        self.datatypes.insert(NString::from("box"), pointer_tuple_sort);
     }
 
     fn pointer_sort(&self) -> z3::Sort<'ctx> {
-        self.tuple_sorts
+        self.datatypes
             .get(&NString::from("pointer"))
             .expect("Pointer tuple is not initialized")
             .sort
@@ -42,7 +42,7 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     }
 
     fn box_sort(&self) -> z3::Sort<'ctx> {
-        self.tuple_sorts
+        self.datatypes
             .get(&NString::from("box"))
             .expect("Box pointer tuple is not initialized")
             .sort
@@ -115,7 +115,7 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
             Some(x) => x.clone(),
             None => self.mk_smt_int(0.into()),
         };
-        self.tuple_sorts.get(&NString::from("pointer")).unwrap().variants[0].constructor.apply(&[
+        self.datatypes.get(&NString::from("pointer")).unwrap().variants[0].constructor.apply(&[
             base as &dyn Ast,
             offset as &dyn Ast,
             &metadata as &dyn Ast,
@@ -123,28 +123,28 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     }
 
     fn mk_pointer_base(&self, pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
-        self.tuple_sorts.get(&NString::from("pointer")).unwrap().variants[0].accessors[0]
+        self.datatypes.get(&NString::from("pointer")).unwrap().variants[0].accessors[0]
             .apply(&[pt as &dyn Ast])
     }
 
     fn mk_pointer_offset(&self, pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
-        self.tuple_sorts.get(&NString::from("pointer")).unwrap().variants[0].accessors[1]
+        self.datatypes.get(&NString::from("pointer")).unwrap().variants[0].accessors[1]
             .apply(&[pt as &dyn Ast])
     }
 
     fn mk_pointer_meta(&self, pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
-        self.tuple_sorts.get(&NString::from("pointer")).unwrap().variants[0].accessors[2]
+        self.datatypes.get(&NString::from("pointer")).unwrap().variants[0].accessors[2]
             .apply(&[pt as &dyn Ast])
     }
 
     fn mk_box(&self, inner_pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
-        self.tuple_sorts.get(&NString::from("box")).unwrap().variants[0]
+        self.datatypes.get(&NString::from("box")).unwrap().variants[0]
             .constructor
             .apply(&[inner_pt as &dyn Ast])
     }
 
     fn mk_box_ptr(&self, _box: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
-        self.tuple_sorts.get(&NString::from("box")).unwrap().variants[0].accessors[0]
+        self.datatypes.get(&NString::from("box")).unwrap().variants[0].accessors[0]
             .apply(&[_box as &dyn Ast])
     }
 }

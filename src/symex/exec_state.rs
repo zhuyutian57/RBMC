@@ -301,7 +301,7 @@ impl<'cfg> ExecutionState<'cfg> {
                 if !ty.is_any_ptr() {
                     return;
                 }
-                let i = self.ctx.constant_isize(BigInt::from(i));
+                let i = self.ctx.constant_isize(i as isize);
                 let new_lhs = self.ctx.index(lhs_object.clone(), i.clone(), *ty);
                 let new_rhs = self.ctx.index(rhs_object.clone(), i.clone(), *ty);
                 self.update_value_set_rec(new_lhs, new_rhs);

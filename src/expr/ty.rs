@@ -6,6 +6,10 @@ use stable_mir::ty::*;
 
 use crate::symbol::nstring::NString;
 
+pub type Variant = Vec<FieldDef>;
+pub type Variants = Vec<(NString, Variant)>;
+
+pub type EnumDef = (NString, Variants);
 pub type FieldDef = (NString, Type);
 pub type StructDef = (NString, Vec<FieldDef>);
 pub type TupleDef = Vec<Type>;
@@ -71,6 +75,11 @@ impl Type {
 
     pub fn box_type(inner_type: Type) -> Self {
         Ty::new_box(inner_type.0).into()
+    }
+
+    pub fn tuple_type(sub_types: Vec<Type>) -> Self {
+        let stypes = sub_types.iter().map(|x| x.0).collect::<Vec<_>>();
+        Ty::new_tuple(&stypes).into()
     }
 
     pub fn is_unit(&self) -> bool {
@@ -251,6 +260,26 @@ impl Type {
         panic!("Impossible")
     }
 
+    pub fn enum_def(&self) -> EnumDef {
+        assert!(self.is_enum());
+        let mut def = (self.name(), Vec::new());
+        if let TyKind::RigidTy(r) = self.0.kind() {
+            if let RigidTy::Adt(adt, args) = r {
+                def.0 = NString::from(adt.trimmed_name());
+                for variant in adt.variants() {
+                    let name = NString::from(variant.name());
+                    let mut fields = Vec::new();
+                    for field in variant.fields() {
+                        let fty = field.ty_with_args(&args);
+                        fields.push((NString::from(field.name.clone()), Type::from(fty)));
+                    }
+                    def.1.push((name, fields));
+                }
+            }
+        }
+        def
+    }
+
     pub fn struct_def(&self) -> StructDef {
         assert!(self.is_struct());
         let mut def = (self.name(), Vec::new());
@@ -289,7 +318,13 @@ impl Type {
             RigidTy::Char => "char".into(),
             RigidTy::Int(i) => format!("{i:?}").to_lowercase().into(),
             RigidTy::Uint(i) => format!("{i:?}").to_lowercase().into(),
-            RigidTy::Adt(def, ..) => def.trimmed_name().into(),
+            RigidTy::Adt(def, args) => {
+                let mut name = NString::from(def.trimmed_name());
+                for arg in args.0.iter() {
+                    name = name + "_" + Type::from(arg.ty().expect("Must be Type")).name();
+                }
+                name
+            },
             RigidTy::Array(ty, ..) => format!("Array({:?})", Type(*ty).name()).into(),
             RigidTy::Slice(ty) => format!("Slice({:?})", Type(*ty).name()).into(),
             RigidTy::RawPtr(ty, ..) => format!("Ptr({:?})", Type(*ty).name()).into(),

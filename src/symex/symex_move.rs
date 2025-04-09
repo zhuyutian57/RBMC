@@ -40,7 +40,7 @@ impl<'cfg> Symex<'cfg> {
                     continue;
                 }
                 let index =
-                    self.ctx.index(expr.clone(), self.ctx.constant_isize(BigInt::from(i)), *ty);
+                    self.ctx.index(expr.clone(), self.ctx.constant_isize(i as isize), *ty);
                 self.move_rec(index);
             }
             return;

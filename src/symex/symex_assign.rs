@@ -1,4 +1,5 @@
 use stable_mir::mir::*;
+use stable_mir::ty::IndexedVal;
 
 use super::symex::*;
 use crate::expr::expr::*;
@@ -166,18 +167,48 @@ impl<'cfg> Symex<'cfg> {
                 let len = bigint_to_u64(&bigint);
                 self.ctx.constant_array(value, Some(len))
             }
+            Rvalue::Discriminant(p) => {
+                let place = self.make_project(p);
+                assert!(place.ty().is_enum());
+                let def = place.ty().enum_def();
+                let mut discr = self.ctx.constant_isize(0);
+                for i in 1..def.1.len() {
+                    let idx = self.ctx.constant_isize(i as isize);
+                    let cond = self.ctx.match_variant(place.clone(), idx.clone());
+                    discr = self.ctx.ite(cond, idx, discr);
+                }
+                discr
+            }
             _ => todo!("{rvalue:?}"),
         }
     }
 
     fn make_aggregate(&mut self, k: &AggregateKind, operands: &Vec<Operand>, ty: Type) -> Expr {
-        match k {
-            AggregateKind::Array(..) => assert!(ty.is_array()),
-            AggregateKind::Adt(..) => assert!(ty.is_struct()),
-            AggregateKind::RawPtr(..) => assert!(ty.is_ptr()),
-            _ => todo!(),
-        };
         let operand_exprs = operands.iter().map(|o| self.make_operand(o)).collect::<Vec<Expr>>();
-        self.ctx.aggregate(operand_exprs, ty)
+        match k {
+            AggregateKind::Array(..) => {
+                assert!(ty.is_array());
+                self.ctx.aggregate(operand_exprs, ty)
+            },
+            AggregateKind::Adt(def, i, ..) => {
+                assert!(ty.is_struct() || ty.is_enum());
+                if ty.is_struct() {
+                    self.ctx.aggregate(operand_exprs, ty)
+                } else {
+                    let def = ty.enum_def();
+                    let data = if operand_exprs.len() == 0 {
+                        None
+                    } else {
+                        let ftypes =
+                            operand_exprs.iter().map(|t| t.ty()).collect::<Vec<_>>();
+                        let tuple_ty = Type::tuple_type(ftypes);
+                        Some(self.ctx.aggregate(operand_exprs, tuple_ty))
+                    };
+                    let idx = self.ctx.constant_usize(i.to_index());
+                    self.ctx._enum(idx, data, ty)
+                }
+            },
+            _ => todo!(),
+        }
     }
 }

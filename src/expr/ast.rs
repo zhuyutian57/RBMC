@@ -121,6 +121,15 @@ pub(super) enum NodeKind {
     /// `Box(*const T)` encodes Box pointer, one-field tuple
     Box(NodeId),
 
+    // enum
+    /// `Variant(i, x)`: variant `i` with data `x`.
+    /// If `x` is `None`, this variant does not contains anything 
+    Enum(NodeId, Option<NodeId>),
+    /// `AsVariant(x, i)`: enum `x` as variant 
+    AsVariant(NodeId, NodeId),
+    /// `IsVariant(x, i)`: match `x` with variant `i`
+    MatchVariant(NodeId, NodeId),
+
     // Predicates for symbolic execution. Before generating VCC,
     // all predicates must be replaced to some expression.
     /// `Move(expr)`: move a value
@@ -204,6 +213,18 @@ impl NodeKind {
         matches!(self, NodeKind::Box(..))
     }
 
+    pub fn is_enum(&self) -> bool {
+        matches!(self, NodeKind::Enum(..))
+    }
+    
+    pub fn is_as_variant(&self) -> bool {
+        matches!(self, NodeKind::AsVariant(..))
+    }
+    
+    pub fn is_match_variant(&self) -> bool {
+        matches!(self, NodeKind::MatchVariant(..))
+    }
+
     pub fn is_move(&self) -> bool {
         matches!(self, NodeKind::Move(..))
     }
@@ -262,6 +283,10 @@ impl Node {
             | NodeKind::PointerOffset(p)
             | NodeKind::PointerMeta(p)
             | NodeKind::Box(p) => Some(vec![*p]),
+            NodeKind::Enum(i, x)
+                => if let Some(data) = x { Some(vec![*i, *data]) } else { Some(vec![*i]) },
+            NodeKind::AsVariant(x, i) | NodeKind::MatchVariant(x, i)
+                => Some(vec![*x, *i]),
             NodeKind::Move(o) | NodeKind::Valid(o) | NodeKind::Invalid(o) => Some(vec![*o]),
             NodeKind::NullObject | NodeKind::Unknown(_) => Some(vec![]),
             _ => None,

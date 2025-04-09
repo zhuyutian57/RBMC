@@ -205,6 +205,21 @@ impl Context {
         self.nodes[i].kind().is_box()
     }
 
+    pub fn is_enum(&self, i: NodeId) -> bool {
+        assert!(i < self.nodes.len());
+        self.nodes[i].kind().is_enum()
+    }
+
+    pub fn is_as_variant(&self, i: NodeId) -> bool {
+        assert!(i < self.nodes.len());
+        self.nodes[i].kind().is_as_variant()
+    }
+
+    pub fn is_match_variant(&self, i: NodeId) -> bool {
+        assert!(i < self.nodes.len());
+        self.nodes[i].kind().is_match_variant()
+    }
+
     pub fn is_move(&self, i: NodeId) -> bool {
         assert!(i < self.nodes.len());
         self.nodes[i].kind().is_move()
@@ -327,14 +342,13 @@ impl ExprBuilder for ExprCtx {
         Expr { ctx: self.clone(), id }
     }
 
-    fn constant_isize(&self, i: BigInt) -> Expr {
+    fn constant_isize(&self, i: isize) -> Expr {
         let integer = BigInt::from(i);
         let ty = Type::isize_type();
         self.constant_integer(integer, ty)
     }
 
-    fn constant_usize(&self, u: BigInt) -> Expr {
-        assert!(u >= BigInt::ZERO);
+    fn constant_usize(&self, u: usize) -> Expr {
         let integer = BigInt::from(u);
         let ty = Type::usize_type();
         self.constant_integer(integer, ty)
@@ -366,7 +380,7 @@ impl ExprBuilder for ExprCtx {
     }
 
     fn constant_struct(&self, fields: Vec<StructFieldDef>, ty: Type) -> Expr {
-        let terminal = Terminal::Constant(Constant::Struct(fields));
+        let terminal = Terminal::Constant(Constant::Struct(fields, ty));
         let terminal_id = self.borrow_mut().add_terminal(terminal);
         let kind = NodeKind::Terminal(terminal_id);
         let new_node = Node::new(kind, ty);
@@ -404,7 +418,7 @@ impl ExprBuilder for ExprCtx {
     }
 
     fn aggregate(&self, operands: Vec<Expr>, ty: Type) -> Expr {
-        assert!(ty.is_array() || ty.is_struct());
+        assert!(ty.is_array() || ty.is_struct() || ty.is_tuple());
         // TODO: match size of fields/len
         let ops = operands.into_iter().map(|e| e.id).collect::<Vec<NodeId>>();
         let kind = NodeKind::Aggregate(ops);
@@ -612,7 +626,8 @@ impl ExprBuilder for ExprCtx {
                 && (object.ty().is_array()
                     || object.ty().is_struct()
                     || object.ty().is_slice()
-                    || object.ty().is_tuple())
+                    || object.ty().is_tuple()
+                    || object.ty().is_enum())
         );
         let kind = NodeKind::Index(object.id, index.id);
         let new_node = Node::new(kind, ty);
@@ -670,6 +685,32 @@ impl ExprBuilder for ExprCtx {
         let kind = NodeKind::Box(pt.id);
         let ty = Type::box_type(pt.ty().pointee_ty());
         let new_node = Node::new(kind, ty);
+        let id = self.borrow_mut().add_node(new_node);
+        Expr { ctx: self.clone(), id }
+    }
+
+    fn _enum(&self, idx: Expr, data: Option<Expr>, ty: Type) -> Expr {
+        assert!(ty.is_enum());
+        let kind = NodeKind::Enum(idx.id,
+            match data { Some(e) => Some(e.id), None => None }
+        );
+        let new_node = Node::new(kind, ty);
+        let id = self.borrow_mut().add_node(new_node);
+        Expr { ctx: self.clone(), id }
+    }
+
+    fn as_variant(&self, x: Expr, idx: Expr) -> Expr {
+        assert!(x.ty().is_enum());
+        let kind = NodeKind::AsVariant(x.id, idx.id);
+        let new_node = Node::new(kind, x.ty());
+        let id = self.borrow_mut().add_node(new_node);
+        Expr { ctx: self.clone(), id }
+    }
+
+    fn match_variant(&self, x: Expr, idx: Expr) -> Expr {
+        assert!(x.ty().is_enum());
+        let kind = NodeKind::MatchVariant(x.id, idx.id);
+        let new_node = Node::new(kind, Type::bool_type());
         let id = self.borrow_mut().add_node(new_node);
         Expr { ctx: self.clone(), id }
     }

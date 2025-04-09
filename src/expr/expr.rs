@@ -101,6 +101,16 @@ impl Expr {
         self.ctx.borrow().is_box(self.id)
     }
 
+    pub fn is_enum(&self) -> bool {
+        self.ctx.borrow().is_enum(self.id)
+    }
+    pub fn is_as_variant(&self) -> bool {
+        self.ctx.borrow().is_as_variant(self.id)
+    }
+    pub fn is_match_variant(&self) -> bool {
+        self.ctx.borrow().is_match_variant(self.id)
+    }
+
     pub fn is_move(&self) -> bool {
         self.ctx.borrow().is_move(self.id)
     }
@@ -281,6 +291,21 @@ impl Expr {
         self.extract_sub_expr(0)
     }
 
+    pub fn extract_enum(&self) -> Expr {
+        assert!(self.is_as_variant() || self.is_match_variant());
+        self.extract_sub_expr(0)
+    }
+
+    pub fn extract_variant_idx(&self) -> usize {
+        assert!(self.is_enum() || self.is_as_variant() || self.is_match_variant());
+        let i = if self.is_enum() {
+            self.extract_sub_expr(0).extract_constant().to_integer()
+        } else {
+            self.extract_sub_expr(1).extract_constant().to_integer()
+        };
+        bigint_to_usize(&i)
+    }
+
     /// Compute offset from root object. To do that, the nested
     /// struct/tuple will be serialized. The final offset is also
     /// in field-level.
@@ -289,7 +314,7 @@ impl Expr {
     /// `index(index(a, 0), 1) = 1`.
     pub fn compute_offset(&self) -> Expr {
         if self.is_symbol() {
-            return self.ctx.constant_isize(BigInt::ZERO);
+            return self.ctx.constant_isize(0);
         }
 
         if self.is_object() {
@@ -302,7 +327,7 @@ impl Expr {
             let start = self.extract_slice_start();
             offset = self
                 .ctx
-                .add(offset, self.ctx.mul(self.ctx.constant_isize(BigInt::from(elem_size)), start));
+                .add(offset, self.ctx.mul(self.ctx.constant_isize(elem_size as isize), start));
             offset.simplify();
             return offset;
         }
@@ -314,7 +339,7 @@ impl Expr {
 
             let collected_offset = if inner_object.ty().is_array() || inner_object.ty().is_slice() {
                 let elem_size = inner_object.ty().num_fields().expect("Impossible");
-                self.ctx.mul(index, self.ctx.constant_isize(BigInt::from(elem_size)))
+                self.ctx.mul(index, self.ctx.constant_isize(elem_size as isize))
             } else if inner_object.ty().is_struct() {
                 assert!(index.is_constant());
                 let idx = index.extract_constant().to_integer();
@@ -325,7 +350,7 @@ impl Expr {
                 for j in 0..i {
                     res += def.1[j].1.num_fields().expect("");
                 }
-                self.ctx.constant_isize(BigInt::from(res))
+                self.ctx.constant_isize(res as isize)
             } else {
                 assert!(inner_object.ty().is_tuple());
                 assert!(index.is_constant());
@@ -337,7 +362,7 @@ impl Expr {
                 for j in 0..i {
                     res += def[j].num_fields().expect("");
                 }
-                self.ctx.constant_isize(BigInt::from(res))
+                self.ctx.constant_isize(res as isize)
             };
             offset = self.ctx.add(offset, collected_offset);
             offset.simplify();
@@ -514,6 +539,29 @@ impl Expr {
             return;
         }
 
+        if self.is_enum() {
+            if sub_exprs.len() == 2 {
+                let idx = sub_exprs[0].clone();
+                let data = sub_exprs[1].clone();
+                *self = self.ctx._enum(idx, Some(data), self.ty());
+            }
+            return;
+        }
+
+        if self.is_as_variant() {
+            let x = sub_exprs[0].clone();
+            let idx = sub_exprs[1].clone();
+            *self = self.ctx.as_variant(x, idx);
+            return;
+        }
+
+        if self.is_match_variant() {
+            let x = sub_exprs[0].clone();
+            let idx = sub_exprs[1].clone();
+            *self = self.ctx.match_variant(x, idx);
+            return;
+        }
+
         panic!("Need implementing for {self:?}");
     }
 
@@ -658,6 +706,31 @@ impl Debug for Expr {
                 return write!(f, "Meta({pt:?})");
             }
 
+            if self.is_enum() {
+                let def = self.ty().enum_def();
+                let idx = bigint_to_usize(&sub_exprs[0].extract_constant().to_integer());
+                if sub_exprs.len() == 1 {
+                    assert!(def.1[idx].1.is_empty());
+                    return write!(f, "{:?}", def.1[idx].0);
+                } else {
+                    return write!(f, "{:?}({:?})", def.1[idx].0, sub_exprs[1]);
+                }
+            }
+    
+            if self.is_as_variant() {
+                let def = self.ty().enum_def();
+                let x = sub_exprs[0].clone();
+                let idx = bigint_to_usize(&sub_exprs[1].extract_constant().to_integer());
+                return write!(f, "({x:?} as {:?})", def.1[idx].0);
+            }
+    
+            if self.is_match_variant() {
+                let def = sub_exprs[0].ty().enum_def();
+                let x = sub_exprs[0].clone();
+                let idx = bigint_to_usize(&sub_exprs[1].extract_constant().to_integer());
+                return write!(f, "({x:?} is {:?})", def.1[idx].0);
+            }
+
             if self.is_move() {
                 return write!(f, "Move({:?})", sub_exprs[0]);
             }
@@ -689,8 +762,8 @@ pub trait ExprBuilder {
     fn _true(&self) -> Expr;
     fn _false(&self) -> Expr;
     fn constant_integer(&self, i: BigInt, ty: Type) -> Expr;
-    fn constant_isize(&self, i: BigInt) -> Expr;
-    fn constant_usize(&self, u: BigInt) -> Expr;
+    fn constant_isize(&self, i: isize) -> Expr;
+    fn constant_usize(&self, u: usize) -> Expr;
     fn null(&self, ty: Type) -> Expr;
     fn constant_array(&self, constant: Expr, len: Option<u64>) -> Expr;
     fn constant_struct(&self, fields: Vec<StructFieldDef>, ty: Type) -> Expr;
@@ -729,6 +802,10 @@ pub trait ExprBuilder {
     fn pointer_offset(&self, pt: Expr) -> Expr;
     fn pointer_meta(&self, pt: Expr) -> Expr;
     fn _box(&self, pt: Expr) -> Expr;
+
+    fn _enum(&self, idx: Expr, data: Option<Expr>, ty: Type) -> Expr;
+    fn as_variant(&self, x: Expr, idx: Expr) -> Expr;
+    fn match_variant(&self, x: Expr, idx: Expr) -> Expr;
 
     fn _move(&self, object: Expr) -> Expr;
     fn valid(&self, object: Expr) -> Expr;
