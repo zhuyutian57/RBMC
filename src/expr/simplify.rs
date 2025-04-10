@@ -99,12 +99,11 @@ impl Expr {
         let lhs = sub_exprs[0].clone();
         let rhs = sub_exprs[1].clone();
         match self.extract_bin_op() {
-            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div
-                => self.simplify_arith(lhs, rhs),
-            BinOp::Eq | BinOp::Ne | BinOp::Ge | BinOp::Gt | BinOp::Le | BinOp::Lt
-                => self.simplify_cmp(lhs, rhs),
-            BinOp::And | BinOp::Or | BinOp::Implies
-                => self.simplify_logic(lhs, rhs),
+            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => self.simplify_arith(lhs, rhs),
+            BinOp::Eq | BinOp::Ne | BinOp::Ge | BinOp::Gt | BinOp::Le | BinOp::Lt => {
+                self.simplify_cmp(lhs, rhs)
+            }
+            BinOp::And | BinOp::Or | BinOp::Implies => self.simplify_logic(lhs, rhs),
         };
     }
 

@@ -189,7 +189,7 @@ impl<'cfg> ExecutionState<'cfg> {
             return;
         }
 
-        if !self.is_constant_value(rhs.clone()){
+        if !self.is_constant_value(rhs.clone()) {
             self.renaming.borrow_mut().constant_propagate(lhs, None);
             return;
         }
@@ -198,7 +198,9 @@ impl<'cfg> ExecutionState<'cfg> {
     }
 
     fn is_constant_value(&self, expr: Expr) -> bool {
-        if expr.is_constant() || expr.is_type() { return true; }
+        if expr.is_constant() || expr.is_type() {
+            return true;
+        }
         if expr.is_cast() {
             return self.is_constant_value(expr.extract_src());
         }
@@ -211,7 +213,7 @@ impl<'cfg> ExecutionState<'cfg> {
 
     fn is_constant_address(&self, expr: Expr) -> bool {
         if expr.is_symbol() {
-            return true;    
+            return true;
         }
 
         if expr.is_object() {
@@ -221,8 +223,7 @@ impl<'cfg> ExecutionState<'cfg> {
         if expr.is_index() {
             let inner_object = expr.extract_object();
             let index = expr.extract_index();
-            return self.is_constant_address(inner_object) &&
-                self.is_constant_value(index)
+            return self.is_constant_address(inner_object) && self.is_constant_value(index);
         }
 
         false

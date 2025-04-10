@@ -31,9 +31,15 @@ pub struct Symbol {
 
 impl Symbol {
     pub fn new(ident: NString, l1_num: usize, l2_num: usize, level: Level) -> Self {
-        if level == Level::Level0 { assert!(l1_num == 0 && l2_num == 0); }
-        if level == Level::Level1 { assert!(l1_num != 0 && l2_num == 0); }
-        if level == Level::Level2 { assert!(l1_num != 0 && l2_num != 0); }
+        if level == Level::Level0 {
+            assert!(l1_num == 0 && l2_num == 0);
+        }
+        if level == Level::Level1 {
+            assert!(l1_num != 0 && l2_num == 0);
+        }
+        if level == Level::Level2 {
+            assert!(l1_num != 0 && l2_num != 0);
+        }
         Symbol { ident, l1_num, l2_num, level }
     }
 

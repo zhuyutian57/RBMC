@@ -23,7 +23,7 @@ impl<'cfg> Symex<'cfg> {
         } else if name == "Vec::<T, A>::pop" {
             self.symex_vec_pop(dest, args);
         } else {
-          panic!("Not support for {name:?}");
+            panic!("Not support for {name:?}");
         }
     }
 
@@ -33,7 +33,7 @@ impl<'cfg> Symex<'cfg> {
 
         // Construct vec pointer
         let inner_pt = self.ctx.address_of(object.clone(), object.extract_address_type());
-        let len = self.ctx.constant_usize(0); 
+        let len = self.ctx.constant_usize(0);
         let ident = object.extract_inner_expr().extract_symbol().ident();
         let cap_sym = Symbol::from(ident + "_size");
         let cap = self.ctx.mk_symbol(cap_sym, Type::usize_type());
@@ -50,12 +50,8 @@ impl<'cfg> Symex<'cfg> {
 
     fn symex_vec_push(&mut self, args: Vec<Expr>) {
         let guard = Guard::from(self.ctx._true());
-        let _vec = self.make_deref(
-            args[0].clone(),
-            Mode::Read,
-            guard.clone(),
-            args[0].ty().pointee_ty()
-        );
+        let _vec =
+            self.make_deref(args[0].clone(), Mode::Read, guard.clone(), args[0].ty().pointee_ty());
         let value = args[1].clone();
 
         let inner_pt = self.ctx.inner_pointer(_vec.clone());
@@ -80,12 +76,8 @@ impl<'cfg> Symex<'cfg> {
 
     fn symex_vec_pop(&mut self, dest: Expr, args: Vec<Expr>) {
         let guard = Guard::from(self.ctx._true());
-        let _vec = self.make_deref(
-            args[0].clone(),
-            Mode::Read,
-            guard.clone(),
-            args[0].ty().pointee_ty()
-        );
+        let _vec =
+            self.make_deref(args[0].clone(), Mode::Read, guard.clone(), args[0].ty().pointee_ty());
         let inner_pt = self.ctx.inner_pointer(_vec.clone());
         let old_len = self.ctx.vec_len(_vec.clone());
         let zero = self.ctx.constant_usize(0);

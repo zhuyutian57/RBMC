@@ -36,13 +36,12 @@ impl<'cfg> Bmc<'cfg> {
 
         self.vc_system.borrow().show_info();
 
-        let res = 
-            if self.vc_system.borrow().num_asserts() == 0 {
-                println!("No assertions should be checked");
-                PResult::PUnsat
-            } else {
-                self.check_properties()
-            };
+        let res = if self.vc_system.borrow().num_asserts() == 0 {
+            println!("No assertions should be checked");
+            PResult::PUnsat
+        } else {
+            self.check_properties()
+        };
 
         println!("\nVerification time: {}s", verify_time.elapsed().as_secs_f32());
         println!(

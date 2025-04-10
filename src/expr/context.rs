@@ -677,11 +677,7 @@ impl ExprBuilder for ExprCtx {
 
     fn pointer_base(&self, pt: Expr) -> Expr {
         assert!(pt.ty().is_any_ptr());
-        let ptr = if pt.ty().is_smart_ptr() {
-            self.inner_pointer(pt)
-        } else {
-            pt
-        };
+        let ptr = if pt.ty().is_smart_ptr() { self.inner_pointer(pt) } else { pt };
         let kind = NodeKind::PointerBase(ptr.id);
         let ty = Type::usize_type();
         let new_node = Node::new(kind, ty);
@@ -691,11 +687,7 @@ impl ExprBuilder for ExprCtx {
 
     fn pointer_offset(&self, pt: Expr) -> Expr {
         assert!(pt.ty().is_any_ptr());
-        let ptr = if pt.ty().is_smart_ptr() {
-            self.inner_pointer(pt)
-        } else {
-            pt
-        };
+        let ptr = if pt.ty().is_smart_ptr() { self.inner_pointer(pt) } else { pt };
         let kind = NodeKind::PointerOffset(ptr.id);
         let ty = Type::usize_type();
         let new_node = Node::new(kind, ty);
@@ -759,8 +751,12 @@ impl ExprBuilder for ExprCtx {
 
     fn variant(&self, idx: Expr, data: Option<Expr>, ty: Type) -> Expr {
         assert!(ty.is_enum());
-        let kind = NodeKind::Variant(idx.id,
-            match data { Some(e) => Some(e.id), None => None }
+        let kind = NodeKind::Variant(
+            idx.id,
+            match data {
+                Some(e) => Some(e.id),
+                None => None,
+            },
         );
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);

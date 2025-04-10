@@ -197,15 +197,13 @@ impl Type {
 
         if self.is_struct() {
             let def = self.struct_def();
-            let size = def.1.iter()
-                .fold(0, |acc, x| acc + x.1.num_fields());
+            let size = def.1.iter().fold(0, |acc, x| acc + x.1.num_fields());
             return size;
         }
 
         if self.is_tuple() {
             let def = self.tuple_def();
-            let size = def.iter()
-                .fold(0, |acc, x| acc + x.num_fields());
+            let size = def.iter().fold(0, |acc, x| acc + x.num_fields());
             return size;
         }
 
@@ -223,20 +221,17 @@ impl Type {
     pub fn pointee_ty(&self) -> Self {
         assert!(self.is_any_ptr());
         match self.0.kind() {
-            TyKind::RigidTy(r) => {
-                match r {
-                    RigidTy::Adt(def, args) => {
-                        let elem_ty =
-                            match &args.0[0] {
-                                GenericArgKind::Type(ty) => Type::from(ty.clone()),
-                                _ => panic!(),
-                            };
-                        if self.is_box() { elem_ty } else { Type::infinite_array_type(elem_ty) }
-                    }
-                    RigidTy::RawPtr(ty, ..) | RigidTy::Ref(_, ty, ..) => Type::from(ty),
-                    _ => panic!(),
+            TyKind::RigidTy(r) => match r {
+                RigidTy::Adt(def, args) => {
+                    let elem_ty = match &args.0[0] {
+                        GenericArgKind::Type(ty) => Type::from(ty.clone()),
+                        _ => panic!(),
+                    };
+                    if self.is_box() { elem_ty } else { Type::infinite_array_type(elem_ty) }
                 }
-            }
+                RigidTy::RawPtr(ty, ..) | RigidTy::Ref(_, ty, ..) => Type::from(ty),
+                _ => panic!(),
+            },
             _ => panic!(),
         }
     }
@@ -305,11 +300,12 @@ impl Type {
                 assert!(variant_idx < variants.len());
                 // Only access variant with data
                 assert!(!variants[variant_idx].fields().is_empty());
-                let ftypes =
-                    variants[variant_idx].fields().iter()
-                    .map(|fdef| Type(fdef.ty_with_args(&args))).collect::<Vec<_>>();
+                let ftypes = variants[variant_idx]
+                    .fields()
+                    .iter()
+                    .map(|fdef| Type(fdef.ty_with_args(&args)))
+                    .collect::<Vec<_>>();
                 return Type::tuple_type(ftypes);
-                
             }
         }
         panic!("Impossible")
@@ -333,8 +329,7 @@ impl Type {
     pub fn tuple_def(&self) -> TupleDef {
         match self.0.kind().rigid() {
             Some(r) => match r {
-                RigidTy::Tuple(fields)
-                    => fields.iter().map(|t| Type::from(t)).collect::<Vec<_>>(),
+                RigidTy::Tuple(fields) => fields.iter().map(|t| Type::from(t)).collect::<Vec<_>>(),
                 _ => panic!("Not tuple"),
             },
             None => panic!("Not tuple"),

@@ -132,9 +132,9 @@ pub(super) enum NodeKind {
 
     // enum
     /// `Variant(i, x)`: variant `i` with data `x`.
-    /// If `x` is `None`, this variant does not contains anything 
+    /// If `x` is `None`, this variant does not contains anything
     Variant(NodeId, Option<NodeId>),
-    /// `AsVariant(x, i)`: enum `x` as variant 
+    /// `AsVariant(x, i)`: enum `x` as variant
     AsVariant(NodeId, NodeId),
     /// `IsVariant(x, i)`: match `x` with variant `i`
     MatchVariant(NodeId, NodeId),
@@ -238,15 +238,14 @@ impl NodeKind {
         matches!(self, NodeKind::InnerPointer(..))
     }
 
-
     pub fn is_variant(&self) -> bool {
         matches!(self, NodeKind::Variant(..))
     }
-    
+
     pub fn is_as_variant(&self) -> bool {
         matches!(self, NodeKind::AsVariant(..))
     }
-    
+
     pub fn is_match_variant(&self) -> bool {
         matches!(self, NodeKind::MatchVariant(..))
     }
@@ -308,15 +307,19 @@ impl Node {
             NodeKind::PointerBase(p)
             | NodeKind::PointerOffset(p)
             | NodeKind::PointerMeta(p)
-            | NodeKind::Box(p) 
+            | NodeKind::Box(p)
             | NodeKind::VecLen(p)
             | NodeKind::VecCap(p)
             | NodeKind::InnerPointer(p) => Some(vec![*p]),
             NodeKind::Vec(p, l, c) => Some(vec![*p, *l, *c]),
-            NodeKind::Variant(i, x)
-                => if let Some(data) = x { Some(vec![*i, *data]) } else { Some(vec![*i]) },
-            NodeKind::AsVariant(x, i) | NodeKind::MatchVariant(x, i)
-                => Some(vec![*x, *i]),
+            NodeKind::Variant(i, x) => {
+                if let Some(data) = x {
+                    Some(vec![*i, *data])
+                } else {
+                    Some(vec![*i])
+                }
+            }
+            NodeKind::AsVariant(x, i) | NodeKind::MatchVariant(x, i) => Some(vec![*x, *i]),
             NodeKind::Move(o) | NodeKind::Valid(o) | NodeKind::Invalid(o) => Some(vec![*o]),
             NodeKind::NullObject | NodeKind::Unknown(_) => Some(vec![]),
             _ => None,

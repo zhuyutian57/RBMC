@@ -12,7 +12,7 @@ use crate::symbol::nstring::NString;
 
 impl<'ctx> DataType<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     fn create_datatype_sign(&mut self, ty: Type) -> DataTypeSign {
-        let mut sign  = (NString::EMPTY, Vec::new());
+        let mut sign = (NString::EMPTY, Vec::new());
         if ty.is_struct() {
             let def = ty.struct_def();
             sign.0 = NString::from("_struct_") + def.0;
@@ -37,8 +37,7 @@ impl<'ctx> DataType<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     }
 
     fn create_datatype(&mut self, sign: DataTypeSign, variants: Variants) -> z3::Sort<'ctx> {
-        let mut builder =
-            z3::DatatypeBuilder::new(&self.z3_ctx, sign.0.to_string());
+        let mut builder = z3::DatatypeBuilder::new(&self.z3_ctx, sign.0.to_string());
         for variant in &variants {
             let mut fields = Vec::new();
             for (name, ty) in variant.1.iter() {
@@ -56,7 +55,7 @@ impl<'ctx> DataType<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     fn mk_struct_sort(&mut self, ty: Type) -> z3::Sort<'ctx> {
         assert!(ty.is_struct());
         let def = ty.struct_def();
-        let mut sign  = self.create_datatype_sign(ty);
+        let mut sign = self.create_datatype_sign(ty);
 
         if self.datatypes.contains_key(&sign) {
             return self.datatypes.get(&sign).unwrap().sort.clone();
@@ -75,7 +74,7 @@ impl<'ctx> DataType<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     fn mk_tuple_sort(&mut self, ty: Type) -> z3::Sort<'ctx> {
         assert!(ty.is_tuple() && !ty.is_unit());
         let def = ty.tuple_def();
-        let mut sign  = self.create_datatype_sign(ty);
+        let mut sign = self.create_datatype_sign(ty);
 
         if self.datatypes.contains_key(&sign) {
             return self.datatypes.get(&sign).unwrap().sort.clone();
@@ -94,12 +93,12 @@ impl<'ctx> DataType<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     fn mk_enum_sort(&mut self, ty: Type) -> z3::Sort<'ctx> {
         assert!(ty.is_enum());
         let def = ty.enum_def();
-        let mut sign  = self.create_datatype_sign(ty);
-        
+        let mut sign = self.create_datatype_sign(ty);
+
         if self.datatypes.contains_key(&sign) {
             return self.datatypes.get(&sign).unwrap().sort.clone();
         }
-        
+
         let mut variants = Vec::new();
         for vdef in def.1.iter() {
             let vname = vdef.0;
@@ -156,7 +155,7 @@ impl<'ctx> DataType<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         &mut self,
         object: z3::ast::Dynamic<'ctx>,
         field: usize,
-        ty: Type
+        ty: Type,
     ) -> z3::ast::Dynamic<'ctx> {
         assert!(ty.is_struct() || ty.is_tuple());
         let sign = self.create_datatype_sign(ty);
@@ -176,7 +175,7 @@ impl<'ctx> DataType<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         object: z3::ast::Dynamic<'ctx>,
         field: usize,
         value: z3::ast::Dynamic<'ctx>,
-        ty: Type
+        ty: Type,
     ) -> z3::ast::Dynamic<'ctx> {
         assert!(ty.is_struct() || ty.is_tuple());
         let sign = self.create_datatype_sign(ty);
@@ -204,7 +203,7 @@ impl<'ctx> DataType<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         &mut self,
         idx: usize,
         data: Option<z3::ast::Dynamic<'ctx>>,
-        ty: Type
+        ty: Type,
     ) -> z3::ast::Dynamic<'ctx> {
         let sign = self.create_datatype_sign(ty);
         if !self.datatypes.contains_key(&sign) {

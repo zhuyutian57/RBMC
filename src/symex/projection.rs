@@ -44,16 +44,13 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
 
         for elem in project_elem {
             ret = match elem {
-                ProjectionElem::Deref => self
-                    .project_deref(
-                        ret.clone(),
-                        Mode::Read,
-                        Guard::new(self._ctx.clone()),
-                        ret.ty().pointee_ty(),
-                    ),
-                ProjectionElem::Field(i, ty) => {
-                    self.project_field(ret.clone(), i, Type::from(ty))
-                }
+                ProjectionElem::Deref => self.project_deref(
+                    ret.clone(),
+                    Mode::Read,
+                    Guard::new(self._ctx.clone()),
+                    ret.ty().pointee_ty(),
+                ),
+                ProjectionElem::Field(i, ty) => self.project_field(ret.clone(), i, Type::from(ty)),
                 ProjectionElem::Index(local) => {
                     let mut index =
                         self._callback_symex.exec_state.current_local(local, Level::Level1);
@@ -70,7 +67,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
                     let idx = i.to_index();
                     let def = ret.ty().enum_def();
                     self._ctx.as_variant(ret, self._ctx.constant_usize(idx))
-                },
+                }
                 _ => panic!("Not support {elem:?} for {ret:?}"),
             };
         }
@@ -80,13 +77,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
 
     /// Dereferencing raw pointer/reference/box pointer.
     /// Return the objects it points to.
-    pub(super) fn project_deref(
-        &mut self,
-        pt: Expr,
-        mode: Mode,
-        guard: Guard,
-        ty: Type,
-    ) -> Expr {
+    pub(super) fn project_deref(&mut self, pt: Expr, mode: Mode, guard: Guard, ty: Type) -> Expr {
         assert!(pt.ty().is_any_ptr());
 
         let mut objects = ObjectSet::new();

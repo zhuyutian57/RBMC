@@ -127,8 +127,10 @@ impl Renaming {
 
         if expr.is_terminal() {
             if expr.is_symbol() {
-                if expr.extract_symbol().is_level2() { return; }
-                
+                if expr.extract_symbol().is_level2() {
+                    return;
+                }
+
                 self.l1_rename(expr);
                 let symbol = expr.extract_symbol();
 

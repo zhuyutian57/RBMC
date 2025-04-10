@@ -39,7 +39,7 @@ impl<'cfg> Symex<'cfg> {
         rhs.simplify();
 
         self.exec_state.assignment(lhs.clone(), rhs.clone());
-        
+
         // New l2 symbol
         lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
 
@@ -193,7 +193,7 @@ impl<'cfg> Symex<'cfg> {
             AggregateKind::Array(..) => {
                 assert!(ty.is_array());
                 self.ctx.aggregate(operand_exprs, ty)
-            },
+            }
             AggregateKind::Adt(def, i, ..) => {
                 assert!(ty.is_struct() || ty.is_enum());
                 if ty.is_struct() {
@@ -203,15 +203,14 @@ impl<'cfg> Symex<'cfg> {
                     let data = if operand_exprs.len() == 0 {
                         None
                     } else {
-                        let ftypes =
-                            operand_exprs.iter().map(|t| t.ty()).collect::<Vec<_>>();
+                        let ftypes = operand_exprs.iter().map(|t| t.ty()).collect::<Vec<_>>();
                         let tuple_ty = Type::tuple_type(ftypes);
                         Some(self.ctx.aggregate(operand_exprs, tuple_ty))
                     };
                     let idx = self.ctx.constant_usize(i.to_index());
                     self.ctx.variant(idx, data, ty)
                 }
-            },
+            }
             _ => todo!(),
         }
     }

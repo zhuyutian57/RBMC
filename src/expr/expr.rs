@@ -778,14 +778,14 @@ impl Debug for Expr {
                     return write!(f, "{:?}({:?})", def.1[idx].0, sub_exprs[1]);
                 }
             }
-    
+
             if self.is_as_variant() {
                 let def = self.ty().enum_def();
                 let x = sub_exprs[0].clone();
                 let idx = bigint_to_usize(&sub_exprs[1].extract_constant().to_integer());
                 return write!(f, "({x:?} as {:?})", def.1[idx].0);
             }
-    
+
             if self.is_match_variant() {
                 let def = sub_exprs[0].ty().enum_def();
                 let x = sub_exprs[0].clone();

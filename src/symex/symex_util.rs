@@ -138,13 +138,7 @@ impl<'cfg> Symex<'cfg> {
         Projection::new(self).project(place)
     }
 
-    pub(super) fn make_deref(
-        &mut self,
-        mut pt: Expr,
-        mode: Mode,
-        guard: Guard,
-        ty: Type,
-    ) -> Expr {
+    pub(super) fn make_deref(&mut self, mut pt: Expr, mode: Mode, guard: Guard, ty: Type) -> Expr {
         self.replace_predicates(&mut pt);
         Projection::new(self).project_deref(pt, mode, guard, ty)
     }

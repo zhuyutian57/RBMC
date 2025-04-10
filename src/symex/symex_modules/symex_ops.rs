@@ -22,7 +22,7 @@ impl<'cfg> Symex<'cfg> {
 
     fn symex_ops_index(&mut self, dest: Expr, args: Vec<Expr>) {
         let lhs = dest.clone();
-        
+
         let guard = Guard::from(self.ctx._true());
         let ty = args[0].ty();
 
@@ -42,13 +42,13 @@ impl<'cfg> Symex<'cfg> {
 
         if ty.pointee_ty().is_vec() {
             let _vec = self.make_deref(args[0].clone(), Mode::Read, guard.clone(), ty.pointee_ty());
-            
+
             // Bound check
             let vec_len = self.ctx.vec_len(_vec.clone());
             let i = args[1].clone();
             let mut out_of_bound = self.ctx.or(
                 self.ctx.lt(i.clone(), self.ctx.constant_usize(0)),
-                self.ctx.ge(i.clone(), vec_len)
+                self.ctx.ge(i.clone(), vec_len),
             );
             let msg = NString::from("dereference fail: out of Vec bound");
             self.claim(msg, out_of_bound);

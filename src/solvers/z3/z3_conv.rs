@@ -9,8 +9,8 @@ use crate::expr::expr::*;
 use crate::expr::ty::Type;
 use crate::program::program::bigint_to_usize;
 use crate::solvers::smt::smt_conv::*;
-use crate::solvers::smt::smt_memspace::*;
 use crate::solvers::smt::smt_datatype::*;
+use crate::solvers::smt::smt_memspace::*;
 use crate::solvers::solver::PResult;
 use crate::symbol::nstring::NString;
 
@@ -180,7 +180,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         &self,
         _vec: &z3::ast::Dynamic<'ctx>,
         len: &z3::ast::Dynamic<'ctx>,
-        cap: &z3::ast::Dynamic<'ctx>
+        cap: &z3::ast::Dynamic<'ctx>,
     ) -> z3::ast::Dynamic<'ctx> {
         self.mk_vec(_vec, len, cap)
     }
@@ -193,7 +193,11 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         self.mk_vec_cap(_vec)
     }
 
-    fn convert_inner_pointer(&self, pt: &z3::ast::Dynamic<'ctx>, ty: Type) -> z3::ast::Dynamic<'ctx> {
+    fn convert_inner_pointer(
+        &self,
+        pt: &z3::ast::Dynamic<'ctx>,
+        ty: Type,
+    ) -> z3::ast::Dynamic<'ctx> {
         assert!(ty.is_box() || ty.is_vec());
         if ty.is_box() { self.mk_box_ptr(pt) } else { self.mk_vec_ptr(pt) }
     }
@@ -218,7 +222,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         &mut self,
         idx: usize,
         data: Option<z3::ast::Dynamic<'ctx>>,
-        ty: Type
+        ty: Type,
     ) -> z3::ast::Dynamic<'ctx> {
         self.mk_variant(idx, data, ty)
     }
@@ -266,7 +270,12 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         self.mk_tuple_store(object, i, value, ty)
     }
 
-    fn convert_variant_update(&mut self, variant: Expr, field: Expr, value: Expr) -> z3::ast::Dynamic<'ctx> {
+    fn convert_variant_update(
+        &mut self,
+        variant: Expr,
+        field: Expr,
+        value: Expr,
+    ) -> z3::ast::Dynamic<'ctx> {
         assert!(variant.is_as_variant());
         let _enum = variant.extract_enum();
         let variant_idx = variant.extract_variant_idx();
