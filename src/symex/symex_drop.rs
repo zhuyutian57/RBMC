@@ -25,7 +25,7 @@ impl<'cfg> Symex<'cfg> {
             } else if expr.ty().is_struct() {
                 self.drop_struct(expr.clone(), guard.clone());
             } else {
-                panic!("May be just return");
+                todo!("drop {:?}", expr.ty());
             }
             return;
         }
