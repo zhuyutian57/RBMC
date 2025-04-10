@@ -7,6 +7,7 @@ use z3::ast::Ast;
 
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
+use crate::program::program::bigint_to_usize;
 use crate::solvers::smt::smt_conv::*;
 use crate::solvers::smt::smt_memspace::*;
 use crate::solvers::smt::smt_datatype::*;
@@ -17,7 +18,7 @@ pub struct Z3Conv<'ctx> {
     pub(super) z3_ctx: &'ctx z3::Context,
     z3_solver: z3::Solver<'ctx>,
     pub(super) fresh_count: HashMap<NString, usize>,
-    pub(super) datatypes: HashMap<NString, z3::DatatypeSort<'ctx>>,
+    pub(super) datatypes: HashMap<DataTypeSign, z3::DatatypeSort<'ctx>>,
     pub(super) pointer_logic: PointerLogic<z3::ast::Dynamic<'ctx>>,
     /// Cache Ast
     cache: HashMap<Expr, z3::ast::Dynamic<'ctx>>,
@@ -205,28 +206,33 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     }
 
     fn convert_object_space(&mut self, object: &Expr) -> z3::ast::Dynamic<'ctx> {
-        assert!(object.is_object() && object.extract_inner_expr().is_symbol());
-        self.create_object_space(&object.extract_inner_expr())
+        assert!(object.is_object());
+        let mut inner_expr = object.extract_inner_expr();
+        if inner_expr.is_as_variant() {
+            inner_expr = inner_expr.extract_enum();
+        }
+        self.create_object_space(&inner_expr)
     }
 
-    fn convert_struct_load(&mut self, object: Expr, field: Expr) -> z3::ast::Dynamic<'ctx> {
-        let i = field.extract_integer();
-        self.mk_tuple_select(object, i)
+    /// Select from struct/tuple
+    fn convert_index_tuple(&mut self, object: Expr, field: Expr) -> z3::ast::Dynamic<'ctx> {
+        let i = bigint_to_usize(&field.extract_integer());
+        let ty = object.ty();
+        let object = self.convert_ast(object);
+        self.mk_tuple_select(object, i, ty)
     }
 
-    fn convert_tuple_load(&mut self, object: Expr, field: Expr) -> z3::ast::Dynamic<'ctx> {
-        let i = field.extract_integer();
-        self.mk_tuple_select(object, i)
-    }
-
-    fn convert_struct_update(
-        &mut self,
-        object: Expr,
-        field: Expr,
-        value: Expr,
-    ) -> z3::ast::Dynamic<'ctx> {
-        let i = field.extract_constant().to_integer();
-        self.mk_tuple_store(object, i, value)
+    fn convert_index_enum(&mut self, object: Expr, field: Expr) -> z3::ast::Dynamic<'ctx> {
+        let ty = object.ty();
+        let sign = self.create_datatype_sign(ty);
+        let as_variant = object.extract_inner_expr();
+        assert!(as_variant.is_as_variant());
+        let idx = as_variant.extract_variant_idx();
+        let i = bigint_to_usize(&field.extract_integer());
+        let args = &[&self.convert_ast(object) as &dyn Ast];
+        let variant_data_type = ty.enum_variant_data_type(idx);
+        let sign = self.create_datatype_sign(variant_data_type);
+        self.datatypes.get(&sign).unwrap().variants[0].accessors[0].apply(args)
     }
 
     fn convert_tuple_update(
@@ -235,8 +241,29 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         field: Expr,
         value: Expr,
     ) -> z3::ast::Dynamic<'ctx> {
-        let i = field.extract_constant().to_integer();
-        self.mk_tuple_store(object, i, value)
+        let i = bigint_to_usize(&field.extract_constant().to_integer());
+        let ty = object.ty();
+        let object = self.convert_ast(object);
+        let value = self.convert_ast(value);
+        self.mk_tuple_store(object, i, value, ty)
+    }
+
+    fn convert_variant_update(&mut self, variant: Expr, field: Expr, value: Expr) -> z3::ast::Dynamic<'ctx> {
+        assert!(variant.is_as_variant());
+        let _enum = variant.extract_enum();
+        let variant_idx = variant.extract_variant_idx();
+        let variant_data_type = _enum.ty().enum_variant_data_type(variant_idx);
+
+        let object = self.convert_ast(variant);
+        let value = self.convert_ast(value);
+        let i = bigint_to_usize(&field.extract_constant().to_integer());
+        let data = self.mk_tuple_store(object, i, value, variant_data_type);
+        // Create a variant
+        self.mk_variant(variant_idx, Some(data), _enum.ty())
+    }
+
+    fn convert_as_variant(&mut self, _enum: Expr, idx: usize) -> z3::ast::Dynamic<'ctx> {
+        self.mk_as_variant(_enum, idx)
     }
 
     fn convert_match_variant(&mut self, _enum: Expr, idx: usize) -> z3::ast::Dynamic<'ctx> {

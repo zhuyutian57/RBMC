@@ -124,7 +124,7 @@ pub(super) enum NodeKind {
     // enum
     /// `Variant(i, x)`: variant `i` with data `x`.
     /// If `x` is `None`, this variant does not contains anything 
-    Enum(NodeId, Option<NodeId>),
+    Variant(NodeId, Option<NodeId>),
     /// `AsVariant(x, i)`: enum `x` as variant 
     AsVariant(NodeId, NodeId),
     /// `IsVariant(x, i)`: match `x` with variant `i`
@@ -213,8 +213,8 @@ impl NodeKind {
         matches!(self, NodeKind::Box(..))
     }
 
-    pub fn is_enum(&self) -> bool {
-        matches!(self, NodeKind::Enum(..))
+    pub fn is_variant(&self) -> bool {
+        matches!(self, NodeKind::Variant(..))
     }
     
     pub fn is_as_variant(&self) -> bool {
@@ -283,7 +283,7 @@ impl Node {
             | NodeKind::PointerOffset(p)
             | NodeKind::PointerMeta(p)
             | NodeKind::Box(p) => Some(vec![*p]),
-            NodeKind::Enum(i, x)
+            NodeKind::Variant(i, x)
                 => if let Some(data) = x { Some(vec![*i, *data]) } else { Some(vec![*i]) },
             NodeKind::AsVariant(x, i) | NodeKind::MatchVariant(x, i)
                 => Some(vec![*x, *i]),

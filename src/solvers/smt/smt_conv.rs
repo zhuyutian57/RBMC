@@ -29,6 +29,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         if ty.is_bool() {
             return self.mk_bool_sort();
         }
+
         if ty.is_integer() {
             return self.mk_int_sort();
         }
@@ -36,6 +37,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         if ty.is_primitive_ptr() {
             return self.mk_pointer_sort();
         }
+
         if ty.is_box() {
             return self.mk_box_sort();
         }
@@ -45,12 +47,19 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             let range = self.convert_sort(ty.elem_type());
             return self.mk_array_sort(&domain, &range);
         }
+
         if ty.is_struct() {
             return self.convert_struct_sort(ty);
         }
+
         if ty.is_tuple() {
             return self.convert_tuple_sort(ty);
         }
+
+        if ty.is_enum() {
+            return self.convert_enum_sort(ty);
+        }
+
         panic!("Not support {:?} yet", ty);
     }
 
@@ -147,7 +156,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         if expr.is_index() {
             let object = expr.extract_object();
             let index = expr.extract_index();
-            a = Some(self.convert_load(object, index));
+            a = Some(self.convert_index(object, index));
         }
 
         if expr.is_store() {
@@ -200,7 +209,9 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         }
 
         if expr.is_as_variant() {
-            todo!();
+            let x = expr.extract_enum();
+            let idx = expr.extract_variant_idx();
+            a = Some(self.convert_as_variant(x, idx));
         }
 
         if expr.is_match_variant() {
@@ -380,26 +391,26 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         panic!("Do not support cast {:?} to {target_ty:?}", pt.ty())
     }
 
-    fn convert_load(&mut self, object: Expr, index: Expr) -> Ast {
+    fn convert_index(&mut self, object: Expr, index: Expr) -> Ast {
         if object.ty().is_array() {
             let array = self.convert_ast(object.clone());
             let i = self.convert_ast(index.clone());
             return self.mk_select(&array, &i);
         }
 
-        if object.ty().is_struct() {
-            return self.convert_struct_load(object.clone(), index.clone());
+        if object.ty().is_struct() || object.ty().is_tuple() {
+            return self.convert_index_tuple(object.clone(), index.clone());
         }
 
-        if object.ty().is_tuple() {
-            return self.convert_tuple_load(object.clone(), index.clone());
+        if object.ty().is_enum() {
+            return self.convert_index_enum(object.clone(), index.clone());
         }
 
         panic!("Do not support load {object:?} with {:?}", object.ty())
     }
 
-    fn convert_struct_load(&mut self, object: Expr, field: Expr) -> Ast;
-    fn convert_tuple_load(&mut self, object: Expr, field: Expr) -> Ast;
+    fn convert_index_tuple(&mut self, object: Expr, field: Expr) -> Ast;
+    fn convert_index_enum(&mut self, object: Expr, field: Expr) -> Ast;
 
     fn convert_store(&mut self, object: Expr, index: Expr, value: Expr) -> Ast {
         if object.ty().is_array() {
@@ -409,19 +420,23 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             return self.mk_store(&array, &i, &val);
         }
 
-        if object.ty().is_struct() {
-            return self.convert_struct_update(object.clone(), index.clone(), value.clone());
+        if object.ty().is_struct() || object.ty().is_tuple() {
+            return self.convert_tuple_update(object.clone(), index.clone(), value.clone());
         }
 
-        if object.ty().is_tuple() {
-            return self.convert_tuple_update(object.clone(), index.clone(), value.clone());
+        if object.ty().is_enum() {
+            let inner_expr = object.extract_inner_expr();
+            assert!(inner_expr.is_as_variant());
+            return self.convert_variant_update(inner_expr, index.clone(), value.clone());
         }
 
         panic!("Do not support store {object:?} with {:?}", object.ty())
     }
 
-    fn convert_struct_update(&mut self, object: Expr, field: Expr, value: Expr) -> Ast;
     fn convert_tuple_update(&mut self, object: Expr, field: Expr, value: Expr) -> Ast;
+    fn convert_variant_update(&mut self, variant: Expr, field: Expr, value: Expr) -> Ast;
+
+    fn convert_as_variant(&mut self, _enum: Expr, idx: usize) -> Ast;
     fn convert_match_variant(&mut self, _enum: Expr, idx: usize) -> Ast;
 
     // fresh variable

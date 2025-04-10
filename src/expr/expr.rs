@@ -543,7 +543,7 @@ impl Expr {
             if sub_exprs.len() == 2 {
                 let idx = sub_exprs[0].clone();
                 let data = sub_exprs[1].clone();
-                *self = self.ctx._enum(idx, Some(data), self.ty());
+                *self = self.ctx.variant(idx, Some(data), self.ty());
             }
             return;
         }
@@ -653,10 +653,10 @@ impl Debug for Expr {
             if self.is_index() {
                 let object = &sub_exprs[0];
                 let index = &sub_exprs[1];
-                return if object.ty().is_struct() {
-                    write!(f, "{object:?}.{index:?}")
-                } else {
+                return if object.ty().is_array() || object.ty().is_slice() {
                     write!(f, "{object:?}[{index:?}]")
+                } else {
+                    write!(f, "{object:?}.{index:?}")
                 };
             }
 
@@ -803,7 +803,7 @@ pub trait ExprBuilder {
     fn pointer_meta(&self, pt: Expr) -> Expr;
     fn _box(&self, pt: Expr) -> Expr;
 
-    fn _enum(&self, idx: Expr, data: Option<Expr>, ty: Type) -> Expr;
+    fn variant(&self, idx: Expr, data: Option<Expr>, ty: Type) -> Expr;
     fn as_variant(&self, x: Expr, idx: Expr) -> Expr;
     fn match_variant(&self, x: Expr, idx: Expr) -> Expr;
 

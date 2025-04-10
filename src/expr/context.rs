@@ -207,7 +207,7 @@ impl Context {
 
     pub fn is_enum(&self, i: NodeId) -> bool {
         assert!(i < self.nodes.len());
-        self.nodes[i].kind().is_enum()
+        self.nodes[i].kind().is_variant()
     }
 
     pub fn is_as_variant(&self, i: NodeId) -> bool {
@@ -689,9 +689,9 @@ impl ExprBuilder for ExprCtx {
         Expr { ctx: self.clone(), id }
     }
 
-    fn _enum(&self, idx: Expr, data: Option<Expr>, ty: Type) -> Expr {
+    fn variant(&self, idx: Expr, data: Option<Expr>, ty: Type) -> Expr {
         assert!(ty.is_enum());
-        let kind = NodeKind::Enum(idx.id,
+        let kind = NodeKind::Variant(idx.id,
             match data { Some(e) => Some(e.id), None => None }
         );
         let new_node = Node::new(kind, ty);

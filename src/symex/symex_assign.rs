@@ -13,7 +13,6 @@ type UnOp = crate::expr::op::UnOp;
 
 impl<'cfg> Symex<'cfg> {
     pub(super) fn symex_assign(&mut self, place: &Place, rvalue: &Rvalue) {
-        // println!("{place:?} - {rvalue:?}");
         // construct lhs expr and rhs expr from MIR
         let lhs = self.make_project(place);
         let rhs = self.make_rvalue(rvalue);
@@ -98,6 +97,12 @@ impl<'cfg> Symex<'cfg> {
             let new_rhs = self.ctx.store(new_lhs.clone(), index, rhs.clone());
 
             self.assign_rec(new_lhs, new_rhs, guard);
+            return;
+        }
+
+        if lhs.is_as_variant() {
+            let new_lhs = lhs.extract_enum();
+            self.assign_rec(new_lhs, rhs, guard);
             return;
         }
 
@@ -205,7 +210,7 @@ impl<'cfg> Symex<'cfg> {
                         Some(self.ctx.aggregate(operand_exprs, tuple_ty))
                     };
                     let idx = self.ctx.constant_usize(i.to_index());
-                    self.ctx._enum(idx, data, ty)
+                    self.ctx.variant(idx, data, ty)
                 }
             },
             _ => todo!(),

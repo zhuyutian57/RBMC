@@ -268,16 +268,39 @@ impl Type {
                 def.0 = NString::from(adt.trimmed_name());
                 for variant in adt.variants() {
                     let name = NString::from(variant.name());
+                    // Type of a variant is a tuple
+                    let mut ftypes = Vec::new();
+                    for fdef in variant.fields() {
+                        ftypes.push(Type(fdef.ty_with_args(&args)));
+                    }
                     let mut fields = Vec::new();
-                    for field in variant.fields() {
-                        let fty = field.ty_with_args(&args);
-                        fields.push((NString::from(field.name.clone()), Type::from(fty)));
+                    if !ftypes.is_empty() {
+                        let fname = NString::from("_data_") + name;
+                        fields.push((fname, Type::tuple_type(ftypes)));
                     }
                     def.1.push((name, fields));
                 }
             }
         }
         def
+    }
+
+    pub fn enum_variant_data_type(&self, variant_idx: usize) -> Self {
+        assert!(self.is_enum());
+        if let TyKind::RigidTy(r) = self.0.kind() {
+            if let RigidTy::Adt(adt, args) = r {
+                let variants = adt.variants();
+                assert!(variant_idx < variants.len());
+                // Only access variant with data
+                assert!(!variants[variant_idx].fields().is_empty());
+                let ftypes =
+                    variants[variant_idx].fields().iter()
+                    .map(|fdef| Type(fdef.ty_with_args(&args))).collect::<Vec<_>>();
+                return Type::tuple_type(ftypes);
+                
+            }
+        }
+        panic!("Impossible")
     }
 
     pub fn struct_def(&self) -> StructDef {
@@ -298,7 +321,8 @@ impl Type {
     pub fn tuple_def(&self) -> TupleDef {
         match self.0.kind().rigid() {
             Some(r) => match r {
-                RigidTy::Tuple(fields) => fields.iter().map(|t| Type::from(t)).collect::<Vec<_>>(),
+                RigidTy::Tuple(fields)
+                    => fields.iter().map(|t| Type::from(t)).collect::<Vec<_>>(),
                 _ => panic!("Not tuple"),
             },
             None => panic!("Not tuple"),
@@ -318,13 +342,7 @@ impl Type {
             RigidTy::Char => "char".into(),
             RigidTy::Int(i) => format!("{i:?}").to_lowercase().into(),
             RigidTy::Uint(i) => format!("{i:?}").to_lowercase().into(),
-            RigidTy::Adt(def, args) => {
-                let mut name = NString::from(def.trimmed_name());
-                for arg in args.0.iter() {
-                    name = name + "_" + Type::from(arg.ty().expect("Must be Type")).name();
-                }
-                name
-            },
+            RigidTy::Adt(def, _) => def.trimmed_name().into(),
             RigidTy::Array(ty, ..) => format!("Array({:?})", Type(*ty).name()).into(),
             RigidTy::Slice(ty) => format!("Slice({:?})", Type(*ty).name()).into(),
             RigidTy::RawPtr(ty, ..) => format!("Ptr({:?})", Type(*ty).name()).into(),
