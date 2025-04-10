@@ -88,8 +88,8 @@ impl Expr {
     pub fn is_offset(&self) -> bool {
         self.ctx.borrow().is_offset(self.id)
     }
-    pub fn is_pointer_ident(&self) -> bool {
-        self.ctx.borrow().is_pointer_ident(self.id)
+    pub fn is_pointer_base(&self) -> bool {
+        self.ctx.borrow().is_pointer_base(self.id)
     }
     pub fn is_pointer_offset(&self) -> bool {
         self.ctx.borrow().is_pointer_offset(self.id)
@@ -99,6 +99,18 @@ impl Expr {
     }
     pub fn is_box(&self) -> bool {
         self.ctx.borrow().is_box(self.id)
+    }
+    pub fn is_vec(&self) -> bool {
+        self.ctx.borrow().is_vec(self.id)
+    }
+    pub fn is_vec_len(&self) -> bool {
+        self.ctx.borrow().is_vec_len(self.id)
+    }
+    pub fn is_vec_cap(&self) -> bool {
+        self.ctx.borrow().is_vec_cap(self.id)
+    }
+    pub fn is_inner_pointer(&self) -> bool {
+        self.ctx.borrow().is_inner_pointer(self.id)
     }
 
     pub fn is_enum(&self) -> bool {
@@ -282,11 +294,13 @@ impl Expr {
 
     pub fn extract_inner_pointer(&self) -> Expr {
         assert!(
-            self.is_box()
-                || self.is_offset()
-                || self.is_pointer_ident()
+            self.is_offset()
+                || self.is_pointer_base()
                 || self.is_pointer_offset()
                 || self.is_pointer_meta()
+                || self.is_box()
+                || self.is_vec()
+                || self.is_inner_pointer()
         );
         self.extract_sub_expr(0)
     }
@@ -323,7 +337,7 @@ impl Expr {
 
         if self.is_slice() {
             let mut offset = self.extract_object().compute_offset();
-            let elem_size = self.ty().elem_type().num_fields().expect("Impossible");
+            let elem_size = self.ty().elem_type().num_fields();
             let start = self.extract_slice_start();
             offset = self
                 .ctx
@@ -338,7 +352,7 @@ impl Expr {
             let index = self.extract_index();
 
             let collected_offset = if inner_object.ty().is_array() || inner_object.ty().is_slice() {
-                let elem_size = inner_object.ty().num_fields().expect("Impossible");
+                let elem_size = inner_object.ty().num_fields();
                 self.ctx.mul(index, self.ctx.constant_isize(elem_size as isize))
             } else if inner_object.ty().is_struct() {
                 assert!(index.is_constant());
@@ -348,7 +362,7 @@ impl Expr {
                 let i = bigint_to_usize(&idx);
                 let mut res = 0;
                 for j in 0..i {
-                    res += def.1[j].1.num_fields().expect("");
+                    res += def.1[j].1.num_fields();
                 }
                 self.ctx.constant_isize(res as isize)
             } else {
@@ -360,7 +374,7 @@ impl Expr {
                 let i = bigint_to_usize(&idx);
                 let mut res = 0;
                 for j in 0..i {
-                    res += def[j].num_fields().expect("");
+                    res += def[j].num_fields();
                 }
                 self.ctx.constant_isize(res as isize)
             };
@@ -515,7 +529,7 @@ impl Expr {
             return;
         }
 
-        if self.is_pointer_ident() {
+        if self.is_pointer_base() {
             let pt = sub_exprs[0].clone();
             *self = self.ctx.pointer_base(pt);
             return;
@@ -536,6 +550,32 @@ impl Expr {
         if self.is_box() {
             let pt = sub_exprs[0].clone();
             *self = self.ctx._box(pt);
+            return;
+        }
+
+        if self.is_vec() {
+            let pt = sub_exprs[0].clone();
+            let len = sub_exprs[1].clone();
+            let cap = sub_exprs[2].clone();
+            *self = self.ctx._vec(pt, len, cap, self.ty());
+            return;
+        }
+
+        if self.is_vec_len() {
+            let pt = sub_exprs[0].clone();
+            *self = self.ctx.vec_len(pt);
+            return;
+        }
+
+        if self.is_vec_cap() {
+            let pt = sub_exprs[0].clone();
+            *self = self.ctx.vec_cap(pt);
+            return;
+        }
+
+        if self.is_inner_pointer() {
+            let pt = sub_exprs[0].clone();
+            *self = self.ctx.inner_pointer(pt);
             return;
         }
 
@@ -680,18 +720,13 @@ impl Debug for Expr {
                 return write!(f, "store({object:?}, {index:?}, {value:?})");
             }
 
-            if self.is_box() {
-                let pt = &sub_exprs[0];
-                return write!(f, "Box({pt:?})");
-            }
-
             if self.is_offset() {
                 let pt = &sub_exprs[0];
                 let offset = &sub_exprs[1];
                 return write!(f, "{pt:?} + {offset:?}");
             }
 
-            if self.is_pointer_ident() {
+            if self.is_pointer_base() {
                 let pt = &sub_exprs[0];
                 return write!(f, "{pt:?}");
             }
@@ -704,6 +739,33 @@ impl Debug for Expr {
             if self.is_pointer_meta() {
                 let pt = &sub_exprs[0];
                 return write!(f, "Meta({pt:?})");
+            }
+
+            if self.is_box() {
+                let pt = &sub_exprs[0];
+                return write!(f, "Box({pt:?})");
+            }
+
+            if self.is_vec() {
+                let pt = &sub_exprs[0];
+                let len = &sub_exprs[1];
+                let cap = &sub_exprs[2];
+                return write!(f, "Vec({pt:?}, {len:?}, {cap:?})");
+            }
+
+            if self.is_vec_len() {
+                let pt = &sub_exprs[0];
+                return write!(f, "VecLen({pt:?})");
+            }
+
+            if self.is_vec_cap() {
+                let pt = &sub_exprs[0];
+                return write!(f, "VecCap({pt:?})");
+            }
+
+            if self.is_inner_pointer() {
+                let pt = &sub_exprs[0];
+                return write!(f, "iptr({pt:?})");
             }
 
             if self.is_enum() {
@@ -802,6 +864,10 @@ pub trait ExprBuilder {
     fn pointer_offset(&self, pt: Expr) -> Expr;
     fn pointer_meta(&self, pt: Expr) -> Expr;
     fn _box(&self, pt: Expr) -> Expr;
+    fn _vec(&self, pt: Expr, len: Expr, cap: Expr, ty: Type) -> Expr;
+    fn vec_len(&self, pt: Expr) -> Expr;
+    fn vec_cap(&self, pt: Expr) -> Expr;
+    fn inner_pointer(&self, pt: Expr) -> Expr;
 
     fn variant(&self, idx: Expr, data: Option<Expr>, ty: Type) -> Expr;
     fn as_variant(&self, x: Expr, idx: Expr) -> Expr;

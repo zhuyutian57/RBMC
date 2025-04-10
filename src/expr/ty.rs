@@ -77,6 +77,11 @@ impl Type {
         Ty::new_box(inner_type.0).into()
     }
 
+    pub fn inner_pointer_type(&self) -> Self {
+        assert!(self.is_smart_ptr());
+        Type::ptr_type(self.pointee_ty(), Mutability::Not)
+    }
+
     pub fn tuple_type(sub_types: Vec<Type>) -> Self {
         let stypes = sub_types.iter().map(|x| x.0).collect::<Vec<_>>();
         Ty::new_tuple(&stypes).into()
@@ -135,7 +140,7 @@ impl Type {
     }
 
     pub fn is_struct(&self) -> bool {
-        self.0.kind().is_struct() && !self.is_box() && !self.is_layout()
+        self.0.kind().is_struct() && !self.is_layout() && !self.is_box() && !self.is_vec()
     }
 
     pub fn is_tuple(&self) -> bool {
@@ -153,56 +158,63 @@ impl Type {
         self.0.kind().is_raw_ptr()
     }
 
+    pub fn is_slice_ptr(&self) -> bool {
+        self.is_primitive_ptr() && self.pointee_ty().is_slice()
+    }
+
     pub fn is_box(&self) -> bool {
         self.0.kind().is_box()
     }
 
-    pub fn is_slice_ptr(&self) -> bool {
-        self.is_any_ptr() && self.pointee_ty().is_slice()
-    }
-
-    /// `Box` is also a ptr by our semantic
-    pub fn is_any_ptr(&self) -> bool {
-        self.is_ref() || self.is_ptr() || self.is_box()
+    pub fn is_vec(&self) -> bool {
+        self.name() == "Vec"
     }
 
     pub fn is_primitive_ptr(&self) -> bool {
         self.is_ptr() || self.is_ref()
     }
 
+    pub fn is_smart_ptr(&self) -> bool {
+        self.is_box() || self.is_vec()
+    }
+
+    pub fn is_any_ptr(&self) -> bool {
+        self.is_primitive_ptr() || self.is_smart_ptr()
+    }
+
     /// Size will be in field-level
-    pub fn num_fields(&self) -> Option<usize> {
+    pub fn num_fields(&self) -> usize {
         if self.is_unit() {
-            return Some(0);
+            return 0;
         }
         if self.is_bool() || self.is_integer() || self.is_any_ptr() {
-            return Some(1);
+            return 1;
         }
 
         if self.is_array() {
-            return Some(self.array_size().unwrap() as usize);
+            return self.array_size().unwrap() as usize;
         }
 
         if self.is_struct() {
             let def = self.struct_def();
-            let size = def.1.iter().fold(0, |acc, x| {
-                acc + match x.1.num_fields() {
-                    Some(s) => s,
-                    None => panic!("Impoissible"),
-                }
-            });
-            return Some(size);
+            let size = def.1.iter()
+                .fold(0, |acc, x| acc + x.1.num_fields());
+            return size;
         }
 
         if self.is_tuple() {
             let def = self.tuple_def();
-            let size = def.iter().fold(0, |acc, x| {
-                acc + match x.num_fields() {
-                    Some(s) => s,
-                    None => panic!("Impoissible"),
-                }
-            });
-            return Some(size);
+            let size = def.iter()
+                .fold(0, |acc, x| acc + x.num_fields());
+            return size;
+        }
+
+        if self.is_enum() {
+            let mut mx = 1;
+            for variant in self.enum_def().1 {
+                mx = std::cmp::max(mx, variant.1.len());
+            }
+            return mx;
         }
 
         todo!("{self:?}")
@@ -214,12 +226,12 @@ impl Type {
             TyKind::RigidTy(r) => {
                 match r {
                     RigidTy::Adt(def, args) => {
-                        assert!(def.is_box());
-                        // TODO: handle args more carefully
-                        match &args.0[0] {
-                            GenericArgKind::Type(ty) => Type::from(ty.clone()),
-                            _ => panic!(),
-                        }
+                        let elem_ty =
+                            match &args.0[0] {
+                                GenericArgKind::Type(ty) => Type::from(ty.clone()),
+                                _ => panic!(),
+                            };
+                        if self.is_box() { elem_ty } else { Type::infinite_array_type(elem_ty) }
                     }
                     RigidTy::RawPtr(ty, ..) | RigidTy::Ref(_, ty, ..) => Type::from(ty),
                     _ => panic!(),

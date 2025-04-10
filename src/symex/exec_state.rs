@@ -66,7 +66,7 @@ impl<'cfg> ExecutionState<'cfg> {
 
     pub fn new_object(&mut self, ty: Type) -> Expr {
         let name = NString::from("heap_object_") + self.objects.len().to_string();
-        let symbol = Symbol::new(name, 0, 0, Level::Level0);
+        let symbol = Symbol::from(name);
         let sym_expr = self.ctx.mk_symbol(symbol, ty);
         // Record the ident
         self.ns.insert_symbol(sym_expr.clone());
@@ -125,7 +125,7 @@ impl<'cfg> ExecutionState<'cfg> {
         if self.ns.containts_symbol(ident) {
             self.ns.lookup_symbol(ident)
         } else {
-            let symbol = Symbol::new(ident, 0, 0, Level::Level0);
+            let symbol = Symbol::from(ident);
             let symbol_expr = self.ctx.mk_symbol(symbol, ty);
             self.ns.insert_symbol(symbol_expr.clone());
             symbol_expr

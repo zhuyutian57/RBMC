@@ -1,10 +1,8 @@
-use std::alloc::{alloc, dealloc, Layout};
 
 fn main() {
-    let layout = Layout::new::<i32>();
-    // The memory allocated by `alloc` should be
-    // manually deallocated by user
-    let p1 = unsafe { alloc(layout) } as *mut i32;
-    unsafe { dealloc(p1 as *mut u8, layout); }
-    unsafe { dealloc(p1 as *mut u8, layout); }
-} // invalid-free, double free
+    let mut v1 = Vec::new();
+    v1.push(1);
+    v1.push(12);
+    let x = v1[0] == v1[1];
+    if !x { v1.pop(); }
+}

@@ -61,7 +61,7 @@ impl<'cfg> Symex<'cfg> {
         let alloc_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
         let const_array = self.ctx.constant_array(self.ctx.constant_bool(false), None);
         self.assign(alloc_array, const_array, self.ctx._true().into());
-
+        println!("done");
         // Register the initial state
         self.goto(0, self.ctx._true());
     }

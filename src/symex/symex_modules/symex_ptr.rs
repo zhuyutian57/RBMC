@@ -11,9 +11,9 @@ use crate::symex::value_set::ObjectSet;
 impl<'cfg> Symex<'cfg> {
     pub fn symex_ptr_api(&mut self, fndef: &FunctionDef, args: Vec<Expr>, dest: Expr) {
         let name = NString::from(fndef.0.trimmed_name());
-        if name == NString::from("eq") {
+        if name == "eq" {
             self.symex_ptr_eq(dest, args);
-        } else if name == NString::from("null_mut") || name == NString::from("null") {
+        } else if name == "null_mut" || name == "null" {
             self.symex_ptr_null(dest);
         } else if name == "std::ptr::mut_ptr::<impl *mut T>::add" {
             self.symex_ptr_add(dest, args);

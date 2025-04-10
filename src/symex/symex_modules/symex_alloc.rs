@@ -12,11 +12,11 @@ use crate::symex::projection::Mode;
 impl<'cfg> Symex<'cfg> {
     pub fn symex_alloc_api(&mut self, fndef: &FunctionDef, args: Vec<Expr>, dest: Expr) {
         let name = NString::from(fndef.0.trimmed_name());
-        if name == NString::from("alloc") {
+        if name == "alloc" {
             self.symex_alloc(dest, args);
-        } else if name == NString::from("dealloc") {
+        } else if name == "dealloc" {
             self.symex_dealloc(args);
-        } else if name == NString::from("Layout::new") {
+        } else if name == "Layout::new" {
             self.symex_layout_new(dest, fndef);
         } else {
             panic!("Not support {name:?}");

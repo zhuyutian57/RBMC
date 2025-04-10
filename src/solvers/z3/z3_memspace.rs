@@ -27,10 +27,23 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         let pointer_sort = self.pointer_sort();
 
         // A box pointer is a tuple (pointer)
-        let pointer_tuple_sort = z3::DatatypeBuilder::new(&self.z3_ctx, "box")
+        let box_tuple_sort = z3::DatatypeBuilder::new(&self.z3_ctx, "box")
             .variant("box", vec![("box_ptr", DatatypeAccessor::Sort(pointer_sort.clone()))])
             .finish();
-        self.datatypes.insert((NString::from("box"), vec![]), pointer_tuple_sort);
+        self.datatypes.insert((NString::from("box"), vec![]), box_tuple_sort);
+
+        // A vec pointer is a tuple (pointer, len, cap)
+        let vec_tuple_sort = z3::DatatypeBuilder::new(&self.z3_ctx, "vec")
+            .variant(
+                "vec",
+                vec![
+                    ("vec_ptr", DatatypeAccessor::Sort(pointer_sort.clone())),
+                    ("vec_len", DatatypeAccessor::Sort(self.mk_int_sort())),
+                    ("vec_cap", DatatypeAccessor::Sort(self.mk_int_sort()))
+                ])
+            .finish();
+    self.datatypes.insert((NString::from("vec"), vec![]), vec_tuple_sort);
+
     }
 
     fn pointer_sort(&self) -> z3::Sort<'ctx> {
@@ -61,32 +74,24 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     fn init_pointer_space(&mut self, object: &Expr) {
         assert!(!self.pointer_logic.contains(object));
         assert!(object.is_symbol());
+        let ty = object.ty();
 
         // Use l0 as identifier
         let space_base = NString::from(object.extract_symbol().ident()) + "_base";
-        // The size is field-level
-        let space_len = if object.ty().is_struct() {
-            object.ty().struct_def().1.len()
-        } else if object.ty().is_tuple() {
-            object.ty().tuple_def().len()
-        } else if object.ty().is_enum() {
-            let mut mx = 1;
-            for variant in object.ty().enum_def().1 {
-                mx = std::cmp::max(mx, variant.1.len());
-            }
-            mx
-        } else if object.ty().is_array() {
-            object.ty().array_size().expect("Array must have size") as usize
+        let base = self.mk_int_symbol(space_base);
+        let len = if ty.is_array() && ty.array_size() == None {
+            let sym = object.extract_symbol().ident() + "_size";
+            self.mk_int_symbol(sym)
         } else {
-            1
+            self.mk_smt_int(BigInt::from(ty.num_fields()))
         };
 
-        let base = self.mk_int_symbol(space_base);
-        let len = self.mk_smt_int(BigInt::from(space_len));
-
-        // base is greater than 0
+        // Base is greater than 0
         self.assert(self.mk_gt(&base, &self.mk_smt_int(BigInt::ZERO)));
-        // disjoint relationship
+        // Size is greater or eqaul to 0
+        self.assert(self.mk_ge(&len, &self.mk_smt_int(BigInt::ZERO)));
+        // Disjoint relationship
+        // TODO: remove own object?
         for (b, l) in self.pointer_logic.object_spaces().values() {
             if space_base == NString::from(b.to_string()) {
                 continue;
@@ -151,8 +156,7 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
     fn mk_box(&self, inner_pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
         let sign = (NString::from("box"), vec![]);
-        self.datatypes.get(&sign).unwrap().variants[0]
-            .constructor
+        self.datatypes.get(&sign).unwrap().variants[0].constructor
             .apply(&[inner_pt as &dyn Ast])
     }
 
@@ -160,5 +164,34 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         let sign = (NString::from("box"), vec![]);
         self.datatypes.get(&sign).unwrap().variants[0].accessors[0]
             .apply(&[_box as &dyn Ast])
+    }
+
+    fn mk_vec(
+        &self,
+        inner_pt: &z3::ast::Dynamic<'ctx>,
+        len: &z3::ast::Dynamic<'ctx>,
+        cap: &z3::ast::Dynamic<'ctx>
+    ) -> z3::ast::Dynamic<'ctx> {
+        let sign = (NString::from("vec"), vec![]);
+        self.datatypes.get(&sign).unwrap().variants[0].constructor
+            .apply(&[inner_pt as &dyn Ast])
+    }
+
+    fn mk_vec_ptr(&self, _vec: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+        let sign = (NString::from("vec"), vec![]);
+        self.datatypes.get(&sign).unwrap().variants[0].accessors[0]
+            .apply(&[_vec as &dyn Ast])
+    }
+
+    fn mk_vec_len(&self, _vec: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+        let sign = (NString::from("vec"), vec![]);
+        self.datatypes.get(&sign).unwrap().variants[0].accessors[1]
+            .apply(&[_vec as &dyn Ast])
+    }
+
+    fn mk_vec_cap(&self, _vec: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+        let sign = (NString::from("vec"), vec![]);
+        self.datatypes.get(&sign).unwrap().variants[0].accessors[2]
+            .apply(&[_vec as &dyn Ast])
     }
 }

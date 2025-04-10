@@ -118,8 +118,17 @@ pub(super) enum NodeKind {
     PointerOffset(NodeId),
     /// `PtrMetaData(pt)` retrieve pointer meta data, such as slice len
     PointerMeta(NodeId),
-    /// `Box(*const T)` encodes Box pointer, one-field tuple
+    /// `Box(*T)` encodes Box pointer, one-field tuple
     Box(NodeId),
+    /// `Vec(*[T], len, cap)` encodes Vec, three-field tuple,
+    /// array pointer, length and capacity
+    Vec(NodeId, NodeId, NodeId),
+    /// `VecLen(vec)` retrieves the length of a `Vec`
+    VecLen(NodeId),
+    /// `VecCap(vec)` retrieves the capacity of a `Vec`
+    VecCap(NodeId),
+    /// Retrieving inner pointer of smart pointer, including `Box`, `Vec`, and son on.
+    InnerPointer(NodeId),
 
     // enum
     /// `Variant(i, x)`: variant `i` with data `x`.
@@ -213,6 +222,23 @@ impl NodeKind {
         matches!(self, NodeKind::Box(..))
     }
 
+    pub fn is_vec(&self) -> bool {
+        matches!(self, NodeKind::Vec(..))
+    }
+
+    pub fn is_vec_len(&self) -> bool {
+        matches!(self, NodeKind::VecLen(..))
+    }
+
+    pub fn is_vec_cap(&self) -> bool {
+        matches!(self, NodeKind::VecCap(..))
+    }
+
+    pub fn is_inner_pointer(&self) -> bool {
+        matches!(self, NodeKind::InnerPointer(..))
+    }
+
+
     pub fn is_variant(&self) -> bool {
         matches!(self, NodeKind::Variant(..))
     }
@@ -282,7 +308,11 @@ impl Node {
             NodeKind::PointerBase(p)
             | NodeKind::PointerOffset(p)
             | NodeKind::PointerMeta(p)
-            | NodeKind::Box(p) => Some(vec![*p]),
+            | NodeKind::Box(p) 
+            | NodeKind::VecLen(p)
+            | NodeKind::VecCap(p)
+            | NodeKind::InnerPointer(p) => Some(vec![*p]),
+            NodeKind::Vec(p, l, c) => Some(vec![*p, *l, *c]),
             NodeKind::Variant(i, x)
                 => if let Some(data) = x { Some(vec![*i, *data]) } else { Some(vec![*i]) },
             NodeKind::AsVariant(x, i) | NodeKind::MatchVariant(x, i)

@@ -17,11 +17,11 @@ use crate::symex::value_set::ObjectSet;
 impl<'cfg> Symex<'cfg> {
     pub fn symex_boxed_api(&mut self, fndef: &FunctionDef, args: Vec<Expr>, dest: Expr) {
         let name = NString::from(fndef.0.trimmed_name());
-        if name == NString::from("Box::<T>::new") {
+        if name == "Box::<T>::new" {
             self.symex_box_new(dest, args);
-        } else if name == NString::from("Box::<T>::from_raw") {
+        } else if name == "Box::<T>::from_raw" {
             self.symex_box_from_raw(dest, args);
-        } else if name == NString::from("Box::<T, A>::into_raw") {
+        } else if name == "Box::<T, A>::into_raw" {
             self.symex_box_into_raw(dest, args);
         } else {
             panic!("Not support {name:?}");
@@ -37,9 +37,9 @@ impl<'cfg> Symex<'cfg> {
         let value = args[0].clone();
         self.assign(object.clone(), value, self.ctx._true().into());
 
-        // Return box pointer
-        let address_of = self.ctx.address_of(object.clone(), object.extract_address_type());
-        let _box = self.ctx._box(address_of);
+        // Construct box pointer
+        let inner_pt = self.ctx.address_of(object.clone(), object.extract_address_type());
+        let _box = self.ctx._box(inner_pt);
         self.assign(lhs, _box, self.ctx._true().into());
 
         // Track new object

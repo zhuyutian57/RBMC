@@ -80,7 +80,6 @@ impl<'cfg> Symex<'cfg> {
             self.rename(&mut false_cond);
             false_guard.add(false_cond);
             self.assign_rec(false_value, rhs.clone(), false_guard);
-
             return;
         }
 

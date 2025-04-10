@@ -185,7 +185,7 @@ impl Context {
         self.nodes[i].kind().is_offset()
     }
 
-    pub fn is_pointer_ident(&self, i: NodeId) -> bool {
+    pub fn is_pointer_base(&self, i: NodeId) -> bool {
         assert!(i < self.nodes.len());
         self.nodes[i].kind().is_pointer_base()
     }
@@ -203,6 +203,26 @@ impl Context {
     pub fn is_box(&self, i: NodeId) -> bool {
         assert!(i < self.nodes.len());
         self.nodes[i].kind().is_box()
+    }
+
+    pub fn is_vec(&self, i: NodeId) -> bool {
+        assert!(i < self.nodes.len());
+        self.nodes[i].kind().is_vec()
+    }
+
+    pub fn is_vec_len(&self, i: NodeId) -> bool {
+        assert!(i < self.nodes.len());
+        self.nodes[i].kind().is_vec_len()
+    }
+
+    pub fn is_vec_cap(&self, i: NodeId) -> bool {
+        assert!(i < self.nodes.len());
+        self.nodes[i].kind().is_vec_cap()
+    }
+
+    pub fn is_inner_pointer(&self, i: NodeId) -> bool {
+        assert!(i < self.nodes.len());
+        self.nodes[i].kind().is_inner_pointer()
     }
 
     pub fn is_enum(&self, i: NodeId) -> bool {
@@ -655,7 +675,12 @@ impl ExprBuilder for ExprCtx {
 
     fn pointer_base(&self, pt: Expr) -> Expr {
         assert!(pt.ty().is_any_ptr());
-        let kind = NodeKind::PointerBase(pt.id);
+        let ptr = if pt.ty().is_smart_ptr() {
+            self.inner_pointer(pt)
+        } else {
+            pt
+        };
+        let kind = NodeKind::PointerBase(ptr.id);
         let ty = Type::usize_type();
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
@@ -664,7 +689,12 @@ impl ExprBuilder for ExprCtx {
 
     fn pointer_offset(&self, pt: Expr) -> Expr {
         assert!(pt.ty().is_any_ptr());
-        let kind = NodeKind::PointerOffset(pt.id);
+        let ptr = if pt.ty().is_smart_ptr() {
+            self.inner_pointer(pt)
+        } else {
+            pt
+        };
+        let kind = NodeKind::PointerOffset(ptr.id);
         let ty = Type::usize_type();
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
@@ -684,6 +714,42 @@ impl ExprBuilder for ExprCtx {
         assert!(pt.ty().is_ptr());
         let kind = NodeKind::Box(pt.id);
         let ty = Type::box_type(pt.ty().pointee_ty());
+        let new_node = Node::new(kind, ty);
+        let id = self.borrow_mut().add_node(new_node);
+        Expr { ctx: self.clone(), id }
+    }
+
+    fn _vec(&self, pt: Expr, len: Expr, cap: Expr, ty: Type) -> Expr {
+        assert!(pt.ty().is_ptr());
+        assert!(pt.ty().pointee_ty() == ty.pointee_ty());
+        let kind = NodeKind::Vec(pt.id, len.id, cap.id);
+        let new_node = Node::new(kind, ty);
+        let id = self.borrow_mut().add_node(new_node);
+        Expr { ctx: self.clone(), id }
+    }
+
+    fn vec_len(&self, pt: Expr) -> Expr {
+        assert!(pt.ty().is_vec());
+        let kind = NodeKind::VecLen(pt.id);
+        let ty = Type::usize_type();
+        let new_node = Node::new(kind, ty);
+        let id = self.borrow_mut().add_node(new_node);
+        Expr { ctx: self.clone(), id }
+    }
+
+    fn vec_cap(&self, pt: Expr) -> Expr {
+        assert!(pt.ty().is_vec());
+        let kind = NodeKind::VecCap(pt.id);
+        let ty = Type::usize_type();
+        let new_node = Node::new(kind, ty);
+        let id = self.borrow_mut().add_node(new_node);
+        Expr { ctx: self.clone(), id }
+    }
+
+    fn inner_pointer(&self, pt: Expr) -> Expr {
+        assert!(pt.ty().is_smart_ptr());
+        let kind = NodeKind::InnerPointer(pt.id);
+        let ty = pt.ty().inner_pointer_type();
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
         Expr { ctx: self.clone(), id }

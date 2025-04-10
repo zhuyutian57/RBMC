@@ -25,7 +25,7 @@ impl<'cfg> Symex<'cfg> {
         let lhs = dest.clone();
         let n = self.exec_state.ns.lookup_nondet_count(lhs.ty());
         let name = NString::from(format!("nondet_{:?}_{n}", lhs.ty()));
-        let symbol = Symbol::new(name, 0, 0, Level::Level0);
+        let symbol = Symbol::from(name);
         let nondet = self.ctx.mk_symbol(symbol, lhs.ty());
         self.assign(lhs, nondet, self.ctx._true().into());
     }

@@ -87,6 +87,12 @@ impl Debug for Symbol {
     }
 }
 
+impl From<NString> for Symbol {
+    fn from(value: NString) -> Self {
+        Symbol::new(value, 0, 0, Level::Level0)
+    }
+}
+
 impl Hash for Symbol {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.ident.hash(state);

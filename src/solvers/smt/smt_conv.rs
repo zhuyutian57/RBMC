@@ -166,10 +166,6 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             a = Some(self.convert_store(object, index, value));
         }
 
-        if expr.is_box() {
-            a = Some(self.convert_box(&args[0]));
-        }
-
         if expr.is_offset() {
             let pt = args[0].clone();
             let base = self.convert_pointer_base(&pt);
@@ -180,25 +176,27 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             a = Some(self.convert_pointer(&base, &offset, Some(&meta)));
         }
 
-        if expr.is_pointer_ident() {
+        if expr.is_pointer_base() {
             let mut pt = args[0].clone();
-            if expr.extract_inner_pointer().ty().is_box() {
-                pt = self.convert_box_ptr(&pt);
-            }
             a = Some(self.convert_pointer_base(&pt));
         }
 
         if expr.is_pointer_offset() {
             let mut pt = args[0].clone();
-            if expr.extract_inner_pointer().ty().is_box() {
-                pt = self.convert_box_ptr(&pt);
-            }
             a = Some(self.convert_pointer_offset(&pt));
         }
 
         if expr.is_pointer_meta() {
             let pt = &args[0];
             a = Some(self.convert_pointer_meta(pt));
+        }
+
+        if expr.is_box() {
+            a = Some(self.convert_box(&args[0]));
+        }
+
+        if expr.is_vec() {
+            todo!();
         }
 
         if expr.is_enum() {
@@ -274,8 +272,11 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     fn convert_pointer_base(&self, pt: &Ast) -> Ast;
     fn convert_pointer_offset(&self, pt: &Ast) -> Ast;
     fn convert_pointer_meta(&self, pt: &Ast) -> Ast;
-    fn convert_box(&self, inner_pt: &Ast) -> Ast;
-    fn convert_box_ptr(&self, _box: &Ast) -> Ast;
+    fn convert_box(&self, _box: &Ast) -> Ast;
+    fn convert_vec(&self, _vec: &Ast, len: &Ast, cap: &Ast) -> Ast;
+    fn convert_vec_len(&self, _vec: &Ast) -> Ast;
+    fn convert_vec_cap(&self, _vec: &Ast) -> Ast;
+    fn convert_inner_pointer(&self, pt: &Ast, ty: Type) -> Ast;
 
     fn convert_array(&mut self, elem: &Vec<Ast>, ty: Type) -> Ast {
         let mut array = self.mk_fresh("array".into(), ty);
@@ -366,10 +367,10 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     }
 
     fn convert_cast_from_ptr(&mut self, pt: Expr, target_ty: Type) -> Ast {
-        if pt.ty().is_box() {
+        if pt.ty().is_smart_ptr() {
             if target_ty.is_primitive_ptr() {
-                let _box = self.convert_ast(pt);
-                return self.convert_box_ptr(&_box);
+                let inner_ptr = pt.ctx.inner_pointer(pt.clone());
+                return self.convert_ast(inner_ptr);
             }
         }
 

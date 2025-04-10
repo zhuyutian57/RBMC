@@ -12,7 +12,7 @@ use crate::symex::projection::Mode;
 impl<'cfg> Symex<'cfg> {
     pub fn symex_ops_api(&mut self, fndef: &FunctionDef, args: Vec<Expr>, dest: Expr) {
         let name = NString::from(fndef.0.trimmed_name());
-        if name == NString::from("Index::index") || name == NString::from("IndexMut::index_mut") {
+        if name == "Index::index" || name == "IndexMut::index_mut" {
             self.symex_ops_index(dest, args);
         } else {
             panic!("Not support for {name:?}");
@@ -41,7 +41,7 @@ impl<'cfg> Symex<'cfg> {
             return;
         }
 
-        panic!("Do not support index({ty:?})");
+        panic!("Do not support index({:?})", args[0]);
     }
 
     pub(super) fn make_range(&mut self, range: Expr) -> (Option<usize>, Option<usize>) {

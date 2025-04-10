@@ -34,12 +34,12 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let mut ret = self._callback_symex.exec_state.current_local(place.local, Level::Level1);
 
         let mut project_elem = place.projection.clone();
-        if !project_elem.is_empty() {
+        if !project_elem.is_empty() && ret.ty().is_smart_ptr() {
             // Remove project_index. Use box as a pointer
             if ret.ty().is_box() {
-                println!("{project_elem:?}");
                 project_elem.drain(0..2);
             }
+            ret = self._ctx.inner_pointer(ret);
         }
 
         for elem in project_elem {
@@ -199,7 +199,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         ty: Type,
     ) -> Option<Expr> {
         // Compute the final offset of the accessing region.
-        let final_offset = if object.ty() == ty || offset != None {
+        let final_offset = if object.ty() == ty || offset == None {
             // Access the whole object or the expr has arithmetic
             offset
         } else {
@@ -404,11 +404,11 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         self._callback_symex.claim(msg, new_guard.to_expr());
 
         // Check layout
-        if object.ty() != ty {
+        if object_ty != ty {
             let msg = format!(
                 "{} failure: the layout is {ty:?} where {:?} is required",
                 format!("{mode:?}").to_lowercase(),
-                object.ty()
+                object_ty
             )
             .into();
             let mut new_guard = guard.clone();

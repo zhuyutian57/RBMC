@@ -172,12 +172,30 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         self.mk_pointer_meta(pt)
     }
 
-    fn convert_box(&self, inner_pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
-        self.mk_box(inner_pt)
+    fn convert_box(&self, _box: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+        self.mk_box(_box)
     }
 
-    fn convert_box_ptr(&self, _box: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
-        self.mk_box_ptr(_box)
+    fn convert_vec(
+        &self,
+        _vec: &z3::ast::Dynamic<'ctx>,
+        len: &z3::ast::Dynamic<'ctx>,
+        cap: &z3::ast::Dynamic<'ctx>
+    ) -> z3::ast::Dynamic<'ctx> {
+        self.mk_vec(_vec, len, cap)
+    }
+
+    fn convert_vec_len(&self, _vec: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+        self.mk_vec_len(_vec)
+    }
+
+    fn convert_vec_cap(&self, _vec: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+        self.mk_vec_cap(_vec)
+    }
+
+    fn convert_inner_pointer(&self, pt: &z3::ast::Dynamic<'ctx>, ty: Type) -> z3::ast::Dynamic<'ctx> {
+        assert!(ty.is_box() || ty.is_vec());
+        if ty.is_box() { self.mk_box_ptr(pt) } else { self.mk_vec_ptr(pt) }
     }
 
     fn convert_struct(
