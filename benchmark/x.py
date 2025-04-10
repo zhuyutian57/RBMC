@@ -145,7 +145,7 @@ def analysis_mirv_result():
             res[0] = int(line.split(' ')[1])
             res[1] = int(line.split(' ')[4])
           if line.startswith("Verification time"):
-            res[3] = float(line.split(" ")[2].strip("\n")[:-1])
+            res[3] = float(line.split(" ")[2].strip("\n").strip('s'))
       once_logfile = logfile.replace("-forward.log", "-once.log")
       with open(os.path.join(MIRV_OUTPUT, once_logfile)) as log:
         for line in log.readlines():
@@ -185,7 +185,7 @@ def analysis_kani_result():
           if "dynamically allocated memory never freed" in line:
             res[2].add("ML")
         if line.startswith("Verification Time"):
-          res[3] = float(line.split(" ")[2].strip("\n"))
+          res[3] = float(line.split(" ")[2].strip("\n").strip('s'))
     crate = logfile.replace(".log", ".rs")
     results[crate] = res
   format_res(results)
