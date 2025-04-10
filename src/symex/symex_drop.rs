@@ -22,6 +22,8 @@ impl<'cfg> Symex<'cfg> {
         if expr.is_object() {
             if expr.ty().is_box() {
                 self.drop_box(expr.clone(), guard.clone());
+            } else if expr.ty().is_vec() {
+                self.drop_vec(expr.clone(), guard.clone());
             } else if expr.ty().is_struct() {
                 self.drop_struct(expr.clone(), guard.clone());
             } else {
@@ -58,6 +60,18 @@ impl<'cfg> Symex<'cfg> {
         self.top_mut().cur_state.remove_pointer(_box.clone());
 
         let pointer_base = self.ctx.pointer_base(_box);
+        let alloc_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
+        let index = self.ctx.index(alloc_array, pointer_base, Type::bool_type());
+        self.assign(index, self.ctx._false(), guard.clone());
+    }
+
+    fn drop_vec(&mut self, _vec: Expr, guard: Guard) {
+        // Check whethe the vec is uninitilized
+        self.make_deref(_vec.clone(), Mode::Drop, guard.clone(), _vec.ty().pointee_ty());
+        self.top_mut().cur_state.dealloc_objects(_vec.clone());
+        self.top_mut().cur_state.remove_pointer(_vec.clone());
+
+        let pointer_base = self.ctx.pointer_base(_vec);
         let alloc_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
         let index = self.ctx.index(alloc_array, pointer_base, Type::bool_type());
         self.assign(index, self.ctx._false(), guard.clone());

@@ -352,7 +352,7 @@ impl Expr {
             let index = self.extract_index();
 
             let collected_offset = if inner_object.ty().is_array() || inner_object.ty().is_slice() {
-                let elem_size = inner_object.ty().num_fields();
+                let elem_size = inner_object.ty().elem_type().num_fields();
                 self.ctx.mul(index, self.ctx.constant_isize(elem_size as isize))
             } else if inner_object.ty().is_struct() {
                 assert!(index.is_constant());

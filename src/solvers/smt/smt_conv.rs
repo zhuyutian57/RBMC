@@ -42,6 +42,10 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             return self.mk_box_sort();
         }
 
+        if ty.is_vec() {
+            return self.mk_vec_sort();
+        }
+
         if ty.is_array() {
             let domain = self.convert_sort(ty.array_domain());
             let range = self.convert_sort(ty.elem_type());
@@ -146,10 +150,8 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         }
 
         if expr.is_same_object() {
-            let lhs = expr.extract_lhs();
-            let rhs = expr.extract_rhs();
-            let base_1 = self.project(&args[0], lhs.ty());
-            let base_2 = self.project(&args[1], rhs.ty());
+            let base_1 = self.project(&args[0]);
+            let base_2 = self.project(&args[1]);
             a = Some(self.mk_eq(&base_1, &base_2));
         }
 
@@ -177,18 +179,15 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         }
 
         if expr.is_pointer_base() {
-            let mut pt = args[0].clone();
-            a = Some(self.convert_pointer_base(&pt));
+            a = Some(self.convert_pointer_base(&args[0]));
         }
 
         if expr.is_pointer_offset() {
-            let mut pt = args[0].clone();
-            a = Some(self.convert_pointer_offset(&pt));
+            a = Some(self.convert_pointer_offset(&args[0]));
         }
 
         if expr.is_pointer_meta() {
-            let pt = &args[0];
-            a = Some(self.convert_pointer_meta(pt));
+            a = Some(self.convert_pointer_meta(&args[0]));
         }
 
         if expr.is_box() {
@@ -196,7 +195,20 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         }
 
         if expr.is_vec() {
-            todo!();
+            a = Some(self.convert_vec(&args[0], &args[1], &args[2]));
+        }
+
+        if expr.is_vec_len() {
+            a = Some(self.convert_vec_len(&args[0]));
+        }
+
+        if expr.is_vec_cap() {
+            a = Some(self.convert_vec_cap(&args[0]));
+        }
+
+        if expr.is_inner_pointer() {
+            let ty = expr.extract_inner_pointer().ty();
+            a = Some(self.convert_inner_pointer(&args[0], ty));
         }
 
         if expr.is_enum() {
@@ -449,6 +461,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     fn mk_array_sort(&mut self, domain: &Sort, range: &Sort) -> Sort;
     fn mk_pointer_sort(&self) -> Sort;
     fn mk_box_sort(&self) -> Sort;
+    fn mk_vec_sort(&self) -> Sort;
 
     // constant
     fn mk_smt_bool(&self, b: bool) -> Ast;
@@ -463,7 +476,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     fn mk_enum_symbol(&self, name: NString, sort: &Sort) -> Ast;
 
     // pointer
-    fn project(&self, pt: &Ast, ty: Type) -> Ast;
+    fn project(&self, pt: &Ast) -> Ast;
 
     // array
     fn mk_select(&self, array: &Ast, index: &Ast) -> Ast;

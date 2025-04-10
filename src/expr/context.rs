@@ -633,7 +633,9 @@ impl ExprBuilder for ExprCtx {
 
     fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr {
         assert!(lhs.ty().is_any_ptr() && rhs.ty().is_any_ptr());
-        let kind = NodeKind::SameObject(lhs.id, rhs.id);
+        let lpt = if lhs.ty().is_smart_ptr() { self.inner_pointer(lhs) } else { lhs };
+        let rpt = if rhs.ty().is_smart_ptr() { self.inner_pointer(rhs) } else { rhs };
+        let kind = NodeKind::SameObject(lpt.id, rpt.id);
         let ty = Type::bool_type();
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);

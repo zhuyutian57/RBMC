@@ -144,7 +144,7 @@ impl<'cfg> Symex<'cfg> {
         mode: Mode,
         guard: Guard,
         ty: Type,
-    ) -> Option<Expr> {
+    ) -> Expr {
         self.replace_predicates(&mut pt);
         Projection::new(self).project_deref(pt, mode, guard, ty)
     }

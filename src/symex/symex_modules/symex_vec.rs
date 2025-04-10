@@ -50,8 +50,12 @@ impl<'cfg> Symex<'cfg> {
 
     fn symex_vec_push(&mut self, args: Vec<Expr>) {
         let guard = Guard::from(self.ctx._true());
-        let _vec =
-            self.make_deref(args[0].clone(), Mode::Read, guard.clone(), args[0].ty()).unwrap();
+        let _vec = self.make_deref(
+            args[0].clone(),
+            Mode::Read,
+            guard.clone(),
+            args[0].ty().pointee_ty()
+        );
         let value = args[1].clone();
 
         let inner_pt = self.ctx.inner_pointer(_vec.clone());
@@ -62,12 +66,12 @@ impl<'cfg> Symex<'cfg> {
 
         // Update the inner array
         let inner_array =
-            self.make_deref(inner_pt.clone(), Mode::Read, guard.clone(), _vec.ty().pointee_ty()).unwrap();
-        // TODO: handle cap
+            self.make_deref(inner_pt.clone(), Mode::Read, guard.clone(), _vec.ty().pointee_ty());
         let array = self.ctx.object(inner_array);
         let elem_ty = array.ty().elem_type();
         let index = self.ctx.index(array, old_len, elem_ty);
         self.assign(index, value, guard.clone());
+        // TODO: handle cap
 
         let lhs = _vec;
         let rhs = self.ctx._vec(inner_pt, len, cap, lhs.ty());
@@ -75,7 +79,13 @@ impl<'cfg> Symex<'cfg> {
     }
 
     fn symex_vec_pop(&mut self, dest: Expr, args: Vec<Expr>) {
-        let _vec = args[0].clone();
+        let guard = Guard::from(self.ctx._true());
+        let _vec = self.make_deref(
+            args[0].clone(),
+            Mode::Read,
+            guard.clone(),
+            args[0].ty().pointee_ty()
+        );
         let inner_pt = self.ctx.inner_pointer(_vec.clone());
         let old_len = self.ctx.vec_len(_vec.clone());
         let zero = self.ctx.constant_usize(0);
@@ -87,7 +97,7 @@ impl<'cfg> Symex<'cfg> {
 
         let lhs = _vec;
         let rhs = self.ctx._vec(inner_pt, len, cap, lhs.ty());
-        self.assign(lhs, rhs, self.ctx._true().into());
+        self.assign(lhs, rhs, guard);
 
         // TODO: return the popped one
     }

@@ -313,6 +313,10 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         self.box_sort()
     }
 
+    fn mk_vec_sort(&self) -> z3::Sort<'ctx> {
+        self.vec_sort()
+    }
+
     fn mk_smt_bool(&self, b: bool) -> z3::ast::Dynamic<'ctx> {
         z3::ast::Dynamic::from(z3::ast::Bool::from_bool(&self.z3_ctx, b))
     }
@@ -362,9 +366,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         z3::ast::Dynamic::from(z3::ast::Datatype::new_const(&self.z3_ctx, name.to_string(), sort))
     }
 
-    fn project(&self, pt: &z3::ast::Dynamic<'ctx>, ty: Type) -> z3::ast::Dynamic<'ctx> {
-        let ptr = if ty.is_box() { self.mk_box_ptr(&pt) } else { pt.clone() };
-        self.mk_pointer_base(&ptr)
+    fn project(&self, pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+        self.mk_pointer_base(&pt)
     }
 
     fn mk_select(

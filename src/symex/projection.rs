@@ -50,8 +50,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
                         Mode::Read,
                         Guard::new(self._ctx.clone()),
                         ret.ty().pointee_ty(),
-                    )
-                    .unwrap(),
+                    ),
                 ProjectionElem::Field(i, ty) => {
                     self.project_field(ret.clone(), i, Type::from(ty))
                 }
@@ -87,7 +86,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         mode: Mode,
         guard: Guard,
         ty: Type,
-    ) -> Option<Expr> {
+    ) -> Expr {
         assert!(pt.ty().is_any_ptr());
 
         let mut objects = ObjectSet::new();
@@ -143,8 +142,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         }
 
         match ret {
-            Some(_) => ret,
-            None => Some(self.make_invalid_object(pt.ty().pointee_ty())),
+            Some(x) => x,
+            None => self.make_invalid_object(pt.ty().pointee_ty()),
         }
     }
 
@@ -199,7 +198,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         ty: Type,
     ) -> Option<Expr> {
         // Compute the final offset of the accessing region.
-        let final_offset = if object.ty() == ty || offset == None {
+        let final_offset = if object.ty() == ty || offset != None {
             // Access the whole object or the expr has arithmetic
             offset
         } else {
@@ -326,7 +325,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
             );
             self._callback_symex.rename(&mut out_of_bound);
             out_of_bound.simplify();
-            let msg = NString::from(format!("dereference failure: index out of bound"));
+            let msg = NString::from(format!("dereference failure: index out of array bound"));
             let mut error = guard.clone();
             error.add(out_of_bound);
             self._callback_symex.claim(msg, error.to_expr());
@@ -359,7 +358,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let msg = match mode {
             Mode::Read => NString::from("dereference failure: invalid pointer"),
             // TODO: support more smart pointer
-            Mode::Drop => NString::from("drop failure: uninitilized box pointer"),
+            Mode::Drop => format!("drop failure: uninitilized {:?} pointer", pt.ty().name()).into(),
             Mode::Dealloc => NString::from("dealloc failure: invalid pointer"),
             _ => todo!(),
         };

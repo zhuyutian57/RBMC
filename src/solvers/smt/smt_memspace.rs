@@ -54,6 +54,7 @@ pub trait MemSpace<Sort, Ast> {
 
     fn pointer_sort(&self) -> Sort;
     fn box_sort(&self) -> Sort;
+    fn vec_sort(&self) -> Sort;
 
     fn create_object_space(&mut self, object: &Expr) -> Ast;
     fn init_pointer_space(&mut self, object: &Expr);

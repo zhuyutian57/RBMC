@@ -62,6 +62,14 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
             .clone()
     }
 
+    fn vec_sort(&self) -> z3::Sort<'ctx> {
+        self.datatypes
+            .get(&(NString::from("vec"), vec![]))
+            .expect("Vec pointer tuple is not initialized")
+            .sort
+            .clone()
+    }
+
     fn create_object_space(&mut self, object: &Expr) -> z3::ast::Dynamic<'ctx> {
         assert!(object.is_symbol());
         if self.pointer_logic.contains(object) {
@@ -174,7 +182,7 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     ) -> z3::ast::Dynamic<'ctx> {
         let sign = (NString::from("vec"), vec![]);
         self.datatypes.get(&sign).unwrap().variants[0].constructor
-            .apply(&[inner_pt as &dyn Ast])
+            .apply(&[inner_pt as &dyn Ast, len as &dyn Ast, cap as &dyn Ast])
     }
 
     fn mk_vec_ptr(&self, _vec: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
