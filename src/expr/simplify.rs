@@ -3,35 +3,94 @@ use num_bigint::BigInt;
 use super::context::*;
 use super::expr::*;
 use super::op::*;
+use super::ty::Type;
 
 impl Expr {
     pub fn simplify(&mut self) {
+        if self.is_constant() { return; }
+
         if self.ty().is_bool() {
             self.to_nnf(false);
         }
 
+        let sub_exprs = self.simplify_args();
+        if sub_exprs == None { return; }
+        let args = sub_exprs.unwrap();
+
         if self.is_binary() {
-            self.simplify_binary();
+            self.simplify_binary(args[0].clone(), args[1].clone());
+            return;
         }
 
         if self.is_unary() {
-            self.simplify_unary();
+            self.simplify_unary(args[0].clone());
+            return;
         }
 
         if self.is_ite() {
-            self.simplify_ite();
+            self.simplify_ite(args[0].clone(), args[1].clone(), args[2].clone());
+            return;
         }
 
         if self.is_cast() {
-            self.simplify_cast();
+            self.simplify_cast(args[0].clone(), self.extract_target_type());
+            return;
         }
 
         if self.is_same_object() {
-            self.simplify_same_object();
+            self.simplify_same_object(args[0].clone(), args[1].clone());
+            return;
         }
 
         if self.is_index() {
-            self.simplify_index();
+            self.simplify_index(args[0].clone(), args[1].clone());
+            return;
+        }
+
+        if self.is_store() {
+            self.simplify_store(args[0].clone(), args[1].clone(), args[2].clone());
+            return;
+        }
+
+        if self.is_box() {
+            *self = self.ctx._box(args[0].clone());
+            return;
+        }
+
+        if self.is_vec() {
+            let pt = args[0].clone();
+            let len = args[1].clone();
+            let cap = args[2].clone();
+            *self = self.ctx._vec(pt, len, cap, self.ty());
+            return;
+        }
+
+        if self.is_vec_len() {
+            let _vec = args[0].clone();
+            *self = if _vec.is_vec() {
+                _vec.extract_vec_len()
+            } else {
+                self.ctx.vec_len(args[0].clone())
+            };
+            return;
+        }
+
+        if self.is_vec_cap() {
+            let _vec = args[0].clone();
+            *self = if _vec.is_vec() {
+                _vec.extract_vec_cap()
+            } else {
+                self.ctx.vec_cap(args[0].clone())
+            };
+            return;
+        }
+
+        if self.is_inner_pointer() {
+            let inner_pt = self.extract_inner_pointer();
+            if inner_pt.is_box() || inner_pt.is_vec() {
+                *self = inner_pt.extract_inner_pointer();
+            }
+            return;
         }
     }
 
@@ -86,18 +145,18 @@ impl Expr {
         }
     }
 
-    fn simplify_args(&mut self) -> Vec<Expr> {
-        let mut sub_exprs = self.sub_exprs().unwrap();
-        for sub_expr in sub_exprs.iter_mut() {
-            sub_expr.simplify();
+    fn simplify_args(&mut self) -> Option<Vec<Expr>> {
+        if let Some(mut sub_exprs) = self.sub_exprs() {
+            for sub_expr in sub_exprs.iter_mut() {
+                sub_expr.simplify();
+            }
+            Some(sub_exprs)
+        } else {
+            None
         }
-        sub_exprs
     }
 
-    fn simplify_binary(&mut self) {
-        let sub_exprs = self.simplify_args();
-        let lhs = sub_exprs[0].clone();
-        let rhs = sub_exprs[1].clone();
+    fn simplify_binary(&mut self, lhs: Expr, rhs: Expr) {
         match self.extract_bin_op() {
             BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => self.simplify_arith(lhs, rhs),
             BinOp::Eq | BinOp::Ne | BinOp::Ge | BinOp::Gt | BinOp::Le | BinOp::Lt => {
@@ -248,9 +307,7 @@ impl Expr {
         };
     }
 
-    fn simplify_unary(&mut self) {
-        let sub_exprs = self.simplify_args();
-        let operand = &sub_exprs[0];
+    fn simplify_unary(&mut self, operand: Expr) {
         match self.extract_un_op() {
             UnOp::Not | UnOp::Neg => {
                 if operand.is_unary() && operand.extract_un_op() == self.extract_un_op() {
@@ -265,11 +322,7 @@ impl Expr {
         }
     }
 
-    fn simplify_ite(&mut self) {
-        let sub_exprs = self.simplify_args();
-        let cond = sub_exprs[0].clone();
-        let true_value = sub_exprs[1].clone();
-        let false_value = sub_exprs[2].clone();
+    fn simplify_ite(&mut self, cond: Expr, true_value: Expr, false_value: Expr) {
         if cond.is_true() {
             self.id = true_value.id;
         } else if cond.is_false() {
@@ -279,10 +332,7 @@ impl Expr {
         }
     }
 
-    fn simplify_cast(&mut self) {
-        let mut src = self.extract_src();
-        let ty = self.extract_target_type();
-        src.simplify();
+    fn simplify_cast(&mut self, src: Expr, ty: Type) {
         if src.is_constant() && ty.is_integer() {
             let integer = if src.ty().is_integer() {
                 src.extract_constant().to_integer()
@@ -294,10 +344,7 @@ impl Expr {
         }
     }
 
-    fn simplify_same_object(&mut self) {
-        let sub_exprs = self.simplify_args();
-        let lhs = sub_exprs[0].clone();
-        let rhs = sub_exprs[1].clone();
+    fn simplify_same_object(&mut self, lhs: Expr, rhs: Expr) {
         if lhs == rhs {
             self.id = Context::TRUE_ID;
         } else {
@@ -306,19 +353,32 @@ impl Expr {
     }
 
     /// Read-Write simplify
-    fn simplify_index(&mut self) {
-        let mut object = self.extract_object().extract_inner_expr();
-        let mut index = self.extract_index();
-        object.simplify();
-        if object.is_store() {
-            index.simplify();
-            let mut update_index = object.extract_index();
-            let mut update_value = object.extract_update_value();
+    fn simplify_index(&mut self, object: Expr, i: Expr) {
+        let inner_expr = object.extract_inner_expr();
+        if inner_expr.is_store() {
+            let mut update_index = inner_expr.extract_index();
+            let mut update_value = inner_expr.extract_update_value();
             update_index.simplify();
-            if index == update_index {
+            if i == update_index {
                 update_value.simplify();
                 *self = update_value;
             }
+        } else {
+            *self = self.ctx.index(object, i, self.ty());
+        }
+    }
+
+    /// Write-Write simplify
+    fn simplify_store(&mut self, object: Expr, i: Expr, value: Expr) {
+        let inner_expr = object.extract_inner_expr();
+        if inner_expr.is_store() {
+            let mut update_index = inner_expr.extract_index();
+            update_index.simplify();
+            if i == update_index {
+                *self = self.ctx.store(object, i, value);
+            }
+        } else {
+            *self = self.ctx.store(object, i, value);
         }
     }
 }

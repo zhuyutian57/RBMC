@@ -56,8 +56,7 @@ impl<'cfg> Symex<'cfg> {
 
         let inner_pt = self.ctx.inner_pointer(_vec.clone());
         let old_len = self.ctx.vec_len(_vec.clone());
-        let mut len = self.ctx.add(old_len.clone(), self.ctx.constant_usize(1));
-        len.simplify();
+        let len = self.ctx.add(old_len.clone(), self.ctx.constant_usize(1));
         let cap = self.ctx.vec_cap(_vec.clone());
 
         // Update the inner array

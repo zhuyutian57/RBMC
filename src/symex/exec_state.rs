@@ -190,6 +190,7 @@ impl<'cfg> ExecutionState<'cfg> {
             self.renaming.borrow_mut().constant_propagate(lhs, None);
             return;
         }
+
         assert!(lhs.is_symbol());
         self.renaming.borrow_mut().constant_propagate(lhs, Some(rhs));
     }
@@ -198,13 +199,27 @@ impl<'cfg> ExecutionState<'cfg> {
         if expr.is_constant() || expr.is_type() {
             return true;
         }
+
         if expr.is_cast() {
             return self.is_constant_value(expr.extract_src());
         }
+
         // Address is fixed when the memory is alloced
         if expr.is_address_of() {
             return self.is_constant_address(expr.extract_object());
         }
+
+        if expr.is_box() {
+            return self.is_constant_value(expr.extract_inner_pointer());
+        }
+
+        if expr.is_vec() {
+            let inner_pt = expr.extract_inner_pointer();
+            let len = expr.extract_vec_len();
+            // TODO: handle cap
+            return self.is_constant_value(inner_pt) && self.is_constant_value(len);
+        }
+
         false
     }
 

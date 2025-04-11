@@ -292,6 +292,16 @@ impl Expr {
         self.extract_sub_expr(2)
     }
 
+    pub fn extract_vec_len(&self) -> Expr {
+        assert!(self.is_vec());
+        self.extract_sub_expr(1)
+    }
+
+    pub fn extract_vec_cap(&self) -> Expr {
+        assert!(self.is_vec());
+        self.extract_sub_expr(2)
+    }
+
     pub fn extract_inner_pointer(&self) -> Expr {
         assert!(
             self.is_offset()
@@ -300,6 +310,8 @@ impl Expr {
                 || self.is_pointer_meta()
                 || self.is_box()
                 || self.is_vec()
+                || self.is_vec_len()
+                || self.is_vec_cap()
                 || self.is_inner_pointer()
         );
         self.extract_sub_expr(0)
