@@ -29,7 +29,7 @@ impl<'cfg> Symex<'cfg> {
             let i = self.program.function_idx(trimmed_name);
             self.symex_function(i, args, dest, target);
             return;
-        } else if name.contains("mirv".into()) {
+        } else if name.contains("rbmc".into()) {
             self.symex_builtin_function(&fndef, args_exprs.clone(), ret);
         } else if name.contains("std::alloc".into()) {
             self.symex_alloc_api(&fndef, args_exprs.clone(), ret);

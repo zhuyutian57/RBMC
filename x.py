@@ -2,12 +2,12 @@
 
 # Script for debug
 
-def mirv(file, mirv_args):
+def rbmc(file, mirv_args):
   assert(os.path.exists(file))
   # set MIRV_LIBRARY_PATH
-  mirv_lib = os.path.join(os.path.curdir, "./target/debug/libmirv.rlib")
+  mirv_lib = os.path.join(os.path.curdir, "./target/debug/librbmc.rlib")
   os.environ["MIRV_LIBRARY_PATH"] = str(os.path.abspath(mirv_lib))
-  cmd = ["cargo", "run", "--bin", "mirv", file] + mirv_args
+  cmd = ["cargo", "run", "--bin", "rbmc", file] + mirv_args
   os.system(" ".join(cmd))
   crate = os.path.splitext(os.path.basename(file))[0]
   if os.path.exists(crate): os.system(f'rm {crate}')
@@ -29,7 +29,7 @@ if __name__ == "__main__":
   parser.add_argument(
     "-f", "--file",
     type=str,
-    help="Run `cargo run --bin mirv *.rs`. The generated binary file will be deleted")
+    help="Run `cargo run --bin rbmc *.rs`. The generated binary file will be deleted")
   parser.add_argument(
     "--install",
     action="store_true",
@@ -37,7 +37,7 @@ if __name__ == "__main__":
   parser.add_argument(
     "--uninstall",
     action="store_true",
-    help="Run `cargo uinsntall mirv`")
+    help="Run `cargo uinsntall rbmc`")
 
   args, mirv_args = parser.parse_known_args()
 
@@ -46,11 +46,11 @@ if __name__ == "__main__":
   elif args.clean:
     os.system("cargo clean")
   elif args.file is not None:
-    mirv(args.file, mirv_args)
+    rbmc(args.file, mirv_args)
   elif args.install:
     os.system("cd ./library && cargo build --release")
     os.system("cargo install --path .")
   elif args.uninstall:
-    os.system("cargo uninstall mirv")
+    os.system("cargo uninstall rbmc")
   else:
     parser.print_help(sys.stdout)

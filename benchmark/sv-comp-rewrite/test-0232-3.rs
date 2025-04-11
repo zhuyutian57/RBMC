@@ -24,7 +24,7 @@ fn append(plist : *mut *mut item) {
     }
 }
 
-extern crate mirv;
+extern crate rbmc;
 
 fn main() {
     let mut list : *mut item = ptr::null_mut();
@@ -32,7 +32,7 @@ fn main() {
     loop {
         append(&mut list as *mut *mut item);
         
-        if mirv::nondet::<i32>() == 0 { break; }
+        if rbmc::nondet::<i32>() == 0 { break; }
     }
 
     if !list.is_null() {

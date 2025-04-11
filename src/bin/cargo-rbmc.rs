@@ -8,12 +8,12 @@ extern crate stable_mir;
 
 use std::process::Command;
 
-use mir_v::config::cli;
+use rust_bmc::config::cli;
 
 fn parse_mirv_flags() -> String {
     let mut args = std::env::args().into_iter().collect::<Vec<_>>();
     let idx =
-        args.iter().enumerate().find_map(|(i, x)| if x == "--mirv-args" { Some(i) } else { None });
+        args.iter().enumerate().find_map(|(i, x)| if x == "--rbmc-args" { Some(i) } else { None });
     match idx {
         Some(i) => args.split_off(i).join(" "),
         None => "".to_string(),
@@ -37,11 +37,11 @@ fn main() {
             let mut cmd = Command::new("cargo");
             cmd
                 // Set the crate being verified
-                .env(cli::MIRV_CRATE, target.name.as_str())
+                .env(cli::RBMC_CRATE, target.name.as_str())
                 // Mirv arguments
-                .env(cli::MIRV_FLAGS, parse_mirv_flags())
-                // Wrap the rustc with mirv
-                .env("RUSTC_WRAPPER", "mirv")
+                .env(cli::RBMC_FLAGS, parse_mirv_flags())
+                // Wrap the rustc with rbmc
+                .env("RUSTC_WRAPPER", "rbmc")
                 // No need to compile the whole project
                 .arg("build");
 

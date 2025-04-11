@@ -2,9 +2,9 @@ use clap::*;
 
 use crate::symbol::nstring::NString;
 
-pub const MIRV_CRATE: &str = "MIRV_CRATE";
-pub const MIRV_LIBRARY_PATH: &str = "MIRV_LIBRARY_PATH";
-pub const MIRV_FLAGS: &str = "MIRV_FLAGS";
+pub const RBMC_CRATE: &str = "RBMC_CRATE";
+pub const RBMC_LIBRARY_PATH: &str = "RBMC_LIBRARY_PATH";
+pub const RBMC_FLAGS: &str = "RBMC_FLAGS";
 
 #[derive(clap::ValueEnum, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum SmtStrategy {
@@ -81,10 +81,10 @@ impl Cli {
     pub fn new() -> Self {
         // Carefully, dno't print anything in this function.
         // The println! will communicate with rustc directly.
-        match std::env::var(MIRV_CRATE) {
-            // From `cargo-mirv` or `cargo mirv`
+        match std::env::var(RBMC_CRATE) {
+            // From `cargo-rbmc` or `cargo rbmc`
             Ok(_crate) => {
-                let mirv_args = match std::env::var(MIRV_FLAGS) {
+                let mirv_args = match std::env::var(RBMC_FLAGS) {
                     Ok(flags) => {
                         flags.split_whitespace().map(|arg| arg.to_string()).collect::<Vec<_>>()
                     }
@@ -92,16 +92,16 @@ impl Cli {
                 };
                 Cli::parse_from(mirv_args)
             }
-            // From `mirv *.rs`
+            // From `rbmc *.rs`
             Err(_) => Cli::parse(),
         }
     }
 
     pub fn rustc_args(&self) -> Vec<String> {
         let mut args = match self.file.is_empty() {
-            // From `cargo-mirv` or `cargo mirv`
+            // From `cargo-rbmc` or `cargo rbmc`
             true => std::env::args().skip(1).into_iter().collect(),
-            // From `mirv *.rs`
+            // From `rbmc *.rs`
             false => vec![
                 std::env::current_exe().unwrap().to_str().unwrap().to_string(),
                 self.file.to_string(),
@@ -113,10 +113,10 @@ impl Cli {
         args.push("-Copt-level=1".to_string());
         args.push("-Zalways-encode-mir".to_string());
         args.push("-Zmir-enable-passes=+ReorderBasicBlocks".to_string());
-        // Link libmirv.rlib
-        if let Ok(l) = std::env::var(MIRV_LIBRARY_PATH) {
+        // Link librbmc.rlib
+        if let Ok(l) = std::env::var(RBMC_LIBRARY_PATH) {
             args.push("--extern".into());
-            args.push(format!("mirv={l}").to_string());
+            args.push(format!("rbmc={l}").to_string());
         }
         args
     }

@@ -13,9 +13,9 @@ use stable_mir::CompilerError;
 use std::ops::ControlFlow;
 use std::process::ExitCode;
 
-use mir_v::bmc::bmc::Bmc;
-use mir_v::config::cli::{self, Cli};
-use mir_v::config::config::Config;
+use rust_bmc::bmc::bmc::Bmc;
+use rust_bmc::config::cli::{self, Cli};
+use rust_bmc::config::config::Config;
 
 fn main() -> ExitCode {
     let cli = Cli::new();
@@ -31,7 +31,7 @@ fn mirv_bmc(cli: Cli) -> ControlFlow<()> {
     // Verify when the current crate is variable.
     let local_crate = stable_mir::local_crate().name;
     if !cli.cur_crate().is_empty()
-        || matches!(std::env::var(cli::MIRV_CRATE), Ok(x) if local_crate == x)
+        || matches!(std::env::var(cli::RBMC_CRATE), Ok(x) if local_crate == x)
     {
         Bmc::new(&Config::new(cli)).do_bmc();
     }

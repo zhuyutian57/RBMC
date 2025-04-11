@@ -3,7 +3,7 @@
 # Script for experiment on benchmark
 
 OUT_DIR = "./output/"
-MIRV_OUTPUT = OUT_DIR + "mirv/"
+RBMC_OUTPUT = OUT_DIR + "rbmc/"
 KANI_OUTPUT = OUT_DIR + "kani/"
 ESBMC_OUTPUT = OUT_DIR + "esbmc/"
 
@@ -35,8 +35,8 @@ def run_on_single_file(cmd, env, smt_strategy):
     extra_args.append("--unwind")
     extra_args.append(str(loop_bound[crate]))
 
-  if cmd[0] == "mirv":
-    out = MIRV_OUTPUT
+  if cmd[0] == "rbmc":
+    out = RBMC_OUTPUT
     log_file = out + f"{crate}-{smt_strategy}.log"
   else:
     out = KANI_OUTPUT if cmd[0] == "kani" else ESBMC_OUTPUT
@@ -47,14 +47,14 @@ def run_on_single_file(cmd, env, smt_strategy):
   if env == None: os.system(" ".join(final_cmd))
   else: os.system(env + " && " + " ".join(final_cmd))
 
-def mirv(file):
+def rbmc(file):
   assert(os.path.exists(file))
-  # set MIRV_LIBRARY_PATH
-  mirv_lib = os.path.join(os.path.curdir, "../target/release/libmirv.rlib")
-  os.environ["MIRV_LIBRARY_PATH"] = str(os.path.abspath(mirv_lib))
+  # set RBMC_LIBRARY_PATH
+  rbmc_lib = os.path.join(os.path.curdir, "../target/release/librbmc.rlib")
+  os.environ["RBMC_LIBRARY_PATH"] = str(os.path.abspath(rbmc_lib))
   # set RUSTUP_TOOLCHAIN
   env = "export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH"
-  cmd = ["mirv", file]
+  cmd = ["rbmc", file]
   run_on_single_file(cmd, env, "forward")
   run_on_single_file(cmd, env, "once")
   crate = os.path.splitext(os.path.basename(file))[0]
@@ -67,8 +67,8 @@ def kani(file):
     for line in crate.readlines():
       if line.startswith("fn main() {"):
         code.append("#[kani::proof]\n")
-      if "extern crate mirv;" in line: continue
-      code.append(line.replace("mirv::nondet", "kani::any"))
+      if "extern crate rbmc;" in line: continue
+      code.append(line.replace("rbmc::nondet", "kani::any"))
   # crate a tmp file
   tmp_file = os.path.join(KANI_OUTPUT, os.path.basename(file))
   with open(tmp_file, "w") as crate: crate.write("".join(code))
@@ -108,7 +108,7 @@ def run_expriment(dir, tool):
   print(f"Run experiment in {dir} with {tool.upper()}")
 
   if not os.path.exists(OUT_DIR): os.mkdir(OUT_DIR)
-  if tool == "mirv" and not os.path.exists(MIRV_OUTPUT): os.mkdir(MIRV_OUTPUT)
+  if tool == "rbmc" and not os.path.exists(RBMC_OUTPUT): os.mkdir(RBMC_OUTPUT)
   if tool == "kani" and not os.path.exists(KANI_OUTPUT): os.mkdir(KANI_OUTPUT)
   if tool == "esbmc" and not os.path.exists(ESBMC_OUTPUT): os.mkdir(ESBMC_OUTPUT)
 
@@ -122,7 +122,7 @@ def run_expriment(dir, tool):
 
   for crate in crates:
     file = os.path.join(dir, crate)
-    if tool == "mirv" : mirv(file)
+    if tool == "rbmc" : rbmc(file)
     elif tool == "kani": kani(file)
     else: esbmc(file)
 
@@ -132,14 +132,14 @@ def format_res(results):
     res[3] = "/".join(res[3])
     print("{:<20} {:<10} {:<10} {:<10} {:.5f}s".format(*res))
 
-def analysis_mirv_result():
-  assert(os.path.exists(MIRV_OUTPUT))
+def analysis_rbmc_result():
+  assert(os.path.exists(RBMC_OUTPUT))
   # crate: (VCs, assertions, bugs, forward-time, once-time)
   results = {}
-  for logfile in os.listdir(f"{MIRV_OUTPUT}"):
+  for logfile in os.listdir(f"{RBMC_OUTPUT}"):
     if logfile.endswith("-forward.log"):
       res = [0, 0, set(), 0.0]
-      with open(os.path.join(MIRV_OUTPUT, logfile)) as log:
+      with open(os.path.join(RBMC_OUTPUT, logfile)) as log:
         for line in log.readlines():
           if line.startswith("Generating"):
             res[0] = int(line.split(' ')[1])
@@ -147,7 +147,7 @@ def analysis_mirv_result():
           if line.startswith("Verification time"):
             res[3] = float(line.split(" ")[2].strip("\n").strip('s'))
       once_logfile = logfile.replace("-forward.log", "-once.log")
-      with open(os.path.join(MIRV_OUTPUT, once_logfile)) as log:
+      with open(os.path.join(RBMC_OUTPUT, once_logfile)) as log:
         for line in log.readlines():
           if "dereference failure" in line or \
              "index out of bounds" in line:
@@ -258,11 +258,11 @@ if __name__ == "__main__":
     assert(args.kani + args.esbmc <= 1)
     if args.kani: run_expriment(dir[0], "kani")
     elif args.esbmc: run_expriment(dir[0], "esbmc")
-    else: run_expriment(dir[0], "mirv")
+    else: run_expriment(dir[0], "rbmc")
   else:
     if args.kani:
       analysis_kani_result()
     elif args.esbmc:
       analysis_esbmc_result()
     else:
-      analysis_mirv_result()
+      analysis_rbmc_result()

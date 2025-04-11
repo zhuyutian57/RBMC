@@ -1,11 +1,11 @@
 use std::alloc::*;
 
-extern crate mirv;
+extern crate rbmc;
 
 fn main() {
     let ptr = unsafe { alloc(Layout::new::<i32>()) as *mut i32 };
     let b = 
-        if mirv::nondet::<bool>() {
+        if rbmc::nondet::<bool>() {
             unsafe { Box::from_raw(ptr) }
         } else {
             Box::new(123)

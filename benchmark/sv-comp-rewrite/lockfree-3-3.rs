@@ -102,14 +102,14 @@ fn pop() {
     }
 }
 
-extern crate mirv;
+extern crate rbmc;
 
 fn main() {
     while unsafe { 
         !S.is_null() || pc1 != 1
-        || mirv::nondet::<i32>() != 0 // nondeterministic
+        || rbmc::nondet::<i32>() != 0 // nondeterministic
     } {
-        if mirv::nondet::<i32>() != 0 {
+        if rbmc::nondet::<i32>() != 0 {
             push();
         } else {
             pop();

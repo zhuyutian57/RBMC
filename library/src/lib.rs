@@ -2,5 +2,5 @@
 
 #[allow(dead_code)]
 pub fn nondet<T>() -> T {
-    panic!("Nondet is a place holder for MIRV")
+    panic!("Nondet is a place holder for RBMC")
 }
