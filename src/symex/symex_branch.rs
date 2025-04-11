@@ -10,7 +10,7 @@ impl<'cfg> Symex<'cfg> {
     }
 
     pub(super) fn symex_switchint(&mut self, discr: &Operand, targets: &SwitchTargets) {
-        let mut discr_expr = self.make_operand(discr);
+        let discr_expr = self.make_operand(discr);
         let mut otherwise_guard = self.ctx._true();
         for (i, bb) in targets.branches() {
             // branches

@@ -85,7 +85,7 @@ impl<'cfg> Symex<'cfg> {
                 self.ctx.ite(new_guard.to_expr(), new_rhs, cur_rhs)
             };
 
-            let mut lhs = self.exec_state.ns.lookup_symbol(var);
+            let lhs = self.exec_state.ns.lookup_symbol(var);
             self.assign(lhs, rhs, self.ctx._true().into());
         }
     }

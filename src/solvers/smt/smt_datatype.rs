@@ -1,4 +1,3 @@
-use num_bigint::BigInt;
 
 use crate::expr::expr::Expr;
 use crate::expr::ty::*;

@@ -49,7 +49,7 @@ impl Function {
             for bb in &self.body.blocks {
                 for st in &bb.statements {
                     match &st.kind {
-                        StatementKind::StorageLive(l) => is_alive &= (local != *l),
+                        StatementKind::StorageLive(l) => is_alive &= local != *l,
                         _ => {}
                     }
                 }

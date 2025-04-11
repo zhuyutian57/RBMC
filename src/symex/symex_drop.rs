@@ -1,4 +1,3 @@
-use num_bigint::BigInt;
 use stable_mir::mir::*;
 
 use super::symex::*;

@@ -1,7 +1,5 @@
 use std::cell::RefCell;
 
-use num_bigint::BigInt;
-use stable_mir::CrateDef;
 use stable_mir::mir::*;
 use stable_mir::ty::Span;
 
@@ -15,7 +13,6 @@ use crate::expr::context::*;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::program::function::FunctionIdx;
-use crate::program::program::*;
 use crate::symbol::nstring::*;
 use crate::symbol::symbol::*;
 use crate::symex::place_state::*;

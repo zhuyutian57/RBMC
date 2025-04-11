@@ -46,7 +46,7 @@ impl<'cfg> Symex<'cfg> {
             // Bound check
             let vec_len = self.ctx.vec_len(_vec.clone());
             let i = args[1].clone();
-            let mut out_of_bound = self.ctx.or(
+            let out_of_bound = self.ctx.or(
                 self.ctx.lt(i.clone(), self.ctx.constant_usize(0)),
                 self.ctx.ge(i.clone(), vec_len),
             );

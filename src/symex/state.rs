@@ -77,7 +77,7 @@ impl State {
         self.value_set.remove(ident);
     }
 
-    pub fn assign(&mut self, expr: Expr, mut values: ObjectSet) {
+    pub fn assign(&mut self, expr: Expr, values: ObjectSet) {
         assert!(expr.ty().is_any_ptr());
         self.assign_rec(expr, NString::EMPTY, values);
     }

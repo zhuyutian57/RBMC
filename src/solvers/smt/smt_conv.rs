@@ -6,7 +6,6 @@ use crate::expr::constant::Constant;
 use crate::expr::expr::*;
 use crate::expr::op::*;
 use crate::expr::ty::*;
-use crate::program::program::bigint_to_usize;
 use crate::solvers::solver::PResult;
 use crate::symbol::nstring::NString;
 
