@@ -252,7 +252,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         let idx = as_variant.extract_variant_idx();
         let i = bigint_to_usize(&field.extract_integer());
         let args = &[&self.convert_ast(object) as &dyn Ast];
-        let variant_data_type = ty.enum_variant_data_type(idx);
+        let variant_data_type = ty.enum_variant_data_type(idx).expect("Must contains data");
         let sign = self.create_datatype_sign(variant_data_type);
         self.datatypes.get(&sign).unwrap().variants[0].accessors[0].apply(args)
     }
@@ -279,7 +279,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         assert!(variant.is_as_variant());
         let _enum = variant.extract_enum();
         let variant_idx = variant.extract_variant_idx();
-        let variant_data_type = _enum.ty().enum_variant_data_type(variant_idx);
+        let variant_data_type =
+            _enum.ty().enum_variant_data_type(variant_idx).expect("Must contains data");
 
         let object = self.convert_ast(variant);
         let value = self.convert_ast(value);

@@ -10,6 +10,7 @@ use super::constant::*;
 use super::expr::*;
 use super::op::*;
 use super::ty::*;
+use crate::program::program::bigint_to_usize;
 use crate::symbol::nstring::*;
 use crate::symbol::symbol::*;
 
@@ -642,7 +643,7 @@ impl ExprBuilder for ExprCtx {
         Expr { ctx: self.clone(), id }
     }
 
-    fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr {
+    fn index(&self, object: Expr, i: Expr, ty: Type) -> Expr {
         assert!(
             object.unwrap_predicates().is_object()
                 && (object.ty().is_array()
@@ -651,7 +652,7 @@ impl ExprBuilder for ExprCtx {
                     || object.ty().is_tuple()
                     || object.ty().is_enum())
         );
-        let kind = NodeKind::Index(object.id, index.id);
+        let kind = NodeKind::Index(object.id, i.id);
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
         Expr { ctx: self.clone(), id }
@@ -751,6 +752,12 @@ impl ExprBuilder for ExprCtx {
 
     fn variant(&self, idx: Expr, data: Option<Expr>, ty: Type) -> Expr {
         assert!(ty.is_enum());
+        let i = bigint_to_usize(&idx.extract_constant().to_integer());
+        if let Some(x) = &data {
+            let variant_data_ty =
+                ty.enum_variant_data_type(i).expect("Must contains data");
+            assert!(x.ty() == variant_data_ty.field_type(0));
+        }
         let kind = NodeKind::Variant(
             idx.id,
             match data {

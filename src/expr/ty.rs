@@ -292,20 +292,19 @@ impl Type {
         def
     }
 
-    pub fn enum_variant_data_type(&self, variant_idx: usize) -> Self {
+    pub fn enum_variant_data_type(&self, variant_idx: usize) -> Option<Self> {
         assert!(self.is_enum());
         if let TyKind::RigidTy(r) = self.0.kind() {
             if let RigidTy::Adt(adt, args) = r {
                 let variants = adt.variants();
                 assert!(variant_idx < variants.len());
-                // Only access variant with data
-                assert!(!variants[variant_idx].fields().is_empty());
+                if variants[variant_idx].fields().is_empty() { return None; }
                 let ftypes = variants[variant_idx]
                     .fields()
                     .iter()
                     .map(|fdef| Type(fdef.ty_with_args(&args)))
                     .collect::<Vec<_>>();
-                return Type::tuple_type(ftypes);
+                return Some(Type::tuple_type(ftypes));
             }
         }
         panic!("Impossible")
@@ -333,6 +332,20 @@ impl Type {
                 _ => panic!("Not tuple"),
             },
             None => panic!("Not tuple"),
+        }
+    }
+
+    pub fn field_type(&self, field: usize) -> Type {
+        if self.is_struct() {
+            let sdef = self.struct_def();
+            assert!(field < sdef.1.len());
+            sdef.1[field].1
+        } else if self.is_tuple() {
+            let tdef = self.tuple_def();
+            assert!(field < tdef.len());
+            tdef[field]
+        } else {
+            panic!("Not struct and tuple")
         }
     }
 

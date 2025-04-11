@@ -856,7 +856,7 @@ pub trait ExprBuilder {
     fn object(&self, inner_expr: Expr) -> Expr;
     fn slice(&self, object: Expr, start: Expr, len: Expr) -> Expr;
     fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr;
-    fn index(&self, object: Expr, index: Expr, ty: Type) -> Expr;
+    fn index(&self, object: Expr, i: Expr, ty: Type) -> Expr;
     fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
 
     fn offset(&self, pt: Expr, offset: Expr) -> Expr;
