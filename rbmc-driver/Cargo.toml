@@ -1,5 +1,5 @@
 [package]
-name = "rust-bmc"
+name = "rbmc-driver"
 version = "0.1.0"
 edition = "2024"
 
@@ -9,14 +9,5 @@ clap = { version = "4.5.31", features = ["derive", "cargo", "env"] }
 num-bigint = "0.4.6"
 z3 = {version="0.12", features = ["static-link-z3"]}
 
-[workspace]
-members = [
-  "library",
-  "rbmc-driver",
-  "utils/build-rbmc"
-]
-
-default-members = [
-  ".",
-  "rbmc-driver"
-]
+[package.metadata.rust-analyzer]
+rustc_private = true
