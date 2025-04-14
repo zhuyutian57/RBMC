@@ -3,8 +3,10 @@ use std::io::*;
 
 use num_bigint::BigInt;
 use num_bigint::Sign;
+use stable_mir::mir::mono::Instance;
 use stable_mir::mir::mono::StaticDef;
 use stable_mir::target::*;
+use stable_mir::ty::FnDef;
 use stable_mir::*;
 
 use super::function::*;
@@ -21,23 +23,22 @@ impl Program {
     pub fn new(_crate: Crate) -> Self {
         let mut functions = Vec::new();
         let mut idx = HashMap::new();
-        for def in _crate.fn_defs() {
+        _crate.fn_defs().iter().for_each(
+            |def|
             if def.trimmed_name() == "main" {
                 functions.push(Function::new(def.clone()));
             }
-        }
-        for def in _crate.fn_defs() {
-            if def.trimmed_name() == "main" {
-                continue;
+        );
+        _crate.fn_defs().iter().for_each(
+            |def|
+            if def.trimmed_name() != "main" && def.has_body() {
+                functions.push(Function::new(def.clone()));
             }
-            if !def.has_body() {
-                continue;
-            }
-            functions.push(Function::new(def));
-        }
-        for (i, function) in functions.iter_mut().enumerate() {
-            idx.insert(function.name().clone(), i);
-        }
+        );
+        functions.iter_mut().enumerate().for_each(
+            |(i, func)|
+            { idx.insert(func.name().clone(), i); }
+        );
         Program {
             crate_name: _crate.name.clone().into(),
             static_variables: _crate.statics(),
