@@ -1,0 +1,7 @@
+# Command aliases
+[alias]
+# Run `build-rbmc` to build
+build-rbmc = "run --target-dir target/tools -p build-rbmc"
+
+# 
+[env]
