@@ -1,6 +1,10 @@
 # RBMC
 
-**RBMC** is a Bounded Model Checker for Rust based on [Stable MIR](https://github.com/rust-lang/project-stable-mir). It is still under development. We aim to develop a verifier for the memory safety in Rust.
+TODO: ready to be reconstructed.
+
+The older version is [MIRV](https://github.com/zhuyutian57/RBMC/tree/85bb1e0be607d49069a385d9ff52ba51b452668a)
+
+<!-- **RBMC** is a Bounded Model Checker for Rust based on [Stable MIR](https://github.com/rust-lang/project-stable-mir). It is still under development. We aim to develop a verifier for the memory safety in Rust.
 
 ## Installation
 
@@ -16,4 +20,4 @@ We provide two binary tools, `rbmc` and `cargo-rbmc`. `rbmc` is a wrapper of Rus
 ```sh
 export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH
 ```
-in the root of `RBMC`. 
+in the root of `RBMC`.  -->
