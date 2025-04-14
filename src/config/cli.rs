@@ -37,6 +37,10 @@ pub struct Cli {
     /// Show program
     #[arg(long, default_value_t = false)]
     pub show_program: bool,
+    
+    /// Show program and terminate
+    #[arg(long, default_value_t = false)]
+    pub program_only: bool,
 
     /// Show state
     #[clap(value_enum)]

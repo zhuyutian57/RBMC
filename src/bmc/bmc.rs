@@ -24,8 +24,9 @@ impl<'cfg> Bmc<'cfg> {
     }
 
     pub fn do_bmc(&mut self) {
-        if self.config.cli.show_program {
+        if self.config.cli.show_program || self.config.cli.program_only {
             self.config.program.show();
+            if self.config.cli.program_only { return; }
         }
 
         let verify_time = std::time::Instant::now();
