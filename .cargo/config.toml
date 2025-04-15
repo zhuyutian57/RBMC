@@ -3,5 +3,11 @@
 # Run `build-rbmc` to build
 build-rbmc = "run --target-dir target/tools -p build-rbmc"
 
-# 
+# Path for RBMC, retrieved by `env!()`
 [env]
+# Path to the repository root
+REPO_ROOT = {value = "", relative = true}
+# Path to build in `target`, including `bin` and `lib`
+RBMC_BUILD_ROOT = {value = "./target/rbmc", relative = true}
+# Path for installation, connected by `$HOME`
+RBMC_INSTALL_ROOT = {value = ".rbmc", relative = true}
