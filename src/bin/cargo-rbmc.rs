@@ -57,6 +57,4 @@
 
 /// Cargo rbmc
 
-fn main() {
-
-}
+fn main() { println!("TODO"); }
