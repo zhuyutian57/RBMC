@@ -102,26 +102,17 @@ impl Cli {
     }
 
     pub fn rustc_args(&self) -> Vec<String> {
-        let mut args = match self.file.is_empty() {
-            // From `cargo-rbmc` or `cargo rbmc`
-            true => std::env::args().skip(1).into_iter().collect(),
-            // From `rbmc *.rs`
-            false => vec![
-                std::env::current_exe().unwrap().to_str().unwrap().to_string(),
-                self.file.to_string(),
-            ],
-        };
-        if !self.show_warnings {
-            args.push("-Awarnings".to_string());
-        }
-        args.push("-Copt-level=1".to_string());
-        args.push("-Zalways-encode-mir".to_string());
-        args.push("-Zmir-enable-passes=+ReorderBasicBlocks".to_string());
-        // Link librbmc.rlib
-        if let Ok(l) = std::env::var(RBMC_LIBRARY_PATH) {
-            args.push("--extern".into());
-            args.push(format!("rbmc={l}").to_string());
-        }
+        let mut args = vec![std::env::current_exe().unwrap().to_str().unwrap().into()];
+        // TODO: fix cargo rbmc
+        args.push(self.file.to_string());
+        let extra_args =
+            std::env::var("RUSTC_ARGS")
+                .unwrap()
+                .split(' ')
+                .into_iter()
+                .map(String::from)
+                .collect::<Vec<_>>();
+        args.extend(extra_args);
         args
     }
 

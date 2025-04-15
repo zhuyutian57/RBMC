@@ -44,7 +44,7 @@ pub fn rbmc_args() -> Vec<String> {
     std::env::args().skip(1).into_iter().collect()
 }
 
-pub fn rustc_flags() -> String {
+pub fn rustc_args() -> String {
     let rbmc_home = rbmc_home();
     let librbmc = rbmc_home.join("lib").join("librbmc.rlib");
     [   // Set sysroot

@@ -1,3 +1,6 @@
+use std::io::stdout;
+
+use stable_mir::mir::mono::Instance;
 use stable_mir::CrateDef;
 use stable_mir::mir::*;
 
@@ -21,6 +24,11 @@ impl<'cfg> Symex<'cfg> {
         let fndef = ty.fn_def();
         let name = NString::from(fndef.0.name());
         let trimmed_name = NString::from(fndef.0.trimmed_name());
+
+        let instance =
+            Instance::resolve(fndef.0, &fndef.1).unwrap();
+        
+        instance.body().unwrap().dump(&mut stdout().lock(), &instance.trimmed_name().to_string()).unwrap();
 
         let ret = self.make_project(dest);
         let args_exprs = args.iter().map(|x| self.make_operand(x)).collect::<Vec<_>>();

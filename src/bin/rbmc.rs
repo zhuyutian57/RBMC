@@ -6,7 +6,7 @@ fn main() {
     let status =
         Command::new("rbmc-driver")
             .env("PATH", rust_bmc::path())
-            .env("RUSTCFLAGS", rust_bmc::rustc_flags())
+            .env("RUSTC_ARGS", rust_bmc::rustc_args())
             .args(rust_bmc::rbmc_args())
             .status()
             .expect("Fail to run RBMC");
