@@ -54,7 +54,9 @@ impl<'cfg> ExecutionState<'cfg> {
         let alloc_array = self.ctx.object(alloc_array_symbol);
         self.ns.insert_object(alloc_array);
         // Initialized stack
-        self.push_frame(0, None, None);
+        let entry_function =
+            self.config.program.function_id(self.config.cli.entry_function);
+        self.push_frame(entry_function, None, None);
     }
 
     pub fn can_exec(&self) -> bool {

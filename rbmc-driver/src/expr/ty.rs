@@ -17,7 +17,7 @@ pub type FunctionDef = (FnDef, GenericArgs);
 
 /// A wrapper for `Ty` in MIR
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Type(Ty);
+pub struct Type(pub Ty);
 
 impl Type {
     pub fn unit_type() -> Self {

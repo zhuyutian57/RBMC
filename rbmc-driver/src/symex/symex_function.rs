@@ -21,32 +21,34 @@ impl<'cfg> Symex<'cfg> {
         target: &Option<BasicBlockIdx>,
     ) {
         let ty = self.top_mut().function.operand_type(func);
-        let fndef = ty.fn_def();
-        let name = NString::from(fndef.0.name());
-        let trimmed_name = NString::from(fndef.0.trimmed_name());
+        let (def, args) = ty.fn_def();
 
-        let ret = self.make_project(dest);
-        let args_exprs = args.iter().map(|x| self.make_operand(x)).collect::<Vec<_>>();
+        let instance = Instance::resolve(def, &args).unwrap();
+        println!("{:?}", instance.trimmed_name());
+        
 
-        if self.program.contains_function(trimmed_name) {
-            let i = self.program.function_idx(trimmed_name);
-            self.symex_function(i, args, dest, target);
-            return;
-        } else if name.contains("rbmc".into()) {
-            self.symex_builtin_function(&fndef, args_exprs.clone(), ret);
-        } else if name.contains("std::alloc".into()) {
-            self.symex_alloc_api(&fndef, args_exprs.clone(), ret);
-        } else if name.contains("std::boxed".into()) {
-            self.symex_boxed_api(&fndef, args_exprs.clone(), ret);
-        } else if name.contains("std::ops".into()) {
-            self.symex_ops_api(&fndef, args_exprs.clone(), ret);
-        } else if name.contains("std::ptr".into()) {
-            self.symex_ptr_api(&fndef, args_exprs.clone(), ret);
-        } else if name.contains("std::vec".into()) {
-            self.symex_vec_api(&fndef, args_exprs.clone(), ret);
-        } else {
-            panic!("Do not support {name:?}")
-        }
+        // let ret = self.make_project(dest);
+        // let args_exprs = args.iter().map(|x| self.make_operand(x)).collect::<Vec<_>>();
+
+        // if self.program.contains_function(trimmed_name) {
+        //     let i = self.program.function_idx(trimmed_name);
+        //     self.symex_function(i, args, dest, target);
+        //     return;
+        // } else if name.contains("rbmc".into()) {
+        //     self.symex_builtin_function(&fndef, args_exprs.clone(), ret);
+        // } else if name.contains("std::alloc".into()) {
+        //     self.symex_alloc_api(&fndef, args_exprs.clone(), ret);
+        // } else if name.contains("std::boxed".into()) {
+        //     self.symex_boxed_api(&fndef, args_exprs.clone(), ret);
+        // } else if name.contains("std::ops".into()) {
+        //     self.symex_ops_api(&fndef, args_exprs.clone(), ret);
+        // } else if name.contains("std::ptr".into()) {
+        //     self.symex_ptr_api(&fndef, args_exprs.clone(), ret);
+        // } else if name.contains("std::vec".into()) {
+        //     self.symex_vec_api(&fndef, args_exprs.clone(), ret);
+        // } else {
+        //     panic!("Do not support {name:?}")
+        // }
 
         // Move semantic
         // for arg_expr in args_exprs {

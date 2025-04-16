@@ -30,6 +30,10 @@ pub struct Cli {
     #[arg(default_value_t = NString::EMPTY)]
     pub file: NString,
 
+    /// Entry function
+    #[arg(long, default_value_t = NString::from("main"))]
+    pub entry_function: NString,
+
     /// Loop bound. '0' indicates unbounded
     #[arg(long, default_value_t = 0)]
     pub unwind: usize,

@@ -12,35 +12,31 @@ use stable_mir::*;
 use super::function::*;
 use crate::symbol::nstring::NString;
 
+/// Only cache the functions in current crate.
 pub struct Program {
-    pub(crate) crate_name: NString,
+    name: NString,
     static_variables: Vec<StaticDef>,
     functions: Vec<Function>,
     idx: HashMap<NString, FunctionIdx>,
 }
 
 impl Program {
-    pub fn new(_crate: Crate) -> Self {
+    pub fn new(_crate: Crate, entry_function: NString) -> Self {
         let mut functions = Vec::new();
+        _crate.fn_defs().iter().for_each(
+            |def| functions.push(Function::from(def))
+        );
         let mut idx = HashMap::new();
-        _crate.fn_defs().iter().for_each(|def| {
-            if def.trimmed_name() == "main" {
-                functions.push(Function::new(def.clone()));
-            }
-        });
-        _crate.fn_defs().iter().for_each(|def| {
-            if def.trimmed_name() != "main" && def.has_body() {
-                functions.push(Function::new(def.clone()));
-            }
-        });
-        functions.iter_mut().enumerate().for_each(|(i, func)| {
-            idx.insert(func.name().clone(), i);
-        });
+        functions.iter().enumerate().for_each(
+            |(i, function)|
+            { idx.insert(function.name(), i); }
+        );
+        assert!(idx.contains_key(&entry_function));
         Program {
-            crate_name: _crate.name.clone().into(),
+            name: _crate.name.clone().into(),
             static_variables: _crate.statics(),
-            functions,
-            idx,
+            functions: functions,
+            idx
         }
     }
 
@@ -48,7 +44,17 @@ impl Program {
         &self.static_variables
     }
 
-    pub fn function(&self, i: FunctionIdx) -> &Function {
+    pub fn contains_function(&self, name: NString) -> bool {
+        self.idx.contains_key(&name)
+    }
+
+    pub fn function_id(&self, name: NString) -> FunctionIdx {
+        assert!(self.contains_function(name));
+        *self.idx.get(&name).unwrap()
+    }
+
+
+    pub fn function(&self, i : FunctionIdx) -> &Function {
         assert!(i < self.functions.len());
         &self.functions[i]
     }
@@ -57,19 +63,11 @@ impl Program {
         self.functions.len()
     }
 
-    pub fn function_idx(&self, name: NString) -> FunctionIdx {
-        *self.idx.get(&name).expect("Not exists")
-    }
-
-    pub fn contains_function(&self, name: NString) -> bool {
-        self.idx.contains_key(&name)
-    }
-
     pub fn show(&self) {
         let target = MachineInfo::target();
         println!(
             "Crate:{:?}, Endian:{}, MachineSize:{}\n",
-            self.crate_name,
+            self.name,
             match target.endian {
                 Endian::Little => "Little",
                 _ => "Big",
@@ -78,7 +76,7 @@ impl Program {
         );
         for function in self.functions.iter() {
             println!("--->>> Function: {:?}", function.name());
-            function.body().dump(&mut stdout().lock(), &function.name().to_string()).unwrap();
+            function.show();
             println!("<<<--- End: {:?}\n", function.name());
         }
     }

@@ -15,7 +15,7 @@ pub struct Config {
 impl Config {
     pub fn new(cli: Cli) -> Self {
         // Get stable mir
-        let program = Program::new(stable_mir::local_crate());
+        let program = Program::new(stable_mir::local_crate(), cli.entry_function);
 
         // Context for managing Expr
         let expr_ctx = ExprCtx::new(RefCell::new(Context::new()));
