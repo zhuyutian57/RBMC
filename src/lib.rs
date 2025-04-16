@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, process::Command};
 
 // This `lib` is a wrapper for running `rbmc-driver`.
 //
@@ -25,7 +25,7 @@ pub fn path() -> String {
 /// Default directory is `$HOME/.rbmc/rbmc-<VERSION>`.
 pub fn rbmc_home() -> PathBuf {
   match std::env::var("RBMC_HOME") {
-    Ok(path) => PathBuf::from(path),
+    Ok(path) => std::path::absolute(path).unwrap(),
     _ => home::home_dir()
             .expect("Not home directory")
             .join(".rbmc")
@@ -60,4 +60,30 @@ pub fn rustc_args() -> String {
         "-Zalways-encode-mir",
         "-Zmir-enable-passes=+ReorderBasicBlocks"
     ].join(" ")
+}
+
+fn toolchain_lib() -> PathBuf {
+    let rust_toolchain_file = rbmc_home().join("rust-toolchain");
+    let rust_toolchain =
+        std::fs::read_to_string(rust_toolchain_file)
+            .expect("Invalid rust-toolchain file");
+    home::rustup_home().unwrap()
+        .join("toolchains")
+        .join(rust_toolchain)
+        .join("lib")
+}
+
+pub fn setup_toolchain() {
+    if rbmc_home().starts_with(std::env!("REPO_ROOT")) { return; }
+
+    let libs = &[toolchain_lib()];
+    let ld_path = match std::env::var_os("LD_LIBRARY_PATH") {
+        Some(path) => {
+            let orig = std::env::split_paths(&path);
+            std::env::join_paths(libs.iter().cloned().chain(orig))
+        }
+        _   => std::env::join_paths(libs),
+    }.unwrap().to_str().unwrap().to_string();
+    
+    unsafe { std::env::set_var("LD_LIBRARY_PATH", ld_path); }
 }

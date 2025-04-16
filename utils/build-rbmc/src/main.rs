@@ -167,6 +167,8 @@ fn copy_std_lib(artifacts: &[Artifact]) {
 fn install() {
     let build_root = build_root(); 
     assert!(build_root.exists());
+
+    // Copy binaries and libs to `$HOME/.rbmc/rbmc-<VERSION>`
     let rbmc_home = home::home_dir().unwrap()
         .join(".rbmc")
         .join(format!("rbmc-{VERSION}"));
@@ -179,11 +181,14 @@ fn install() {
     let status = Command::new("cp")
         .arg("-rf")
         .arg(build_root.join("."))
-        .arg(rbmc_home)
+        .arg(rbmc_home.clone())
         .status()
         .expect("Fail to copy");
     assert!(status.success());
     
+    // Record rust toolchain
+    std::fs::write(rbmc_home.join("rust-toolchain"), std::env!("RUSTUP_TOOLCHAIN"));
+
     // Install binaries
     Command::new("cargo")
         .arg("install")
