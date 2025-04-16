@@ -298,7 +298,9 @@ impl Type {
             if let RigidTy::Adt(adt, args) = r {
                 let variants = adt.variants();
                 assert!(variant_idx < variants.len());
-                if variants[variant_idx].fields().is_empty() { return None; }
+                if variants[variant_idx].fields().is_empty() {
+                    return None;
+                }
                 let ftypes = variants[variant_idx]
                     .fields()
                     .iter()

@@ -7,14 +7,18 @@ use super::ty::Type;
 
 impl Expr {
     pub fn simplify(&mut self) {
-        if self.is_constant() { return; }
+        if self.is_constant() {
+            return;
+        }
 
         if self.ty().is_bool() {
             self.to_nnf(false);
         }
 
         let sub_exprs = self.simplify_args();
-        if sub_exprs == None { return; }
+        if sub_exprs == None {
+            return;
+        }
         let args = sub_exprs.unwrap();
 
         if self.is_binary() {

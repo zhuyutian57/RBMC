@@ -37,7 +37,7 @@ pub struct Cli {
     /// Show program
     #[arg(long, default_value_t = false)]
     pub show_program: bool,
-    
+
     /// Show program and terminate
     #[arg(long, default_value_t = false)]
     pub program_only: bool,
@@ -105,13 +105,12 @@ impl Cli {
         let mut args = vec![std::env::current_exe().unwrap().to_str().unwrap().into()];
         // TODO: fix cargo rbmc
         args.push(self.file.to_string());
-        let extra_args =
-            std::env::var("RUSTC_ARGS")
-                .unwrap()
-                .split(' ')
-                .into_iter()
-                .map(String::from)
-                .collect::<Vec<_>>();
+        let extra_args = std::env::var("RUSTC_ARGS")
+            .unwrap()
+            .split(' ')
+            .into_iter()
+            .map(String::from)
+            .collect::<Vec<_>>();
         args.extend(extra_args);
         args
     }

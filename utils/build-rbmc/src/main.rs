@@ -10,7 +10,7 @@ struct Cli {
     /// Install RBMC
     #[arg(long, default_value_t = false)]
     install: bool,
-    
+
     /// Install RBMC
     #[arg(long, default_value_t = false)]
     uninstall: bool,
@@ -19,13 +19,21 @@ struct Cli {
 static mut CLI: Cli = Cli { install: false, uninstall: false };
 
 #[inline]
-fn parse_args() { unsafe {  CLI = Cli::parse(); } }
+fn parse_args() {
+    unsafe {
+        CLI = Cli::parse();
+    }
+}
 
 #[inline]
-fn is_install() -> bool { unsafe  { CLI.install } }
+fn is_install() -> bool {
+    unsafe { CLI.install }
+}
 
 #[inline]
-fn is_uninstall() -> bool { unsafe  { CLI.uninstall } }
+fn is_uninstall() -> bool {
+    unsafe { CLI.uninstall }
+}
 
 const VERSION: &str = std::env!("CARGO_PKG_VERSION");
 
@@ -57,28 +65,18 @@ fn build_target() -> &'static str {
 
 fn build_bin() {
     let output_dir = build_root().join("bin");
-    let mut args = vec![
-        "--bins",
-        "-Z",
-        "unstable-options",
-        "--artifact-dir",
-        output_dir.to_str().unwrap()
-    ];
-    if is_install() { args.push("--release"); }
-    Command::new("cargo")
-        .arg("build")
-        .args(args)
-        .status()
-        .expect("Fail to build binaries");
+    let mut args =
+        vec!["--bins", "-Z", "unstable-options", "--artifact-dir", output_dir.to_str().unwrap()];
+    if is_install() {
+        args.push("--release");
+    }
+    Command::new("cargo").arg("build").args(args).status().expect("Fail to build binaries");
 }
 
 fn build_libs() {
     let output_dir = build_root().join("lib");
-    let rustc_args = [
-        "-Copt-level=1",
-        "-Zalways-encode-mir",
-        "-Zmir-enable-passes=+ReorderBasicBlocks"
-    ];
+    let rustc_args =
+        ["-Copt-level=1", "-Zalways-encode-mir", "-Zmir-enable-passes=+ReorderBasicBlocks"];
     let mut args = vec![
         "-p",
         "rbmc",
@@ -90,9 +88,11 @@ fn build_libs() {
         "--artifact-dir",
         output_dir.to_str().unwrap(),
         "--message-format",
-        "json-render-diagnostics"
+        "json-render-diagnostics",
     ];
-    if is_install() { args.push("--release"); }
+    if is_install() {
+        args.push("--release");
+    }
     let mut cmd = Command::new("cargo")
         .env("RUSTFLAGS", rustc_args.join(" "))
         .arg("build")
@@ -100,21 +100,18 @@ fn build_libs() {
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("Fail to build libraries");
-    
+
     // Retrieve artifacts
     let reader = std::io::BufReader::new(cmd.stdout.take().unwrap());
     let artifacts = Message::parse_stream(reader)
-        .filter_map(
-            |message|
-            match message.unwrap() {
-                Message::CompilerMessage(msg) => {
-                    println!("{:?}", msg);
-                    None
-                },
-                Message::CompilerArtifact(artifact) => Some(artifact),
-                 _ => None,
+        .filter_map(|message| match message.unwrap() {
+            Message::CompilerMessage(msg) => {
+                println!("{:?}", msg);
+                None
             }
-        )
+            Message::CompilerArtifact(artifact) => Some(artifact),
+            _ => None,
+        })
         .collect::<Vec<_>>();
     if !cmd.wait().expect("Couldn't get exit status").success() {
         panic!("Compile libraries fails");
@@ -150,45 +147,27 @@ fn cp(src: &Path, dst: &Path) {
 }
 
 fn copy_std_lib(artifacts: &[Artifact]) {
-    let std_path = build_root()
-        .join("lib")
-        .join("rustlib")
-        .join(build_target())
-        .join("lib");
-    std::fs::create_dir_all(std_path.clone())
-        .expect(&format!("Fail to create {std_path:?}"));
-    artifacts.iter()
-        .filter(|&artifact| is_std_lib(artifact))
-        .for_each(
-            |artifact|
-            artifact
-                .filenames
-                .iter()
-                .filter(
-                    |&path|
-                    path.extension() == Some("rlib") || path.extension() == Some(".so")
-                )
-                .for_each(
-                    |lib|
-                    cp(lib.as_std_path(), std_path.as_path())
-                )
-        );
+    let std_path = build_root().join("lib").join("rustlib").join(build_target()).join("lib");
+    std::fs::create_dir_all(std_path.clone()).expect(&format!("Fail to create {std_path:?}"));
+    artifacts.iter().filter(|&artifact| is_std_lib(artifact)).for_each(|artifact| {
+        artifact
+            .filenames
+            .iter()
+            .filter(|&path| path.extension() == Some("rlib") || path.extension() == Some(".so"))
+            .for_each(|lib| cp(lib.as_std_path(), std_path.as_path()))
+    });
 }
 
 fn install() {
-    let build_root = build_root(); 
+    let build_root = build_root();
     assert!(build_root.exists());
 
     // Copy binaries and libs to `$HOME/.rbmc/rbmc-<VERSION>`
-    let rbmc_home = home::home_dir().unwrap()
-        .join(".rbmc")
-        .join(format!("rbmc-{VERSION}"));
+    let rbmc_home = home::home_dir().unwrap().join(".rbmc").join(format!("rbmc-{VERSION}"));
     if rbmc_home.exists() {
-        std::fs::remove_dir_all(rbmc_home.clone())
-            .expect(&format!("Fail to create {rbmc_home:?}"));
+        std::fs::remove_dir_all(rbmc_home.clone()).expect(&format!("Fail to create {rbmc_home:?}"));
     }
-    std::fs::create_dir_all(rbmc_home.clone())
-            .expect(&format!("Fail to create {rbmc_home:?}"));
+    std::fs::create_dir_all(rbmc_home.clone()).expect(&format!("Fail to create {rbmc_home:?}"));
     let status = Command::new("cp")
         .arg("-rf")
         .arg(build_root.join("."))
@@ -196,12 +175,10 @@ fn install() {
         .status()
         .expect("Fail to copy");
     assert!(status.success());
-    
+
     // Record rust toolchain
-    std::fs::write(
-        rbmc_home.join("rust-toolchain"),
-        std::env!("RUSTUP_TOOLCHAIN")
-    ).expect("Fail to write rust toolchain");
+    std::fs::write(rbmc_home.join("rust-toolchain"), std::env!("RUSTUP_TOOLCHAIN"))
+        .expect("Fail to write rust toolchain");
 
     // Install binaries
     Command::new("cargo")
@@ -217,7 +194,9 @@ fn uninstall() {
 
     // Remove `$HOME/.rbmc`
     let installed_path = home::home_dir().unwrap().join(".rbmc");
-    if !installed_path.exists() { return; }
+    if !installed_path.exists() {
+        return;
+    }
 
     let status = Command::new("rm")
         .arg("-r")

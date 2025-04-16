@@ -23,22 +23,19 @@ impl Program {
     pub fn new(_crate: Crate) -> Self {
         let mut functions = Vec::new();
         let mut idx = HashMap::new();
-        _crate.fn_defs().iter().for_each(
-            |def|
+        _crate.fn_defs().iter().for_each(|def| {
             if def.trimmed_name() == "main" {
                 functions.push(Function::new(def.clone()));
             }
-        );
-        _crate.fn_defs().iter().for_each(
-            |def|
+        });
+        _crate.fn_defs().iter().for_each(|def| {
             if def.trimmed_name() != "main" && def.has_body() {
                 functions.push(Function::new(def.clone()));
             }
-        );
-        functions.iter_mut().enumerate().for_each(
-            |(i, func)|
-            { idx.insert(func.name().clone(), i); }
-        );
+        });
+        functions.iter_mut().enumerate().for_each(|(i, func)| {
+            idx.insert(func.name().clone(), i);
+        });
         Program {
             crate_name: _crate.name.clone().into(),
             static_variables: _crate.statics(),

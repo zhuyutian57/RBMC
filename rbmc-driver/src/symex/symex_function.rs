@@ -1,7 +1,7 @@
 use std::io::stdout;
 
-use stable_mir::mir::mono::Instance;
 use stable_mir::CrateDef;
+use stable_mir::mir::mono::Instance;
 use stable_mir::mir::*;
 
 use super::place_state::NPlace;
