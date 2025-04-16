@@ -1,7 +1,10 @@
 # Command aliases
 [alias]
 # Run `build-rbmc` to build
-build-rbmc = "run --target-dir target/tools -p build-rbmc"
+build-rbmc = "run -p build-rbmc"
+install-rbmc = "run -p build-rbmc -- --install"
+# Run `build-rbmc --uninstall` to uninstall
+uninstall-rbmc = "run -p build-rbmc -- --uninstall"
 
 # Path for RBMC, retrieved by `env!()`
 [env]

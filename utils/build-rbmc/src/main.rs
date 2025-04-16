@@ -10,9 +10,13 @@ struct Cli {
     /// Install RBMC
     #[arg(long, default_value_t = false)]
     install: bool,
+    
+    /// Install RBMC
+    #[arg(long, default_value_t = false)]
+    uninstall: bool,
 }
 
-static mut CLI: Cli = Cli { install: false };
+static mut CLI: Cli = Cli { install: false, uninstall: false };
 
 #[inline]
 fn parse_args() { unsafe {  CLI = Cli::parse(); } }
@@ -20,10 +24,17 @@ fn parse_args() { unsafe {  CLI = Cli::parse(); } }
 #[inline]
 fn is_install() -> bool { unsafe  { CLI.install } }
 
+#[inline]
+fn is_uninstall() -> bool { unsafe  { CLI.uninstall } }
+
 const VERSION: &str = std::env!("CARGO_PKG_VERSION");
 
 fn main() {
     parse_args();
+    if is_uninstall() {
+        uninstall();
+        return;
+    }
     if std::path::Path::exists(&build_root()) {
         std::fs::remove_dir_all(build_root()).unwrap();
     }
@@ -196,4 +207,19 @@ fn install() {
         .arg(".")
         .status()
         .expect("Fail to install binaries");
+}
+
+fn uninstall() {
+    Command::new("cargo").arg("uninstall").status();
+
+    // Remove `$HOME/.rbmc`
+    let installed_path = home::home_dir().unwrap().join(".rbmc");
+    if !installed_path.exists() { return; }
+
+    let status = Command::new("rm")
+        .arg("-r")
+        .arg(installed_path.clone())
+        .status()
+        .expect(&format!("Fail to run rm -r {installed_path:?}"));
+    assert!(status.success(), "Fail to remove {installed_path:?}");
 }
