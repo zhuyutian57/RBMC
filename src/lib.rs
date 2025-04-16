@@ -1,9 +1,8 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 // This `lib` is a wrapper for running `rbmc-driver`.
 //
-// For running `rbmc-driver`, we must do some works to retrieve correct MIR,
-// including setting toolchain and setting `RUSTCFLAGS`.
+// For running `rbmc-driver`, we must do some works to retrieve correct MIR.
 // 
 // Moreover, to retrieve the MIR of `std`, we must link the compiled `std`
 // libraries. That means we should reset the `--sysroot` via `rustc` argument.
@@ -27,8 +26,10 @@ pub fn path() -> String {
 pub fn rbmc_home() -> PathBuf {
   match std::env::var("RBMC_HOME") {
     Ok(path) => PathBuf::from(path),
-    _ => home::home_dir().expect("Not home directory")
-        .join(".rbmc").join(format!("rbmc-{VERSION}")),
+    _ => home::home_dir()
+            .expect("Not home directory")
+            .join(".rbmc")
+            .join(format!("rbmc-{VERSION}")),
   }
 }
 

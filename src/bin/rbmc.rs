@@ -1,5 +1,5 @@
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::path::PathBuf;
+use std::process::Command;
 
 /// Set flags and run rbmc-driver
 fn main() {
@@ -21,8 +21,7 @@ fn remove_generated_binary() {
         let file = PathBuf::from(s);
         let exec = cur.join(file.file_stem().unwrap());
         if exec.exists() {
-            std::fs::remove_file(exec);
+            std::fs::remove_file(exec).expect("Failt to remove exec binary");
         }
     }
-    
 }
