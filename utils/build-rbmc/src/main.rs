@@ -198,7 +198,10 @@ fn install() {
     assert!(status.success());
     
     // Record rust toolchain
-    std::fs::write(rbmc_home.join("rust-toolchain"), std::env!("RUSTUP_TOOLCHAIN"));
+    std::fs::write(
+        rbmc_home.join("rust-toolchain"),
+        std::env!("RUSTUP_TOOLCHAIN")
+    ).expect("Fail to write rust toolchain");
 
     // Install binaries
     Command::new("cargo")
@@ -210,7 +213,7 @@ fn install() {
 }
 
 fn uninstall() {
-    Command::new("cargo").arg("uninstall").status();
+    Command::new("cargo").arg("uninstall").status().unwrap();
 
     // Remove `$HOME/.rbmc`
     let installed_path = home::home_dir().unwrap().join(".rbmc");

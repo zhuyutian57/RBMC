@@ -1,4 +1,4 @@
-use std::{path::PathBuf, process::Command};
+use std::path::PathBuf;
 
 // This `lib` is a wrapper for running `rbmc-driver`.
 //
@@ -47,13 +47,12 @@ pub fn rbmc_args() -> Vec<String> {
 
 pub fn rustc_args() -> String {
     let rbmc_home = rbmc_home();
-    let librbmc = rbmc_home.join("lib").join("librbmc.rlib");
     [   // Set sysroot
         "--sysroot", rbmc_home.to_str().unwrap(),
         // Link the compiled libraries
         "-L", rbmc_lib().to_str().unwrap(),
         // Link rbmc lib for non-deterministic variable
-        "--extern", format!("rbmc={librbmc:?}").as_str(),
+        "--extern", "rbmc",
         // Other arguement for compiling
         "-Awarnings",
         "-Copt-level=1",
