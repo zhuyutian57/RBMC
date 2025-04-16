@@ -48,6 +48,7 @@ if __name__ == "__main__":
   elif args.uninstall:
     os.system("cargo uninstall-rbmc")
   elif args.file is not None:
+    os.system("cargo build-rbmc")
     rbmc(args.file, rbmc_args)
   else:
     parser.print_help(sys.stdout)
