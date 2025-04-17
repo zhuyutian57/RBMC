@@ -201,11 +201,6 @@ impl Context {
         self.nodes[i].kind().is_pointer_meta()
     }
 
-    pub fn is_box(&self, i: NodeId) -> bool {
-        assert!(i < self.nodes.len());
-        self.nodes[i].kind().is_box()
-    }
-
     pub fn is_vec(&self, i: NodeId) -> bool {
         assert!(i < self.nodes.len());
         self.nodes[i].kind().is_vec()
@@ -705,13 +700,29 @@ impl ExprBuilder for ExprCtx {
         Expr { ctx: self.clone(), id }
     }
 
+    /// Construct a `NonNull` pointer from a `*const T`
+    fn nonnull(&self, pt: Expr, ty: Type) -> Expr {
+        assert!(pt.ty().is_const_ptr());
+        assert!(ty.is_nonnull());
+        self.aggregate(vec![pt], ty)
+    }
+
+    /// Construct a `Unique` pointer from a `NonNull(*const T)`
+    fn unique(&self, pt: Expr, ty: Type) -> Expr {
+        assert!(pt.ty().is_const_ptr());
+        assert!(ty.is_unique());
+        let nonnull_ty = ty.struct_def().1[0].1;
+        let nonnull = self.nonnull(pt, nonnull_ty);
+        self.aggregate(vec![nonnull], ty)
+    }
+
+    /// To construct a box from `Unique(NonNull(*const T))`
     fn _box(&self, pt: Expr) -> Expr {
-        assert!(pt.ty().is_ptr());
-        let kind = NodeKind::Box(pt.id);
+        assert!(pt.ty().is_const_ptr());
         let ty = Type::box_type(pt.ty().pointee_ty());
-        let new_node = Node::new(kind, ty);
-        let id = self.borrow_mut().add_node(new_node);
-        Expr { ctx: self.clone(), id }
+        let unique_ty = ty.struct_def().1[0].1;
+        let unique = self.unique(pt, unique_ty);
+        self.aggregate(vec![unique], ty)
     }
 
     fn _vec(&self, pt: Expr, len: Expr, cap: Expr, ty: Type) -> Expr {

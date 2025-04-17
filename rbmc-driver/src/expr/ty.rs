@@ -93,10 +93,6 @@ impl Type {
         Type::from(Ty::new_ptr(pointee_type.0, m))
     }
 
-    pub fn ref_type(reg: Region, pointee_type: Type, mutability: Mutability) -> Self {
-        Type::from(Ty::new_ref(reg, pointee_type.0, mutability))
-    }
-
     pub fn box_type(inner_type: Type) -> Self {
         Ty::new_box(inner_type.0).into()
     }
@@ -164,7 +160,7 @@ impl Type {
     }
 
     pub fn is_struct(&self) -> bool {
-        self.0.kind().is_struct() && !self.is_layout() && !self.is_box() && !self.is_vec()
+        self.0.kind().is_struct() && !self.is_layout()
     }
 
     pub fn is_tuple(&self) -> bool {
@@ -182,8 +178,23 @@ impl Type {
         self.0.kind().is_raw_ptr()
     }
 
+    pub fn is_const_ptr(&self) -> bool {
+        match self.0.kind() {
+            TyKind::RigidTy(RigidTy::RawPtr(_, m)) => m == Mutability::Not,
+            _ => false,
+        }
+    }
+
     pub fn is_slice_ptr(&self) -> bool {
         self.is_primitive_ptr() && self.pointee_ty().is_slice()
+    }
+
+    pub fn is_nonnull(&self) -> bool {
+        self.name() == "NonNull"
+    }
+
+    pub fn is_unique(&self) -> bool {
+        self.name() == "Unique"
     }
 
     pub fn is_box(&self) -> bool {

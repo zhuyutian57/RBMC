@@ -97,9 +97,6 @@ impl Expr {
     pub fn is_pointer_meta(&self) -> bool {
         self.ctx.borrow().is_pointer_meta(self.id)
     }
-    pub fn is_box(&self) -> bool {
-        self.ctx.borrow().is_box(self.id)
-    }
     pub fn is_vec(&self) -> bool {
         self.ctx.borrow().is_vec(self.id)
     }
@@ -308,7 +305,6 @@ impl Expr {
                 || self.is_pointer_base()
                 || self.is_pointer_offset()
                 || self.is_pointer_meta()
-                || self.is_box()
                 || self.is_vec()
                 || self.is_vec_len()
                 || self.is_vec_cap()
@@ -559,12 +555,6 @@ impl Expr {
             return;
         }
 
-        if self.is_box() {
-            let pt = sub_exprs[0].clone();
-            *self = self.ctx._box(pt);
-            return;
-        }
-
         if self.is_vec() {
             let pt = sub_exprs[0].clone();
             let len = sub_exprs[1].clone();
@@ -707,8 +697,13 @@ impl Debug for Expr {
                 let index = &sub_exprs[1];
                 return if object.ty().is_array() || object.ty().is_slice() {
                     write!(f, "{object:?}[{index:?}]")
-                } else {
+                } else if object.ty().is_tuple() {
                     write!(f, "{object:?}.{index:?}")
+                } else {
+                    assert!(object.ty().is_struct());
+                    let i = bigint_to_usize(&index.extract_constant().to_integer());
+                    let name = object.ty().struct_def().1[i].0;
+                    write!(f, "{object:?}.{name:?}")
                 };
             }
 
@@ -751,11 +746,6 @@ impl Debug for Expr {
             if self.is_pointer_meta() {
                 let pt = &sub_exprs[0];
                 return write!(f, "Meta({pt:?})");
-            }
-
-            if self.is_box() {
-                let pt = &sub_exprs[0];
-                return write!(f, "Box({pt:?})");
             }
 
             if self.is_vec() {
@@ -875,6 +865,8 @@ pub trait ExprBuilder {
     fn pointer_base(&self, pt: Expr) -> Expr;
     fn pointer_offset(&self, pt: Expr) -> Expr;
     fn pointer_meta(&self, pt: Expr) -> Expr;
+    fn nonnull(&self, pt: Expr, ty: Type) -> Expr;
+    fn unique(&self, pt: Expr, ty: Type) -> Expr;
     fn _box(&self, pt: Expr) -> Expr;
     fn _vec(&self, pt: Expr, len: Expr, cap: Expr, ty: Type) -> Expr;
     fn vec_len(&self, pt: Expr) -> Expr;

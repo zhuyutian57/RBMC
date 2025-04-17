@@ -194,10 +194,6 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             a = Some(self.convert_pointer_meta(&args[0]));
         }
 
-        if expr.is_box() {
-            a = Some(self.convert_box(&args[0]));
-        }
-
         if expr.is_vec() {
             a = Some(self.convert_vec(&args[0], &args[1], &args[2]));
         }

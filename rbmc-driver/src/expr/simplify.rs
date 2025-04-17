@@ -56,11 +56,6 @@ impl Expr {
             return;
         }
 
-        if self.is_box() {
-            *self = self.ctx._box(args[0].clone());
-            return;
-        }
-
         if self.is_vec() {
             let pt = args[0].clone();
             let len = args[1].clone();
@@ -91,7 +86,7 @@ impl Expr {
 
         if self.is_inner_pointer() {
             let inner_pt = self.extract_inner_pointer();
-            if inner_pt.is_box() || inner_pt.is_vec() {
+            if inner_pt.is_vec() {
                 *self = inner_pt.extract_inner_pointer();
             }
             return;

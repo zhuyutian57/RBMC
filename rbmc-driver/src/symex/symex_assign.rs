@@ -22,8 +22,6 @@ impl<'cfg> Symex<'cfg> {
     pub(super) fn assign(&mut self, lhs: Expr, rhs: Expr, guard: Guard) {
         assert!(lhs.ty().is_layout() || lhs.ty() == rhs.ty());
         self.assign_rec(lhs, rhs.clone(), guard);
-        // move semantic
-        // self.symex_move(rhs);
     }
 
     fn assign_symbol(&mut self, mut lhs: Expr, mut rhs: Expr, guard: Guard) {
@@ -38,7 +36,7 @@ impl<'cfg> Symex<'cfg> {
         self.rename(&mut rhs);
         rhs.simplify();
 
-        self.exec_state.assignment(lhs.clone(), rhs.clone());
+        self.exec_state.assign(lhs.clone(), rhs.clone());
 
         // New l2 symbol
         lhs = self.exec_state.new_symbol(&lhs, Level::Level2);

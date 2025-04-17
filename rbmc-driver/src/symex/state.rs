@@ -234,7 +234,7 @@ impl State {
                 } else {
                     self.get_value_set_rec(inner_object, new_suffix, values);
                 }
-            } else if inner_expr.is_ite() {
+            } else if inner_expr.is_ite() || inner_expr.is_index() {
                 self.get_value_set_rec(inner_expr, new_suffix, values);
             } else if inner_expr.is_unknown() {
                 values.insert((expr.ctx.unknown(expr.ty().pointee_ty()), None));
@@ -244,7 +244,7 @@ impl State {
             return;
         }
 
-        if expr.is_box() || expr.is_vec() || expr.is_inner_pointer() {
+        if expr.is_vec() || expr.is_inner_pointer() {
             let inner_pt = expr.extract_inner_pointer();
             self.get_value_set_rec(inner_pt, suffix, values);
             return;

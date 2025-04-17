@@ -209,10 +209,6 @@ impl<'cfg> ExecutionState<'cfg> {
             return self.is_constant_address(expr.extract_object());
         }
 
-        if expr.is_box() {
-            return self.is_constant_value(expr.extract_inner_pointer());
-        }
-
         if expr.is_vec() {
             let inner_pt = expr.extract_inner_pointer();
             let len = expr.extract_vec_len();
@@ -274,12 +270,42 @@ impl<'cfg> ExecutionState<'cfg> {
         panic!("Do not support place state: {place:?}");
     }
 
+    pub fn assign(&mut self, lhs: Expr, rhs: Expr) {
+        if lhs.ty().is_struct() || lhs.ty().is_tuple() {
+            // Assign fo each field
+            let fields = if lhs.ty().is_struct() {
+                lhs.ty().struct_def().1.into_iter().map(|(_, ty)| ty).collect::<Vec<_>>()
+            } else {
+                lhs.ty().tuple_def()
+            };
+            let lhs_object = self.ctx.object(lhs.clone());
+            let rhs_object = self.ctx.object(rhs.clone());
+            for (i, ty) in fields.into_iter().enumerate() {
+                let idx = self.ctx.constant_usize(i);
+                let lhs_field = self.ctx.index(lhs_object.clone(), idx.clone(), ty);
+                let rhs_field = self.ctx.index(rhs_object.clone(), idx.clone(), ty);
+                self.assign(lhs_field, rhs_field);
+            }
+            return;
+        }
+
+        if lhs.is_index() {
+            // Fix non-constant
+            assert!(lhs.extract_index().is_constant());
+            let mut l1_lhs = lhs.clone();
+            self.rename(&mut l1_lhs, Level::Level1);
+            let name = Symbol::from(NString::from(format!("{l1_lhs:?}")));
+            let new_lhs = self.ctx.mk_symbol(name, lhs.ty());
+            self.assignment(new_lhs, rhs);
+            return;
+        }
+
+        assert!(lhs.is_symbol());
+        self.assignment(lhs, rhs);
+    }
+
     pub fn assignment(&mut self, mut lhs: Expr, rhs: Expr) {
         assert!(lhs.is_symbol() && !lhs.extract_symbol().is_level2());
-
-        if lhs.extract_symbol().is_level0() {
-            self.rename(&mut lhs, Level::Level1);
-        }
 
         // Constant propagation
         self.constant_propagate(lhs.clone(), rhs.clone());

@@ -118,8 +118,6 @@ pub(super) enum NodeKind {
     PointerOffset(NodeId),
     /// `PtrMetaData(pt)` retrieve pointer meta data, such as slice len
     PointerMeta(NodeId),
-    /// `Box(*T)` encodes Box pointer, one-field tuple
-    Box(NodeId),
     /// `Vec(*[T], len, cap)` encodes Vec, three-field tuple,
     /// array pointer, length and capacity
     Vec(NodeId, NodeId, NodeId),
@@ -218,10 +216,6 @@ impl NodeKind {
         matches!(self, NodeKind::PointerMeta(..))
     }
 
-    pub fn is_box(&self) -> bool {
-        matches!(self, NodeKind::Box(..))
-    }
-
     pub fn is_vec(&self) -> bool {
         matches!(self, NodeKind::Vec(..))
     }
@@ -307,7 +301,6 @@ impl Node {
             NodeKind::PointerBase(p)
             | NodeKind::PointerOffset(p)
             | NodeKind::PointerMeta(p)
-            | NodeKind::Box(p)
             | NodeKind::VecLen(p)
             | NodeKind::VecCap(p)
             | NodeKind::InnerPointer(p) => Some(vec![*p]),

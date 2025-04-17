@@ -33,16 +33,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     pub(super) fn project(&mut self, place: &Place) -> Expr {
         let mut ret = self._callback_symex.exec_state.current_local(place.local, Level::Level1);
 
-        let mut project_elem = place.projection.clone();
-        if !project_elem.is_empty() && ret.ty().is_smart_ptr() {
-            // Remove project_index. Use box as a pointer
-            if ret.ty().is_box() {
-                project_elem.drain(0..2);
-            }
-            ret = self._ctx.inner_pointer(ret);
-        }
-
-        for elem in project_elem {
+        for elem in place.projection.iter() {
             ret = match elem {
                 ProjectionElem::Deref => self.project_deref(
                     ret.clone(),
@@ -50,15 +41,15 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
                     Guard::new(self._ctx.clone()),
                     ret.ty().pointee_ty(),
                 ),
-                ProjectionElem::Field(i, ty) => self.project_field(ret.clone(), i, Type::from(ty)),
+                ProjectionElem::Field(i, ty) => self.project_field(ret.clone(), *i, Type::from(ty)),
                 ProjectionElem::Index(local) => {
                     let mut index =
-                        self._callback_symex.exec_state.current_local(local, Level::Level1);
+                        self._callback_symex.exec_state.current_local(*local, Level::Level1);
                     self._callback_symex.rename(&mut index);
                     self.project_index(ret.clone(), index)
                 }
                 ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
-                    let i = if from_end { min_length - offset } else { offset };
+                    let i = if *from_end { *min_length - *offset } else { *offset };
                     let index = self._ctx.constant_usize(i as usize);
                     self.project_index(ret.clone(), index)
                 }
