@@ -11,6 +11,7 @@ use stable_mir::ty::FnDef;
 use stable_mir::*;
 
 use super::function::*;
+use crate::config::cli::ProgramInfo;
 use crate::expr::ty::Type;
 use crate::symbol::nstring::NString;
 
@@ -108,7 +109,7 @@ impl Program {
         self.functions.len()
     }
 
-    pub fn show(&self) {
+    pub fn show(&self, info: ProgramInfo) {
         let target = MachineInfo::target();
         println!(
             "Crate:{:?}, Endian:{}, MachineSize:{}\n",
@@ -119,7 +120,12 @@ impl Program {
             },
             target.pointer_width.bytes()
         );
-        for i in 0..self.func_count {
+        let n = if info == ProgramInfo::Local {
+            self.func_count
+        } else {
+            self.functions.len()
+        };
+        for i in 0..n {
             let function = &self.functions[i];
             println!("--->>> Function: {:?}", function.name());
             function.show();
