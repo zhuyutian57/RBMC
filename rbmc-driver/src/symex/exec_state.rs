@@ -19,15 +19,13 @@ use crate::symex::place_state::*;
 
 /// Execution state representing the state of the current program.
 /// Multi-thread program is not supported yet.
-///
-/// Moreover, `func_cnt` is used for identifying each function. It
-/// is used for naming variables later.
 pub struct ExecutionState<'cfg> {
     config: &'cfg Config,
     ctx: ExprCtx,
     pub(super) span: Option<Span>,
     pub(super) ns: Namespace,
-    func_cnt: Vec<usize>,
+    /// The number of frames we have created. Used for variable renaming.
+    n: usize,
     frames: Vec<Frame<'cfg>>,
     pub(super) objects: Vec<Expr>,
     pub(super) renaming: RefCell<Renaming>,
@@ -40,7 +38,7 @@ impl<'cfg> ExecutionState<'cfg> {
             ctx,
             span: None,
             ns: Namespace::default(),
-            func_cnt: vec![0; config.program.size()],
+            n: 0,
             frames: Vec::new(),
             objects: Vec::new(),
             renaming: RefCell::new(Renaming::default()),
@@ -97,10 +95,10 @@ impl<'cfg> ExecutionState<'cfg> {
         destination: Option<Place>,
         target: Option<BasicBlockIdx>,
     ) {
-        self.func_cnt[i] += 1;
+        self.n += 1;
         let mut frame = Frame::new(
+            self.n,
             self.config,
-            self.func_cnt[i],
             self.config.program.function(i),
             destination,
             target,

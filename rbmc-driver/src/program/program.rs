@@ -5,6 +5,7 @@ use num_bigint::BigInt;
 use num_bigint::Sign;
 use stable_mir::mir::mono::Instance;
 use stable_mir::mir::mono::StaticDef;
+use stable_mir::mir::TerminatorKind;
 use stable_mir::target::*;
 use stable_mir::ty::FnDef;
 use stable_mir::*;
@@ -12,12 +13,13 @@ use stable_mir::*;
 use super::function::*;
 use crate::symbol::nstring::NString;
 
-/// Only cache the functions in current crate.
 pub struct Program {
     name: NString,
     static_variables: Vec<StaticDef>,
+    /// The number of functions in current crate
+    func_count: usize,
     functions: Vec<Function>,
-    idx: HashMap<NString, FunctionIdx>,
+    function_map: HashMap<NString, FunctionIdx>,
 }
 
 impl Program {
@@ -32,11 +34,53 @@ impl Program {
             { idx.insert(function.name(), i); }
         );
         assert!(idx.contains_key(&entry_function));
-        Program {
+        let mut program = Program {
             name: _crate.name.clone().into(),
             static_variables: _crate.statics(),
+            func_count: functions.len(),
             functions: functions,
-            idx
+            function_map: idx
+        };
+        program.init();
+        program
+    }
+
+    fn init(&mut self) {
+        // Cache all reachable funtions
+        let mut i = 0;
+        while i < self.functions.len() {
+            let function = &self.functions[i];
+            let locals = function.locals();
+            let mut new_functions = Vec::new();
+            for bb in function.body().blocks.iter() {
+                let instance = match &bb.terminator.kind {
+                    TerminatorKind::Drop { place, .. } => {
+                        let ty = place.ty(locals).unwrap();
+                        Some(Instance::resolve_drop_in_place(ty))
+                    },
+                    TerminatorKind::Call { func, .. } => {
+                        let ty = func.ty(locals).unwrap();
+                        let k = ty.kind();
+                        let (def, args) = k.fn_def().unwrap();
+                        let instance = Instance::resolve(def, args).expect("Not compile?");
+                        if instance.has_body() {
+                            Some(instance)
+                        } else {
+                            None
+                        }
+                    },
+                    _ => None, // Do nothing
+                };
+                if let Some(inst) = instance {
+                    let name = NString::from(inst.trimmed_name());
+                    // TODO: filter functions that is builtin in our functions model
+                    if self.function_map.contains_key(&name) { continue; }
+                    self.function_map.insert(name, self.functions.len());
+                    new_functions.push(Function::from(&inst));
+                }
+            }
+            new_functions.into_iter().for_each(|function| self.functions.push(function));
+            i += 1;
         }
     }
 
@@ -45,12 +89,12 @@ impl Program {
     }
 
     pub fn contains_function(&self, name: NString) -> bool {
-        self.idx.contains_key(&name)
+        self.function_map.contains_key(&name)
     }
 
     pub fn function_id(&self, name: NString) -> FunctionIdx {
         assert!(self.contains_function(name));
-        *self.idx.get(&name).unwrap()
+        *self.function_map.get(&name).unwrap()
     }
 
 
@@ -74,7 +118,8 @@ impl Program {
             },
             target.pointer_width.bytes()
         );
-        for function in self.functions.iter() {
+        for i in 0..self.func_count {
+            let function = &self.functions[i];
             println!("--->>> Function: {:?}", function.name());
             function.show();
             println!("<<<--- End: {:?}\n", function.name());

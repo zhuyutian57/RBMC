@@ -11,8 +11,8 @@ use crate::symbol::nstring::*;
 /// The id is used for naming variable. It is the unique
 /// identifier for each frame.
 pub struct Frame<'func> {
-    config: &'func Config,
     id: usize,
+    config: &'func Config,
     pub(super) function: &'func Function,
     /// Previous info. Used for recovering
     pub(super) destination: Option<Place>,
@@ -26,15 +26,15 @@ pub struct Frame<'func> {
 
 impl<'func> Frame<'func> {
     pub fn new(
-        config: &'func Config,
         id: usize,
+        config: &'func Config,
         function: &'func Function,
         destination: Option<Place>,
         target: Option<BasicBlockIdx>,
     ) -> Self {
         Frame {
-            config,
             id,
+            config,
             function,
             destination,
             target,
