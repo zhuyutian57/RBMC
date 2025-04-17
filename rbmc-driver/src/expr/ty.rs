@@ -15,6 +15,29 @@ pub type StructDef = (NString, Vec<FieldDef>);
 pub type TupleDef = Vec<Type>;
 pub type FunctionDef = (FnDef, GenericArgs);
 
+/// We handle some functions in `std` as builtin functions in symex. That means we
+/// execute them by their semantic instead unwinding the body. Because we focus on
+/// the memory safety issues on user program.
+/// 
+/// `Layout::*`: All types in our memory models are field-level. We do not handle size
+/// and alignment now.
+/// 
+/// `std::alloc::alloc`: The `alloc` function is a wrapper of `__rust_alloc`. In our
+/// memory model, we assume all allocations are successful. No need to unwind its body.
+/// `dealloc` is handled similiarly.
+/// 
+/// `Box::*`: `Box` is a special struct in rust. In our memory model, `Box<T>` is a
+/// primitive type. Thus, some functions are executed directly instead of unwinding.
+const RUST_BUILTIN_FUNCTIONS: &[&str] = &[
+    "alloc",
+    "dealloc",
+    "Box::<T>::new",
+    "Layout::new",
+    "Layout::for_value_raw",
+    "Layout::size",
+    "Layout::align",
+];
+
 /// A wrapper for `Ty` in MIR
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Type(pub Ty);
@@ -180,6 +203,21 @@ impl Type {
 
     pub fn is_any_ptr(&self) -> bool {
         self.is_primitive_ptr() || self.is_smart_ptr()
+    }
+
+    pub fn is_rbmc_nondet(&self) -> bool {
+        if !self.is_fn() { return false; }
+        return self.fn_def().0.name() == "rbmc::nondet::<T>";
+    }
+
+    pub fn is_rust_builtin_function(&self) -> bool {
+        if !self.is_fn() { return false; }
+        let name = self.fn_def().0.trimmed_name();
+        return RUST_BUILTIN_FUNCTIONS.contains(&name.as_str());
+    }
+
+    pub fn is_builtin_function(&self) -> bool {
+        self.is_rbmc_nondet() || self.is_rust_builtin_function()
     }
 
     /// Size will be in field-level

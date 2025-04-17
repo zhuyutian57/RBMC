@@ -11,6 +11,7 @@ use stable_mir::ty::FnDef;
 use stable_mir::*;
 
 use super::function::*;
+use crate::expr::ty::Type;
 use crate::symbol::nstring::NString;
 
 pub struct Program {
@@ -72,8 +73,8 @@ impl Program {
                     _ => None, // Do nothing
                 };
                 if let Some(inst) = instance {
+                    if Type::from(inst.ty()).is_builtin_function() { continue; }
                     let name = NString::from(inst.trimmed_name());
-                    // TODO: filter functions that is builtin in our functions model
                     if self.function_map.contains_key(&name) { continue; }
                     self.function_map.insert(name, self.functions.len());
                     new_functions.push(Function::from(&inst));
