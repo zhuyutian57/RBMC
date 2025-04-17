@@ -216,8 +216,15 @@ impl State {
         if expr.is_index() {
             let inner_expr = expr.extract_object().extract_inner_expr();
             let i = bigint_to_usize(&expr.extract_index().extract_constant().to_integer());
-            let new_suffix =
-                suffix + if expr.ty().is_array() { format!("[{i}]") } else { format!(".{i}") };
+            let new_suffix = suffix + if inner_expr.ty().is_array() {
+                format!("[{i}]")
+            } else if inner_expr.ty().is_tuple() {
+                format!(".{i}")
+            } else {
+                assert!(inner_expr.ty().is_struct());
+                let field = inner_expr.ty().struct_def().1[i].0;
+                format!(".{field:?}")
+            };
             if inner_expr.is_symbol() {
                 self.get_value_set_rec(inner_expr.clone(), new_suffix, values);
             } else if inner_expr.is_aggregate() {

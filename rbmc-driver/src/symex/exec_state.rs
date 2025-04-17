@@ -296,7 +296,9 @@ impl<'cfg> ExecutionState<'cfg> {
             self.rename(&mut l1_lhs, Level::Level1);
             let name = Symbol::from(NString::from(format!("{l1_lhs:?}")));
             let new_lhs = self.ctx.mk_symbol(name, lhs.ty());
-            self.assignment(new_lhs, rhs);
+            let mut new_rhs = rhs.clone();
+            new_rhs.simplify();
+            self.assignment(new_lhs, new_rhs);
             return;
         }
 
@@ -314,6 +316,8 @@ impl<'cfg> ExecutionState<'cfg> {
         if rhs.is_type() {
             return;
         }
+
+        println!("{lhs:?} = {rhs:?}");
 
         // Update value Set
         self.update_value_set_rec(lhs, rhs);

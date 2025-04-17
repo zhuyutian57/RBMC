@@ -1,5 +1,7 @@
 use num_bigint::BigInt;
 
+use crate::program::program::bigint_to_usize;
+
 use super::context::*;
 use super::expr::*;
 use super::op::*;
@@ -38,6 +40,11 @@ impl Expr {
 
         if self.is_cast() {
             self.simplify_cast(args[0].clone(), self.extract_target_type());
+            return;
+        }
+
+        if self.is_object() {
+            *self = self.ctx.object(args[0].clone());
             return;
         }
 
@@ -354,7 +361,11 @@ impl Expr {
     /// Read-Write simplify
     fn simplify_index(&mut self, object: Expr, i: Expr) {
         let inner_expr = object.extract_inner_expr();
-        if inner_expr.is_store() {
+        if inner_expr.is_aggregate() && i.is_constant() {
+            let idx = bigint_to_usize(&i.extract_constant().to_integer());
+            *self = inner_expr.extract_fields()[idx].clone();
+            return;
+        } else if inner_expr.is_store() {
             let mut update_index = inner_expr.extract_index();
             let mut update_value = inner_expr.extract_update_value();
             update_index.simplify();
@@ -362,9 +373,9 @@ impl Expr {
                 update_value.simplify();
                 *self = update_value;
             }
-        } else {
-            *self = self.ctx.index(object, i, self.ty());
+            return;
         }
+        *self = self.ctx.index(object, i, self.ty());
     }
 
     /// Write-Write simplify
