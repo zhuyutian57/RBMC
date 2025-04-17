@@ -92,7 +92,7 @@ impl<'cfg> ExecutionState<'cfg> {
     pub fn push_frame(
         &mut self,
         i: FunctionIdx,
-        destination: Option<Place>,
+        dest: Option<Place>,
         target: Option<BasicBlockIdx>,
     ) {
         self.n += 1;
@@ -100,7 +100,7 @@ impl<'cfg> ExecutionState<'cfg> {
             self.n,
             self.config,
             self.config.program.function(i),
-            destination,
+            dest,
             target,
         );
         if !self.frames.is_empty() {

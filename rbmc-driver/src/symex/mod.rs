@@ -15,6 +15,6 @@ pub(super) mod symex_builtin;
 pub(super) mod symex_drop;
 pub(super) mod symex_function;
 pub(super) mod symex_memory;
-// mod symex_modules;
+mod symex_modules;
 pub(super) mod symex_move;
 pub(super) mod symex_util;

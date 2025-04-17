@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use stable_mir::mir::mono::Instance;
 use stable_mir::CrateDef;
 use stable_mir::mir::*;
 use stable_mir::ty::*;
@@ -394,6 +395,15 @@ impl Type {
         let kind = self.0.kind();
         let _def = kind.fn_def().unwrap();
         (_def.0, _def.1.clone())
+    }
+
+    pub fn drop_instance(&self) -> Instance {
+        Instance::resolve_drop_in_place(self.0)
+    }
+
+    pub fn function_instance(&self) -> Instance {
+        let (def, args) = self.fn_def();
+        Instance::resolve(def, &args).expect("Fail to instanlized function")
     }
 
     pub fn name(&self) -> NString {

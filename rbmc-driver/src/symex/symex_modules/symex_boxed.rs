@@ -1,3 +1,4 @@
+use stable_mir::mir::mono::Instance;
 use stable_mir::CrateDef;
 
 use super::super::symex::*;
@@ -15,8 +16,9 @@ use crate::symex::value_set::ObjectSet;
 /// box, `Invalid-Free` occurs.
 
 impl<'cfg> Symex<'cfg> {
-    pub fn symex_boxed_api(&mut self, fndef: &FunctionDef, args: Vec<Expr>, dest: Expr) {
-        let name = NString::from(fndef.0.trimmed_name());
+    pub fn symex_boxed_api(&mut self, instance: Instance, args: Vec<Expr>, dest: Expr) {
+        let fty = Type::from(instance.ty());
+        let name = NString::from(fty.fn_def().0.trimmed_name());
         if name == "Box::<T>::new" {
             self.symex_box_new(dest, args);
         } else if name == "Box::<T>::from_raw" {

@@ -8,9 +8,11 @@ use super::place_state::NPlace;
 use super::place_state::PlaceState;
 use super::symex::*;
 use crate::expr::expr::*;
+use crate::expr::ty::Type;
 use crate::program::function::FunctionIdx;
 use crate::symbol::nstring::NString;
 use crate::symbol::symbol::Level;
+use crate::symbol::symbol::Symbol;
 
 impl<'cfg> Symex<'cfg> {
     pub(super) fn symex_call(
@@ -19,62 +21,75 @@ impl<'cfg> Symex<'cfg> {
         args: &Vec<Operand>,
         dest: &Place,
         target: &Option<BasicBlockIdx>,
-    ) {
+    ) -> bool {
         let ty = self.top_mut().function.operand_type(func);
-        let (def, args) = ty.fn_def();
+        let def = ty.fn_def();
+        let instance = Instance::resolve(def.0, &def.1).unwrap();
+        let ty = Type::from(instance.ty());
 
-        let instance = Instance::resolve(def, &args).unwrap();
-        println!("{:?}", instance.trimmed_name());
+        let args_exprs = args.iter().map(|x| self.make_operand(x)).collect::<Vec<_>>();
         
-
-        // let ret = self.make_project(dest);
-        // let args_exprs = args.iter().map(|x| self.make_operand(x)).collect::<Vec<_>>();
-
-        // if self.program.contains_function(trimmed_name) {
-        //     let i = self.program.function_idx(trimmed_name);
-        //     self.symex_function(i, args, dest, target);
-        //     return;
-        // } else if name.contains("rbmc".into()) {
-        //     self.symex_builtin_function(&fndef, args_exprs.clone(), ret);
-        // } else if name.contains("std::alloc".into()) {
-        //     self.symex_alloc_api(&fndef, args_exprs.clone(), ret);
-        // } else if name.contains("std::boxed".into()) {
-        //     self.symex_boxed_api(&fndef, args_exprs.clone(), ret);
-        // } else if name.contains("std::ops".into()) {
-        //     self.symex_ops_api(&fndef, args_exprs.clone(), ret);
-        // } else if name.contains("std::ptr".into()) {
-        //     self.symex_ptr_api(&fndef, args_exprs.clone(), ret);
-        // } else if name.contains("std::vec".into()) {
-        //     self.symex_vec_api(&fndef, args_exprs.clone(), ret);
-        // } else {
-        //     panic!("Do not support {name:?}")
-        // }
-
-        // Move semantic
-        // for arg_expr in args_exprs {
-        //     self.symex_move(arg_expr);
-        // }
+        if ty.is_rbmc_nondet() {
+            self.symex_nondet(dest);
+        } else if ty.is_rust_builtin_function() {
+            self.symex_rust_builtin_function(instance, args_exprs, dest, target);
+        } else {
+            // Unwinding function
+            self.symex_function(instance, args_exprs, Some(dest.clone()), target);
+            return !ty.is_rbmc_nondet() && !ty.is_rust_builtin_function();
+        }
 
         if let Some(t) = target {
             self.goto(*t, self.ctx._true());
         } else {
             panic!("Target must exists");
         }
+
+        !ty.is_rbmc_nondet() && !ty.is_rust_builtin_function()
     }
 
-    fn symex_function(
+    fn symex_nondet(&mut self, dest: &Place) {
+        let lhs = self.make_project(dest);
+        let n = self.exec_state.ns.lookup_nondet_count(lhs.ty());
+        let name = NString::from(format!("nondet_{:?}_{n}", lhs.ty()));
+        let symbol = Symbol::from(name);
+        let nondet = self.ctx.mk_symbol(symbol, lhs.ty());
+        self.assign(lhs, nondet, self.ctx._true().into());
+    }
+
+    fn symex_rust_builtin_function(
         &mut self,
-        i: FunctionIdx,
-        args: &Vec<Operand>,
+        instance: Instance,
+        args: Vec<Expr>,
         dest: &Place,
         target: &Option<BasicBlockIdx>,
     ) {
-        let mut arg_exprs = Vec::new();
-        for arg in args {
-            arg_exprs.push(self.make_operand(arg));
+        let name = NString::from(instance.name());
+        let ret = self.make_project(dest);
+        if name.contains("std::alloc".into()) {
+            self.symex_alloc_api(instance, args, ret);
+        } else if name.contains("std::boxed".into()) {
+            self.symex_boxed_api(instance, args, ret);
+        // } else if name.contains("std::ops".into()) {
+        //     self.symex_ops_api(instance, args_exprs.clone(), ret);
+        // } else if name.contains("std::ptr".into()) {
+        //     self.symex_ptr_api(instance, args_exprs.clone(), ret);
+        // } else if name.contains("std::vec".into()) {
+        //     self.symex_vec_api(instance, args_exprs.clone(), ret);
+        } else {
+            panic!("Do not support {name:?}")
         }
-        // Push frame for new name
-        self.exec_state.push_frame(i, Some(dest.clone()), *target);
+    }
+
+    pub fn symex_function(
+        &mut self,
+        instance: Instance,
+        args: Vec<Expr>,
+        dest: Option<Place>,
+        target: &Option<BasicBlockIdx>,
+    ) {
+        let i = self.program.function_id(instance.trimmed_name().into());
+        self.exec_state.push_frame(i, dest, *target);
         // Set alive local place state
         for local in self.top().function.locals_alive() {
             let l1_local = self.exec_state.current_local(*local, Level::Level1);
@@ -82,11 +97,11 @@ impl<'cfg> Symex<'cfg> {
             self.top_mut().cur_state.update_place_state(nplace, PlaceState::Own);
         }
         // Set arguements
-        let args = self.top_mut().function.args();
-        if !args.is_empty() {
-            for arg_local in args.iter() {
-                let lhs = self.exec_state.l0_local(*arg_local);
-                let rhs = arg_exprs[*arg_local - 1].clone();
+        let parameters = self.top_mut().function.args();
+        if !parameters.is_empty() {
+            for &i in parameters.iter() {
+                let lhs = self.exec_state.l0_local(i);
+                let rhs = args[i - 1].clone();
                 self.assign(lhs, rhs, self.ctx._true().into());
             }
         }
@@ -111,7 +126,7 @@ impl<'cfg> Symex<'cfg> {
 
         // Assign return value
         if !frame.function.local_type(0).is_unit() {
-            if let Some(ret) = &frame.destination {
+            if let Some(ret) = &frame.dest {
                 let lhs = self.make_project(ret);
                 let rhs_ident = frame.local_ident(0);
                 let rhs_ty = frame.function.local_type(0);

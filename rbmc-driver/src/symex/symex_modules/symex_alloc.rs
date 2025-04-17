@@ -1,3 +1,4 @@
+use stable_mir::mir::mono::Instance;
 use stable_mir::CrateDef;
 
 use super::super::symex::*;
@@ -10,14 +11,16 @@ use crate::symex::projection::Mode;
 /// This mod defines symbolic execution of api in std::alloc
 
 impl<'cfg> Symex<'cfg> {
-    pub fn symex_alloc_api(&mut self, fndef: &FunctionDef, args: Vec<Expr>, dest: Expr) {
-        let name = NString::from(fndef.0.trimmed_name());
+    pub fn symex_alloc_api(&mut self, instance: Instance, args: Vec<Expr>, dest: Expr) {
+        let fty = Type::from(instance.ty());
+        let name = NString::from(fty.fn_def().0.trimmed_name());
         if name == "alloc" {
             self.symex_alloc(dest, args);
         } else if name == "dealloc" {
             self.symex_dealloc(args);
         } else if name == "Layout::new" {
-            self.symex_layout_new(dest, fndef);
+            let ty = Type::from(instance.args().0[0].expect_ty());
+            self.symex_layout_new(dest, ty);
         } else {
             panic!("Not support {name:?}");
         }
@@ -60,8 +63,7 @@ impl<'cfg> Symex<'cfg> {
         self.assign(index, self.ctx._false(), self.ctx._true().into());
     }
 
-    fn symex_layout_new(&mut self, dest: Expr, fndef: &FunctionDef) {
-        let ty = Type::from(fndef.1.0[0].expect_ty());
+    fn symex_layout_new(&mut self, dest: Expr, ty: Type) {
         self.assign(dest, self.ctx.mk_type(ty), self.ctx._true().into());
     }
 }

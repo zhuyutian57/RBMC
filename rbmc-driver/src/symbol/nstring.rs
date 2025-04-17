@@ -70,6 +70,12 @@ impl NString {
         string.contains(sub_str)
     }
 
+    pub fn starts_with(&self, str: NString) -> bool {
+        let string = string_m().get_string(self.0);
+        let sub_str = string_m().get_string(str.0);
+        string.starts_with(sub_str)
+    }
+
     pub fn find(&self, s: NString) -> Option<usize> {
         self.to_string().find(s.as_str())
     }

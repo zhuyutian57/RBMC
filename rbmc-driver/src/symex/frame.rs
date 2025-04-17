@@ -15,7 +15,7 @@ pub struct Frame<'func> {
     config: &'func Config,
     pub(super) function: &'func Function,
     /// Previous info. Used for recovering
-    pub(super) destination: Option<Place>,
+    pub(super) dest: Option<Place>,
     pub(super) target: Option<BasicBlockIdx>,
     /// Current Computing
     pc: Pc,
@@ -29,14 +29,14 @@ impl<'func> Frame<'func> {
         id: usize,
         config: &'func Config,
         function: &'func Function,
-        destination: Option<Place>,
+        dest: Option<Place>,
         target: Option<BasicBlockIdx>,
     ) -> Self {
         Frame {
             id,
             config,
             function,
-            destination,
+            dest,
             target,
             pc: 0,
             loop_stack: Vec::new(),

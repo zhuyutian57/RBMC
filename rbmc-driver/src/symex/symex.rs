@@ -142,26 +142,20 @@ impl<'cfg> Symex<'cfg> {
     }
 
     fn symex_terminator(&mut self, terminator: &Terminator) {
+        let mut is_unwind = false;
         match &terminator.kind {
             TerminatorKind::Goto { target } => self.symex_goto(target),
             TerminatorKind::SwitchInt { discr, targets } => self.symex_switchint(discr, targets),
-            TerminatorKind::Drop { place, target, .. } => self.symex_drop(place, target),
+            TerminatorKind::Drop { place, target, .. } => {
+                is_unwind = self.symex_drop(place, target);
+            }
             TerminatorKind::Call { func, args, destination, target, .. } => {
-                self.symex_call(func, args, destination, target)
+                is_unwind = self.symex_call(func, args, destination, target);
             }
             TerminatorKind::Return => self.symex_return(),
-            TerminatorKind::Assert { cond, expected, msg, target, .. } => {
-                self.symex_assert(cond, expected, msg, target)
-            }
-            _ => {}
-        }
-        let is_unwind = match &terminator.kind {
-            TerminatorKind::Call { func, .. } => {
-                let fndef = self.top_mut().function.operand_type(func).fn_def();
-                let trimmed_name = NString::from(fndef.0.trimmed_name());
-                self.program.contains_function(trimmed_name)
-            }
-            _ => false,
+            TerminatorKind::Assert { cond, expected, msg, target, .. }
+                => self.symex_assert(cond, expected, msg, target),
+            _   => {}
         };
         if !is_unwind {
             self.top_mut().inc_pc();
