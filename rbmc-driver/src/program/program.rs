@@ -77,7 +77,8 @@ impl Program {
                     if Type::from(inst.ty()).is_builtin_function() { continue; }
                     let name = NString::from(inst.trimmed_name());
                     if self.function_map.contains_key(&name) { continue; }
-                    self.function_map.insert(name, self.functions.len());
+                    let idx = self.functions.len() + new_functions.len();
+                    self.function_map.insert(name, idx);
                     new_functions.push(Function::from(&inst));
                 }
             }

@@ -22,9 +22,8 @@ impl<'cfg> Symex<'cfg> {
         dest: &Place,
         target: &Option<BasicBlockIdx>,
     ) -> bool {
-        let ty = self.top_mut().function.operand_type(func);
-        let def = ty.fn_def();
-        let instance = Instance::resolve(def.0, &def.1).unwrap();
+        let instance =
+            self.top_mut().function.operand_type(func).function_instance();
         let ty = Type::from(instance.ty());
 
         let args_exprs = args.iter().map(|x| self.make_operand(x)).collect::<Vec<_>>();
@@ -36,7 +35,7 @@ impl<'cfg> Symex<'cfg> {
         } else {
             // Unwinding function
             self.symex_function(instance, args_exprs, Some(dest.clone()), target);
-            return !ty.is_rbmc_nondet() && !ty.is_rust_builtin_function();
+            return true;
         }
 
         if let Some(t) = target {

@@ -23,8 +23,6 @@ pub struct Function {
     /// Record the locals without StorageLive
     _local_alive: HashSet<Local>,
     _loops: LoopSet,
-    /// Used to record loop bound for each bb in loops
-    _bb_unwind_bound: HashMap<Pc, usize>,
 }
 
 impl Function {
@@ -156,8 +154,7 @@ impl From<(NString, Body)> for Function {
             args: (1..value.1.arg_locals().len() + 1).collect(),
             body: value.1,
             _local_alive: HashSet::new(),
-            _loops: HashMap::new(),
-            _bb_unwind_bound: HashMap::new(),
+            _loops: HashMap::new()
         };
         function.init();
         function

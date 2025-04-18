@@ -373,7 +373,6 @@ impl Type {
                 }
             }
         }
-        assert!(!def.1.is_empty());
         def
     }
 

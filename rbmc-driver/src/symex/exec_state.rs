@@ -317,8 +317,6 @@ impl<'cfg> ExecutionState<'cfg> {
             return;
         }
 
-        println!("{lhs:?} = {rhs:?}");
-
         // Update value Set
         self.update_value_set_rec(lhs, rhs);
     }
