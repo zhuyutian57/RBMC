@@ -111,7 +111,11 @@ impl<'cfg> Symex<'cfg> {
         match rvalue {
             Rvalue::AddressOf(_, p) => {
                 let place = self.make_project(p);
-                let object = self.ctx.object(place);
+                let object = if place.is_object() {
+                    place
+                } else {
+                    self.ctx.object(place)
+                };
                 let address_of = self.ctx.address_of(object, ty);
                 address_of
             }
