@@ -228,7 +228,7 @@ impl<'cfg> ExecutionState<'cfg> {
             return self.is_constant_address(expr.extract_inner_expr());
         }
 
-        if expr.is_index() {
+        if expr.is_index_non_zero() {
             let inner_object = expr.extract_object();
             let index = expr.extract_index();
             return self.is_constant_address(inner_object) && self.is_constant_value(index);
@@ -280,16 +280,19 @@ impl<'cfg> ExecutionState<'cfg> {
             };
             let lhs_object = self.ctx.object(lhs.clone());
             let rhs_object = self.ctx.object(rhs.clone());
-            for (i, ty) in fields.into_iter().enumerate() {
+            for (mut i, ty) in fields.into_iter().enumerate() {
+                if ty.is_zero_sized_type() { continue; }
+                // Don't forget fix the index.
+                lhs.ty().fix_index_field(&mut i);
                 let idx = self.ctx.constant_usize(i);
-                let lhs_field = self.ctx.index(lhs_object.clone(), idx.clone(), ty);
-                let rhs_field = self.ctx.index(rhs_object.clone(), idx.clone(), ty);
+                let lhs_field = self.ctx.index_non_zero(lhs_object.clone(), idx.clone(), ty);
+                let rhs_field = self.ctx.index_non_zero(rhs_object.clone(), idx.clone(), ty);
                 self.assign(lhs_field, rhs_field);
             }
             return;
         }
 
-        if lhs.is_index() {
+        if lhs.is_index_non_zero() {
             // Fix non-constant
             assert!(lhs.extract_index().is_constant());
             let mut l1_lhs = lhs.clone();
@@ -343,8 +346,8 @@ impl<'cfg> ExecutionState<'cfg> {
                     return;
                 }
                 let i = self.ctx.constant_isize(i as isize);
-                let new_lhs = self.ctx.index(lhs_object.clone(), i.clone(), *ty);
-                let new_rhs = self.ctx.index(rhs_object.clone(), i.clone(), *ty);
+                let new_lhs = self.ctx.index_non_zero(lhs_object.clone(), i.clone(), *ty);
+                let new_rhs = self.ctx.index_non_zero(rhs_object.clone(), i.clone(), *ty);
                 self.update_value_set_rec(new_lhs, new_rhs);
             }
             return;

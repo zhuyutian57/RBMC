@@ -81,7 +81,7 @@ impl<'cfg> Symex<'cfg> {
             return;
         }
 
-        if lhs.is_index() {
+        if lhs.is_index_non_zero() {
             let inner_object = lhs.extract_object();
             let mut new_lhs = inner_object.clone();
             let mut index = lhs.extract_index();

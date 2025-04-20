@@ -126,7 +126,7 @@ impl<'cfg> Symex<'cfg> {
                 let alloac_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
                 let address_of = self.ctx.address_of(object.clone(), object.extract_address_type());
                 let ident = self.ctx.pointer_base(address_of);
-                self.ctx.index(alloac_array, ident, Type::bool_type())
+                self.ctx.index_non_zero(alloac_array, ident, Type::bool_type())
             } else {
                 self.ctx._true()
             };
@@ -289,7 +289,7 @@ impl<'cfg> Symex<'cfg> {
                 .ctx
                 .pointer_base(self.ctx.address_of(object.clone(), object.extract_address_type()));
             let alloc_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
-            let alloced = self.ctx.index(alloc_array, pt_ident, Type::bool_type());
+            let alloced = self.ctx.index_non_zero(alloc_array, pt_ident, Type::bool_type());
             *expr = if expr.is_invalid() { self.ctx.not(alloced) } else { alloced };
             return;
         }

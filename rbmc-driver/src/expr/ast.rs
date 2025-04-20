@@ -101,9 +101,12 @@ pub(super) enum NodeKind {
     /// A pointer's value is the address of an object...
     SameObject(NodeId, NodeId),
 
-    /// `IndexOf(object, index)` represents a load from an array/slice
-    /// or a load of a field of a struct.
-    Index(NodeId, NodeId),
+    /// `IndexSized(object, index)`: index a noe-zero-sized field of an array, slice,
+    /// tuple or struct. The index is reconstructed by eliminating zero-sized fields.
+    IndexNonZero(NodeId, NodeId),
+    /// `IndexUnit(object, type)`: index zero-sized field(Unit or empty struct) of an
+    /// array, slice, tuple or struct. The index is redundant, type is required only. 
+    IndexZeroSized(NodeId, NodeId),
     /// `Store(object, index, value)` updates an array/slice or
     /// a field of a struct.
     Store(NodeId, NodeId, NodeId),
@@ -192,8 +195,12 @@ impl NodeKind {
         matches!(self, NodeKind::SameObject(..))
     }
 
-    pub fn is_index(&self) -> bool {
-        matches!(self, NodeKind::Index(..))
+    pub fn is_index_non_zero(&self) -> bool {
+        matches!(self, NodeKind::IndexNonZero(..))
+    }
+
+    pub fn is_index_zero_sized(&self) -> bool {
+        matches!(self, NodeKind::IndexZeroSized(..))
     }
 
     pub fn is_store(&self) -> bool {
@@ -295,7 +302,7 @@ impl Node {
             NodeKind::Unary(_, o) | NodeKind::Object(o) => Some(vec![*o]),
             NodeKind::Slice(o, s, l) => Some(vec![*o, *s, *l]),
             NodeKind::Ite(c, tv, fv) => Some(vec![*c, *tv, *fv]),
-            NodeKind::Index(o, i) => Some(vec![*o, *i]),
+            NodeKind::IndexNonZero(o, i) => Some(vec![*o, *i]),
             NodeKind::Store(o, i, v) => Some(vec![*o, *i, *v]),
             NodeKind::Offset(p, o) => Some(vec![*p, *o]),
             NodeKind::PointerBase(p)

@@ -4,7 +4,7 @@ use num_bigint::BigInt;
 
 use super::ty::Type;
 
-pub type StructFieldDef = (Constant, Type);
+pub type ConstantField = (Constant, Type);
 
 #[derive(Clone)]
 pub enum Constant {
@@ -12,7 +12,7 @@ pub enum Constant {
     Integer(BigInt),
     Null(Type),
     Array(Box<Constant>, Type),
-    Struct(Vec<StructFieldDef>, Type),
+    Struct(Vec<ConstantField>, Type),
 }
 
 impl Constant {
@@ -50,7 +50,7 @@ impl Constant {
         }
     }
 
-    pub fn to_struct_fields(&self) -> Vec<StructFieldDef> {
+    pub fn to_struct_fields(&self) -> Vec<ConstantField> {
         match self {
             Constant::Struct(fields, _) => fields.clone(),
             _ => panic!("Not constant struct"),

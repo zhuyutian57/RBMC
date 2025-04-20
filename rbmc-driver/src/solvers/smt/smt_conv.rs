@@ -78,7 +78,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         // convert sub exprs firstly
         let mut args: Vec<Ast> = Vec::new();
         if !expr.is_address_of()
-            && !expr.is_index()
+            && !expr.is_index_non_zero()
             && !expr.is_cast()
             && !expr.is_store()
             && !expr.is_match_variant()
@@ -159,10 +159,14 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             a = Some(self.mk_eq(&base_1, &base_2));
         }
 
-        if expr.is_index() {
+        if expr.is_index_non_zero() {
             let object = expr.extract_object();
             let index = expr.extract_index();
             a = Some(self.convert_index(object, index));
+        }
+
+        if expr.is_index_zero_sized() {
+            todo!();
         }
 
         if expr.is_store() {
@@ -337,7 +341,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     fn convert_address_of(&mut self, object: Expr) -> Ast {
         assert!(object.is_object());
         let inner_expr = object.extract_inner_expr();
-        if inner_expr.is_index() {
+        if inner_expr.is_index_non_zero() {
             let inner_object = inner_expr.extract_object();
             let inner_offset = inner_expr.extract_index();
             let base = self.convert_object_space(&inner_object);

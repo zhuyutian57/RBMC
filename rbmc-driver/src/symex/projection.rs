@@ -9,6 +9,7 @@ use crate::expr::context::ExprCtx;
 use crate::expr::expr::*;
 use crate::expr::guard::*;
 use crate::expr::ty::Type;
+use crate::program::program::bigint_to_usize;
 use crate::symbol::nstring::NString;
 use crate::symbol::symbol::*;
 
@@ -132,14 +133,11 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     /// Visit a field of a struct. Return `Index(object, i)`.
     fn project_field(&mut self, object: Expr, field: usize, ty: Type) -> Expr {
         assert!(object.ty().is_struct() || object.ty().is_tuple() || object.is_as_variant());
-        self.build_with_const_offset(
-            object,
-            BigInt::from(field),
-            self._ctx._true().into(),
-            ty,
-            false,
-        )
-        .unwrap()
+        if ty.is_unit() || ty.is_empty_struct() {
+            self.build_zero_sized(object, ty)
+        } else {
+            self.build_with_const_offset(object, BigInt::from(field), ty)
+        }
     }
 
     /// Visit an array/slice. Return `Index(array/slice, i)`.
@@ -148,10 +146,11 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         assert!(ty.is_array() || ty.is_slice());
         let elem_ty = ty.elem_type();
 
-        if index.is_constant() {
+        if elem_ty.is_unit() || elem_ty.is_empty_struct() {
+            self.build_zero_sized(object, elem_ty)
+        } else if index.is_constant() {
             let offset = index.extract_constant().to_integer();
-            self.build_with_const_offset(object, offset, self._ctx._true().into(), elem_ty, false)
-                .unwrap()
+            self.build_with_const_offset(object, offset, elem_ty)
         } else {
             todo!("Non-const index")
         }
@@ -202,26 +201,34 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         };
 
         if let Some(x) = final_offset {
-            self.build_with_const_offset(object, x, guard, ty, true)
+            let off = self._ctx.constant_integer(x.clone(), Type::isize_type());
+            let res = self.bound_check(
+                object.clone(), off.clone(), guard.clone()
+            );
+            if let Some(true) = res {
+                None
+            } else {            
+                Some(self.build_with_const_offset(object, x, ty))
+            }
         } else {
             Some(object.extract_inner_expr())
         }
     }
 
-    fn build_with_const_offset(
-        &mut self,
-        object: Expr,
-        offset: BigInt,
-        guard: Guard,
-        ty: Type,
-        bound_check: bool,
-    ) -> Option<Expr> {
-        let index = self._callback_symex.ctx.constant_integer(offset.clone(), Type::isize_type());
-        if bound_check {
-            self.bound_check(object.clone(), index.clone(), guard);
-        }
+    fn build_zero_sized(&mut self, object: Expr, ty: Type) -> Expr {
         let new_object = if object.is_object() { object } else { self._ctx.object(object) };
-        Some(self._ctx.index(new_object, index, ty))
+        self._ctx.index_zero_sized(new_object, ty)
+    }
+
+    fn build_with_const_offset(&mut self, object: Expr, offset: BigInt, ty: Type) -> Expr {
+        if ty.is_zero_sized_type() {
+            return self.build_zero_sized(object, ty);
+        }
+        let mut i = bigint_to_usize(&offset);
+        object.ty().fix_index_field(&mut i);
+        let index = self._ctx.constant_usize(i);
+        let new_object = if object.is_object() { object } else { self._ctx.object(object) };
+        self._ctx.index_non_zero(new_object, index, ty)
     }
 
     fn build_slice(
@@ -296,22 +303,28 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         self._callback_symex.claim(msg, error.to_expr());
     }
 
-    fn bound_check(&mut self, object: Expr, index: Expr, guard: Guard) {
+    fn bound_check(&mut self, object: Expr, offset: Expr, guard: Guard) -> Option<bool> {
         assert!(object.is_object());
         let array_ty = object.ty();
         let s = array_ty.array_size();
+        let mut res = None;
         if let Some(len) = s {
             let mut out_of_bound = self._ctx.or(
-                self._ctx.lt(index.clone(), self._ctx.constant_isize(0)),
-                self._ctx.ge(index.clone(), self._ctx.constant_isize(len as isize)),
+                self._ctx.lt(offset.clone(), self._ctx.constant_isize(0)),
+                self._ctx.ge(offset.clone(), self._ctx.constant_isize(len as isize)),
             );
             self._callback_symex.rename(&mut out_of_bound);
             out_of_bound.simplify();
+            // TODO: do more analysis
+            if out_of_bound.is_true() { res = Some(true); }
             let msg = NString::from(format!("dereference failure: index out of array bound"));
             let mut error = guard.clone();
             error.add(out_of_bound);
             self._callback_symex.claim(msg, error.to_expr());
+        } else {
+            todo!();
         }
+        res
     }
 
     fn dereference_null(&mut self, pt: Expr, guard: Guard, mode: Mode) {
@@ -335,7 +348,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let not_null = self._ctx.ne(pt.clone(), self._ctx.null(pt.ty()));
         let alloc_array = self._callback_symex.exec_state.ns.lookup_object(NString::ALLOC_SYM);
         let mut not_alloced =
-            self._ctx.not(self._ctx.index(alloc_array, pointer_base, Type::bool_type()));
+            self._ctx.not(self._ctx.index_non_zero(alloc_array, pointer_base, Type::bool_type()));
         self._callback_symex.rename(&mut not_alloced);
         let msg = match mode {
             Mode::Read => NString::from("dereference failure: invalid pointer"),
@@ -363,7 +376,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let tmp_object = if object_ty.is_primitive() || object_ty.is_any_ptr() {
             object.clone()
         } else {
-            self._ctx.index(
+            self._ctx.index_non_zero(
                 object.clone(),
                 if let Some(x) = offset {
                     self._ctx.constant_integer(x, Type::isize_type())

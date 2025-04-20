@@ -171,9 +171,14 @@ impl Context {
         self.nodes[i].kind().is_same_object()
     }
 
-    pub fn is_index(&self, i: NodeId) -> bool {
+    pub fn is_index_non_zero(&self, i: NodeId) -> bool {
         assert!(i < self.nodes.len());
-        self.nodes[i].kind().is_index()
+        self.nodes[i].kind().is_index_non_zero()
+    }
+
+    pub fn is_index_zero_sized(&self, i: NodeId) -> bool {
+        assert!(i < self.nodes.len());
+        self.nodes[i].kind().is_index_zero_sized()
     }
 
     pub fn is_store(&self, i: NodeId) -> bool {
@@ -395,7 +400,7 @@ impl ExprBuilder for ExprCtx {
         Expr { ctx: self.clone(), id }
     }
 
-    fn constant_struct(&self, fields: Vec<StructFieldDef>, ty: Type) -> Expr {
+    fn constant_struct(&self, fields: Vec<ConstantField>, ty: Type) -> Expr {
         let terminal = Terminal::Constant(Constant::Struct(fields, ty));
         let terminal_id = self.borrow_mut().add_terminal(terminal);
         let kind = NodeKind::Terminal(terminal_id);
@@ -638,7 +643,7 @@ impl ExprBuilder for ExprCtx {
         Expr { ctx: self.clone(), id }
     }
 
-    fn index(&self, object: Expr, i: Expr, ty: Type) -> Expr {
+    fn index_non_zero(&self, object: Expr, i: Expr, ty: Type) -> Expr {
         assert!(
             object.unwrap_predicates().is_object()
                 && (object.ty().is_array()
@@ -647,7 +652,23 @@ impl ExprBuilder for ExprCtx {
                     || object.ty().is_tuple()
                     || object.ty().is_enum())
         );
-        let kind = NodeKind::Index(object.id, i.id);
+        let kind = NodeKind::IndexNonZero(object.id, i.id);
+        let new_node = Node::new(kind, ty);
+        let id = self.borrow_mut().add_node(new_node);
+        Expr { ctx: self.clone(), id }
+    }
+
+    fn index_zero_sized(&self, object: Expr, ty: Type) -> Expr {
+        assert!(
+            object.unwrap_predicates().is_object()
+                && (object.ty().is_array()
+                    || object.ty().is_struct()
+                    || object.ty().is_slice()
+                    || object.ty().is_tuple()
+                    || object.ty().is_enum())
+        );
+        let type_node = self.mk_type(ty);
+        let kind = NodeKind::IndexZeroSized(object.id, type_node.id);
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
         Expr { ctx: self.clone(), id }

@@ -58,7 +58,7 @@ impl<'cfg> Symex<'cfg> {
             let array = self.make_deref(_vec, Mode::Read, guard.clone(), array_ty);
             let array_object = self.ctx.object(array);
             let elem_ty = array_ty.elem_type();
-            let index = self.ctx.index(array_object, args[1].clone(), elem_ty);
+            let index = self.ctx.index_non_zero(array_object, args[1].clone(), elem_ty);
             let index_object = self.ctx.object(index);
             let rhs = self.ctx.address_of(index_object, lhs.ty());
             self.assign(lhs.clone(), rhs, guard.clone());

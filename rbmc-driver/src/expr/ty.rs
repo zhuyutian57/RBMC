@@ -163,6 +163,10 @@ impl Type {
         self.0.kind().is_struct() && !self.is_layout()
     }
 
+    pub fn is_empty_struct(&self) -> bool {
+        self.is_struct() && self.struct_def().1.is_empty()
+    }
+
     pub fn is_tuple(&self) -> bool {
         match self.0.kind().rigid() {
             Some(r) => matches!(r, RigidTy::Tuple(..)),
@@ -230,6 +234,10 @@ impl Type {
 
     pub fn is_builtin_function(&self) -> bool {
         self.is_rbmc_nondet() || self.is_rust_builtin_function()
+    }
+
+    pub fn is_zero_sized_type(&self) -> bool {
+        self.is_unit() || self.is_empty_struct()
     }
 
     /// Size will be in field-level
@@ -441,6 +449,23 @@ impl Type {
             }
             _ => todo!(),
         }
+    }
+
+    /// Reindex struct/tuple fields by eliminating prefix zero-sized type.
+    pub fn fix_index_field(&self, i: &mut usize) {
+        if self.is_array() || self.is_slice() { return; }
+        let prefix_types = if self.is_struct() {
+            self.struct_def().1.iter().map(|(_, ty)| *ty).collect::<Vec<_>>()
+        } else {
+            self.tuple_def()
+        };
+        *i -= prefix_types.iter().enumerate()
+            .filter(|(j, _)| j < i)
+            .fold(
+                0,
+                |acc, (j, ty)|
+                acc + if ty.is_zero_sized_type() { 1 } else { 0 }
+            );
     }
 }
 

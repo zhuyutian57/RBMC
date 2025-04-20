@@ -15,6 +15,7 @@ impl<'ctx> DataType<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
             let def = ty.struct_def();
             sign.0 = NString::from("_struct_") + def.0;
             for fdef in def.1.iter() {
+                if fdef.1.is_zero_sized_type() { continue; }
                 sign.1.push(fdef.1);
             }
         } else if ty.is_tuple() {
@@ -27,6 +28,7 @@ impl<'ctx> DataType<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
             // Flattern all variants
             for vdef in def.1.iter() {
                 for fdef in vdef.1.iter() {
+                    if fdef.1.is_zero_sized_type() { continue; }
                     sign.1.push(fdef.1);
                 }
             }

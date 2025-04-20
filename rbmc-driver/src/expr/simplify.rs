@@ -53,7 +53,7 @@ impl Expr {
             return;
         }
 
-        if self.is_index() {
+        if self.is_index_non_zero() {
             self.simplify_index(args[0].clone(), args[1].clone());
             return;
         }
@@ -375,7 +375,7 @@ impl Expr {
             }
             return;
         }
-        *self = self.ctx.index(object, i, self.ty());
+        *self = self.ctx.index_non_zero(object, i, self.ty());
     }
 
     /// Write-Write simplify

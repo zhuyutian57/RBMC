@@ -103,7 +103,7 @@ impl State {
 
         assert!(expr.ty().is_any_ptr());
 
-        if expr.is_index() {
+        if expr.is_index_non_zero() {
             let object = expr.extract_object();
             let index_str = format!("{:?}", expr.extract_index());
             let i = index_str.parse::<u128>().expect("Not integer index");
@@ -163,7 +163,7 @@ impl State {
             let inner_expr = object.extract_inner_expr();
             if inner_expr.is_symbol() || inner_expr.is_slice() {
                 values.insert((object, None));
-            } else if inner_expr.is_index() {
+            } else if inner_expr.is_index_non_zero() {
                 let root_object = inner_expr.extract_object();
                 let index = inner_expr.extract_index().extract_constant();
                 let offset = index.to_integer();
@@ -213,7 +213,7 @@ impl State {
             return;
         }
 
-        if expr.is_index() {
+        if expr.is_index_non_zero() {
             let inner_expr = expr.extract_object().extract_inner_expr();
             let i = bigint_to_usize(&expr.extract_index().extract_constant().to_integer());
             let new_suffix = suffix + if inner_expr.ty().is_array() {
@@ -241,7 +241,7 @@ impl State {
                 } else {
                     self.get_value_set_rec(inner_object, new_suffix, values);
                 }
-            } else if inner_expr.is_ite() || inner_expr.is_index() {
+            } else if inner_expr.is_ite() || inner_expr.is_index_non_zero() {
                 self.get_value_set_rec(inner_expr, new_suffix, values);
             } else if inner_expr.is_unknown() {
                 values.insert((expr.ctx.unknown(expr.ty().pointee_ty()), None));
