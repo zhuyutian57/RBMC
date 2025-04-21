@@ -43,9 +43,9 @@ impl Debug for BinOp {
 impl From<mir::BinOp> for BinOp {
     fn from(value: mir::BinOp) -> Self {
         match value {
-            mir::BinOp::Add => Ok(BinOp::Add),
-            mir::BinOp::Sub => Ok(BinOp::Sub),
-            mir::BinOp::Mul => Ok(BinOp::Mul),
+            mir::BinOp::Add | mir::BinOp::AddUnchecked => Ok(BinOp::Add),
+            mir::BinOp::Sub | mir::BinOp::SubUnchecked => Ok(BinOp::Sub),
+            mir::BinOp::Mul | mir::BinOp::MulUnchecked => Ok(BinOp::Mul),
             mir::BinOp::Div => Ok(BinOp::Div),
             mir::BinOp::Eq => Ok(BinOp::Eq),
             mir::BinOp::Ne => Ok(BinOp::Ne),

@@ -190,6 +190,8 @@ impl<'cfg> Symex<'cfg> {
             return self.ctx.null(ty);
         }
 
+        // TODO: construct value according to its type
+
         let fields = if ty.is_struct() { ty.struct_def().1 } else { vec![(NString::EMPTY, ty)] };
         let mut value_vec = Vec::new();
         let bytes = &allocation.bytes;
@@ -221,6 +223,8 @@ impl<'cfg> Symex<'cfg> {
                 struct_fields.push((value_vec[i].clone(), fields[i].1.clone()));
             }
             self.ctx.constant_struct(struct_fields, ty)
+        } else if ty.is_enum() {
+            todo!()
         } else {
             assert!(value_vec.len() == 1);
             if ty.is_bool() {

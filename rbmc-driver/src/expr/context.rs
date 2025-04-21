@@ -788,7 +788,7 @@ impl ExprBuilder for ExprCtx {
         let i = bigint_to_usize(&idx.extract_constant().to_integer());
         if let Some(x) = &data {
             let variant_data_ty = ty.enum_variant_data_type(i);
-            assert!(x.ty() == variant_data_ty.field_type(0));
+            assert!(x.ty() == variant_data_ty);
         }
         let kind = NodeKind::Variant(
             idx.id,

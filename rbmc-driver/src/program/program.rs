@@ -57,24 +57,21 @@ impl Program {
             for bb in function.body().blocks.iter() {
                 let instance = match &bb.terminator.kind {
                     TerminatorKind::Drop { place, .. } => {
-                        let ty = place.ty(locals).unwrap();
-                        Some(Instance::resolve_drop_in_place(ty))
+                        let ty = Type::from(place.ty(locals).unwrap());
+                        Some(ty.drop_instance())
                     },
                     TerminatorKind::Call { func, .. } => {
-                        let ty = func.ty(locals).unwrap();
-                        let k = ty.kind();
-                        let (def, args) = k.fn_def().unwrap();
-                        let instance = Instance::resolve(def, args).expect("Not compile?");
-                        if instance.has_body() {
-                            Some(instance)
-                        } else {
+                        let ty = Type::from(func.ty(locals).unwrap());
+                        let instance = ty.function_instance();
+                        if ty.is_builtin_function() || !instance.has_body() {
                             None
+                        } else {
+                            Some(instance)
                         }
                     },
                     _ => None, // Do nothing
                 };
                 if let Some(inst) = instance {
-                    if Type::from(inst.ty()).is_builtin_function() { continue; }
                     let name = NString::from(inst.trimmed_name());
                     if self.function_map.contains_key(&name) { continue; }
                     let idx = self.functions.len() + new_functions.len();

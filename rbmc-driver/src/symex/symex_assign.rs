@@ -209,8 +209,7 @@ impl<'cfg> Symex<'cfg> {
                     let data = if operand_exprs.len() == 0 {
                         None
                     } else {
-                        let ftypes = operand_exprs.iter().map(|t| t.ty()).collect::<Vec<_>>();
-                        let tuple_ty = Type::tuple_type(ftypes);
+                        let tuple_ty = ty.enum_variant_data_type(i.to_index());
                         Some(self.ctx.aggregate(operand_exprs, tuple_ty))
                     };
                     let idx = self.ctx.constant_usize(i.to_index());

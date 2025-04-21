@@ -32,11 +32,19 @@ pub type FunctionDef = (FnDef, GenericArgs);
 const RUST_BUILTIN_FUNCTIONS: &[&str] = &[
     "alloc",
     "dealloc",
+    // Box
     "Box::<T>::new",
+    // Layout
     "Layout::new",
     "Layout::for_value_raw",
     "Layout::size",
     "Layout::align",
+    // Slice
+    "slice_index_order_fail",
+    "slice_start_index_len_fail",
+    "slice_end_index_len_fail",
+    // Panic
+    "panic_nounwind",
 ];
 
 /// A wrapper for `Ty` in MIR
