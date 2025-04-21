@@ -504,6 +504,12 @@ impl Expr {
             return;
         }
 
+        if self.is_index_zero_sized() {
+            let object = sub_exprs[0].clone();
+            *self = self.ctx.index_zero_sized(object, self.ty());
+            return;
+        }
+
         if self.is_ite() {
             let cond = sub_exprs[0].clone();
             let true_value = sub_exprs[1].clone();
@@ -702,6 +708,12 @@ impl Debug for Expr {
                     let name = object.ty().struct_def().1[i].0;
                     write!(f, "{object:?}.{name:?}")
                 };
+            }
+
+            if self.is_index_zero_sized() {
+                let object = &sub_exprs[0];
+                let ty = &sub_exprs[1];
+                return write!(f, "{object:?}<{ty:?}>");
             }
 
             if self.is_ite() {

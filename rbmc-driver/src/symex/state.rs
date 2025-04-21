@@ -168,6 +168,10 @@ impl State {
                 let index = inner_expr.extract_index().extract_constant();
                 let offset = index.to_integer();
                 values.insert((root_object, Some(offset)));
+            } else if inner_expr.is_index_zero_sized() {
+                let root_object = inner_expr.extract_object();
+                let offset = root_object.ty().size().into();
+                values.insert((root_object, Some(offset)));
             } else {
                 todo!("get value set from addressof({object:?})");
             }

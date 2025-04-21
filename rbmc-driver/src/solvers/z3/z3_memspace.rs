@@ -26,12 +26,6 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         // General pointer sort
         let pointer_sort = self.pointer_sort();
 
-        // A box pointer is a tuple (pointer)
-        let box_tuple_sort = z3::DatatypeBuilder::new(&self.z3_ctx, "box")
-            .variant("box", vec![("box_ptr", DatatypeAccessor::Sort(pointer_sort.clone()))])
-            .finish();
-        self.datatypes.insert((NString::from("box"), vec![]), box_tuple_sort);
-
         // A vec pointer is a tuple (pointer, len, cap)
         let vec_tuple_sort = z3::DatatypeBuilder::new(&self.z3_ctx, "vec")
             .variant(
@@ -50,14 +44,6 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         self.datatypes
             .get(&(NString::from("pointer"), vec![]))
             .expect("Pointer tuple is not initialized")
-            .sort
-            .clone()
-    }
-
-    fn box_sort(&self) -> z3::Sort<'ctx> {
-        self.datatypes
-            .get(&(NString::from("box"), vec![]))
-            .expect("Box pointer tuple is not initialized")
             .sort
             .clone()
     }

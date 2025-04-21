@@ -13,7 +13,7 @@ use crate::symbol::symbol::*;
 pub struct Renaming {
     l1_renaming: HashMap<NString, usize>,
     l2_renaming: HashMap<NString, usize>,
-    constant_map: HashMap<Symbol, Expr>,
+    pub constant_map: HashMap<Symbol, Expr>,
 }
 
 impl Renaming {

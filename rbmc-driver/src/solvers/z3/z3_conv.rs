@@ -318,10 +318,6 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         self.pointer_sort()
     }
 
-    fn mk_box_sort(&self) -> z3::Sort<'ctx> {
-        self.box_sort()
-    }
-
     fn mk_vec_sort(&self) -> z3::Sort<'ctx> {
         self.vec_sort()
     }

@@ -37,10 +37,6 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             return self.mk_pointer_sort();
         }
 
-        if ty.is_box() {
-            return self.mk_box_sort();
-        }
-
         if ty.is_vec() {
             return self.mk_vec_sort();
         }
@@ -464,7 +460,6 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     fn mk_int_sort(&self) -> Sort;
     fn mk_array_sort(&mut self, domain: &Sort, range: &Sort) -> Sort;
     fn mk_pointer_sort(&self) -> Sort;
-    fn mk_box_sort(&self) -> Sort;
     fn mk_vec_sort(&self) -> Sort;
 
     // constant

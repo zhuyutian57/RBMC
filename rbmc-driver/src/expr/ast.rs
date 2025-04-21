@@ -296,13 +296,14 @@ impl Node {
         match &self.kind {
             NodeKind::AddressOf(p) => Some(vec![*p]),
             NodeKind::Aggregate(nodes) => Some(nodes.clone()),
-            NodeKind::Binary(_, l, r) | NodeKind::Cast(l, r) | NodeKind::SameObject(l, r) => {
-                Some(vec![*l, *r])
-            }
+            NodeKind::Binary(_, l, r)
+            | NodeKind::Cast(l, r)
+            | NodeKind::SameObject(l, r) => Some(vec![*l, *r]),
             NodeKind::Unary(_, o) | NodeKind::Object(o) => Some(vec![*o]),
             NodeKind::Slice(o, s, l) => Some(vec![*o, *s, *l]),
             NodeKind::Ite(c, tv, fv) => Some(vec![*c, *tv, *fv]),
             NodeKind::IndexNonZero(o, i) => Some(vec![*o, *i]),
+            | NodeKind::IndexZeroSized(o, t) => Some(vec![*o, *t]),
             NodeKind::Store(o, i, v) => Some(vec![*o, *i, *v]),
             NodeKind::Offset(p, o) => Some(vec![*p, *o]),
             NodeKind::PointerBase(p)

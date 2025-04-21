@@ -151,12 +151,9 @@ impl<'cfg> Symex<'cfg> {
                 };
                 expr
             }
-            Rvalue::Cast(_, operand, t) => {
-                // TODO: handle cast kind
-                let op = self.make_operand(operand);
-                let target_ty = self.ctx.mk_type(Type::from(t.clone()));
-                let cast = self.ctx.cast(op, target_ty);
-                cast
+            Rvalue::Cast(k, op, ty) => {
+                let expr = self.make_operand(op);
+                self.symex_cast(*k, expr, Type::from(ty))
             }
             Rvalue::Ref(_, _, p) => {
                 let place = self.make_project(p);

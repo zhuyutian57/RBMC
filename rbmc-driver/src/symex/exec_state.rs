@@ -312,6 +312,10 @@ impl<'cfg> ExecutionState<'cfg> {
     pub fn assignment(&mut self, mut lhs: Expr, rhs: Expr) {
         assert!(lhs.is_symbol() && !lhs.extract_symbol().is_level2());
 
+        if !lhs.extract_symbol().is_level1() {
+            self.rename(&mut lhs, Level::Level1);
+        }
+
         // Constant propagation
         self.constant_propagate(lhs.clone(), rhs.clone());
 

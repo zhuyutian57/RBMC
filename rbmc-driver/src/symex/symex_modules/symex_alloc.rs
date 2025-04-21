@@ -18,9 +18,8 @@ impl<'cfg> Symex<'cfg> {
             self.symex_alloc(dest, args);
         } else if name == "dealloc" {
             self.symex_dealloc(args);
-        } else if name == "Layout::new" {
-            let ty = Type::from(instance.args().0[0].expect_ty());
-            self.symex_layout_new(dest, ty);
+        } else if name.starts_with("Layout".into()) {
+            self.symex_layout_api(instance, args, dest);
         } else {
             panic!("Not support {name:?}");
         }
@@ -63,7 +62,40 @@ impl<'cfg> Symex<'cfg> {
         self.assign(index, self.ctx._false(), self.ctx._true().into());
     }
 
-    fn symex_layout_new(&mut self, dest: Expr, ty: Type) {
+    fn symex_layout_api(&mut self, instance: Instance, args: Vec<Expr>, dest: Expr) {
+        let name = NString::from(instance.trimmed_name());
+        if name.starts_with("Layout::new".into())
+            || name.starts_with("Layout::for_value_raw".into()) {
+            let ty = Type::from(instance.args().0[0].expect_ty());
+            self.symex_assign_layout(dest, ty);
+        } else if  name ==  "Layout::size" || name ==  "Layout::align"{
+            let pt = args[0].clone();
+            let mut ty_expr = self.make_deref(
+                pt.clone(), Mode::Read, self.ctx._true().into(), pt.ty().pointee_ty()
+            );
+            self.rename(&mut ty_expr);
+            assert!(ty_expr.is_type());
+            if name == "Layout::size" {
+                self.symex_layout_size(dest, ty_expr.extract_type());
+            } else {
+                self.symex_layout_align(dest, ty_expr.extract_type());
+            }
+        } else {
+           todo!("{name:?}");
+        }
+    }
+
+    fn symex_assign_layout(&mut self, dest: Expr, ty: Type) {
         self.assign(dest, self.ctx.mk_type(ty), self.ctx._true().into());
+    }
+
+    fn symex_layout_size(&mut self, dest: Expr, ty: Type) {
+        let size = self.ctx.constant_usize(ty.size());
+        self.assign(dest, size, self.ctx._true().into());
+    }
+
+    fn symex_layout_align(&mut self, dest: Expr, ty: Type) {
+        let align = self.ctx.constant_usize(ty.align());
+        self.assign(dest, align, self.ctx._true().into());
     }
 }

@@ -63,6 +63,7 @@ impl<'ctx> DataType<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
         let mut fields = Vec::new();
         for (field, ty) in def.1.iter() {
+            if ty.is_zero_sized_type() { continue; }
             let field_name = sign.0 + "_" + *field;
             fields.push((field_name, *ty));
         }
@@ -82,6 +83,7 @@ impl<'ctx> DataType<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
         let mut fields = Vec::new();
         for (i, ty) in def.iter().enumerate() {
+            if ty.is_zero_sized_type() { continue; }
             let field_name = sign.0 + "_" + i.to_string();
             fields.push((field_name, *ty));
         }
@@ -104,6 +106,7 @@ impl<'ctx> DataType<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
             let vname = vdef.0;
             let mut fields = Vec::new();
             for fdef in vdef.1.iter() {
+                if ty.is_zero_sized_type() { continue; }
                 let fname = fdef.0;
                 fields.push((fname, fdef.1));
             }
