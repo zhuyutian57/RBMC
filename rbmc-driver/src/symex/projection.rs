@@ -178,40 +178,23 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         guard: Guard,
         ty: Type,
     ) -> Option<Expr> {
+        // Access the whole object
+        if object.ty() == ty && offset == None { return Some(object.extract_inner_expr()); }
+        assert!(object.ty() != ty); // removed later
         // Compute the final offset of the accessing region.
-        let final_offset = if object.ty() == ty || offset != None {
-            // Access the whole object or the expr has arithmetic
-            offset
+        let final_offset = if offset != None {
+            offset.unwrap()
         } else {
-            // Access part of object
-            let range = if object.ty().is_array() {
-                // Access one index of an array
-                object.ty().elem_type()
-            } else if object.ty().is_slice() {
-                // Access one index of a slice
-                object.ty().elem_type()
-            } else if object.ty().is_struct() {
-                // Access the first field of a stuct
-                object.ty().struct_def().1[0].1
-            } else {
-                panic!("Impossible for access {:?} with {ty:?}", object.ty())
-            };
-            assert!(range == ty);
-            Some(BigInt::ZERO)
+            // Access first element
+            BigInt::ZERO
         };
 
-        if let Some(x) = final_offset {
-            let off = self._ctx.constant_integer(x.clone(), Type::isize_type());
-            let res = self.bound_check(
-                object.clone(), off.clone(), guard.clone()
-            );
-            if let Some(true) = res {
-                None
-            } else {            
-                Some(self.build_with_const_offset(object, x, ty))
-            }
-        } else {
-            Some(object.extract_inner_expr())
+        let off = self._ctx.constant_integer(final_offset.clone(), Type::isize_type());
+        let res = self.bound_check(object.clone(), off, guard);
+        if let Some(true) = res {
+            None
+        } else {            
+            Some(self.build_with_const_offset(object, final_offset, ty))
         }
     }
 
@@ -220,6 +203,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         self._ctx.index_zero_sized(new_object, ty)
     }
 
+    /// Notice that `offset` is in field-level
     fn build_with_const_offset(&mut self, object: Expr, offset: BigInt, ty: Type) -> Expr {
         if ty.is_zero_sized_type() {
             return self.build_zero_sized(object, ty);
@@ -303,10 +287,17 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         self._callback_symex.claim(msg, error.to_expr());
     }
 
+    /// Bound check is in field-level
     fn bound_check(&mut self, object: Expr, offset: Expr, guard: Guard) -> Option<bool> {
         assert!(object.is_object());
-        let array_ty = object.ty();
-        let s = array_ty.array_len();
+        let ty = object.ty();
+        let s = if ty.is_array() {
+            ty.array_len()
+        } else if ty.is_struct() || ty.is_tuple() {
+            Some(ty.fields())
+        } else {
+            todo!()
+        };
         let mut res = None;
         if let Some(len) = s {
             let mut out_of_bound = self._ctx.or(
@@ -386,7 +377,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
                 ty,
             )
         };
-        let total_offset = tmp_object.compute_offset();
+        let total_offset = tmp_object.compute_bytes_offset();
         let msg = format!(
             "{} failure: the offset is {total_offset:?} != 0",
             format!("{mode:?}").to_lowercase()

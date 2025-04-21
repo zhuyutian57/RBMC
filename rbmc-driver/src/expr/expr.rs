@@ -333,17 +333,17 @@ impl Expr {
     }
 
     /// Compute offset from root object. The final offset is in byte-level.
-    pub fn compute_offset(&self) -> Expr {
+    pub fn compute_bytes_offset(&self) -> Expr {
         if self.is_symbol() {
             return self.ctx.constant_isize(0);
         }
 
         if self.is_object() {
-            return self.extract_inner_expr().compute_offset();
+            return self.extract_inner_expr().compute_bytes_offset();
         }
 
         if self.is_slice() {
-            let mut offset = self.extract_object().compute_offset();
+            let mut offset = self.extract_object().compute_bytes_offset();
             let elem_size = self.ty().elem_type().size();
             let start = self.extract_slice_start();
             offset = self
@@ -356,7 +356,7 @@ impl Expr {
         if self.is_index_non_zero() {
             let inner_object = self.extract_object();
             let ty = inner_object.ty();
-            let mut offset = inner_object.compute_offset();
+            let mut offset = inner_object.compute_bytes_offset();
             let index = self.extract_index();
 
             let collected_offset = if ty.is_array() || ty.is_slice() {
@@ -381,7 +381,7 @@ impl Expr {
         if self.is_index_zero_sized() {
             let inner_object = self.extract_object();
             let mut offset = self.ctx.add(
-                inner_object.compute_offset(),
+                inner_object.compute_bytes_offset(),
                 self.ctx.constant_usize(inner_object.ty().size())
             );
             offset.simplify();
