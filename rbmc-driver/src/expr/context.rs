@@ -666,6 +666,7 @@ impl ExprBuilder for ExprCtx {
                     || object.ty().is_slice()
                     || object.ty().is_tuple()
                     || object.ty().is_enum())
+                && ty.is_zero_sized_type()
         );
         let type_node = self.mk_type(ty);
         let kind = NodeKind::IndexZeroSized(object.id, type_node.id);
@@ -786,7 +787,7 @@ impl ExprBuilder for ExprCtx {
         assert!(ty.is_enum());
         let i = bigint_to_usize(&idx.extract_constant().to_integer());
         if let Some(x) = &data {
-            let variant_data_ty = ty.enum_variant_data_type(i).expect("Must contains data");
+            let variant_data_ty = ty.enum_variant_data_type(i);
             assert!(x.ty() == variant_data_ty.field_type(0));
         }
         let kind = NodeKind::Variant(

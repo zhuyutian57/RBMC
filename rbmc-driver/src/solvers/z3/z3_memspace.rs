@@ -84,20 +84,20 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         assert!(object.is_symbol());
         let ty = object.ty();
 
-        // Use l0 as identifier
+        // Use l0 as identifier. Object size is in byte-level
         let space_base = NString::from(object.extract_symbol().ident()) + "_base";
         let base = self.mk_int_symbol(space_base);
-        let len = if ty.is_array() && ty.array_size() == None {
+        let size = if ty.is_array() && ty.size() == 0 {
             let sym = object.extract_symbol().ident() + "_size";
             self.mk_int_symbol(sym)
         } else {
-            self.mk_smt_int(BigInt::from(ty.num_fields()))
+            self.mk_smt_int(BigInt::from(ty.size()))
         };
 
         // Base is greater than 0
         self.assert(self.mk_gt(&base, &self.mk_smt_int(BigInt::ZERO)));
         // Size is greater or eqaul to 0
-        self.assert(self.mk_ge(&len, &self.mk_smt_int(BigInt::ZERO)));
+        self.assert(self.mk_ge(&size, &self.mk_smt_int(BigInt::ZERO)));
         // Disjoint relationship
         // TODO: remove own object?
         for (b, l) in self.pointer_logic.object_spaces().values() {
@@ -115,7 +115,7 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
             let alive = alloc_array_ast.as_array().unwrap().select(b);
 
             let l1 = base.clone();
-            let r1 = self.mk_add(&l1, &len);
+            let r1 = self.mk_add(&l1, &size);
             let l2 = b.clone();
             let r2 = self.mk_add(&l2, &l);
             let no_overlap = self.mk_or(&self.mk_le(&r1, &l2), &self.mk_le(&r2, &l1));
@@ -123,7 +123,7 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
             self.assert(disj);
         }
 
-        self.pointer_logic.set_object_space(object.clone(), (base, len));
+        self.pointer_logic.set_object_space(object.clone(), (base, size));
     }
 
     fn mk_pointer(

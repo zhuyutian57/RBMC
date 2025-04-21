@@ -169,6 +169,7 @@ impl Expr {
             self.is_address_of()
                 || self.is_slice()
                 || self.is_index_non_zero()
+                || self.is_index_zero_sized()
                 || self.is_store()
                 || self.is_move()
                 || self.is_valid()
@@ -331,12 +332,7 @@ impl Expr {
         bigint_to_usize(&i)
     }
 
-    /// Compute offset from root object. To do that, the nested
-    /// struct/tuple will be serialized. The final offset is also
-    /// in field-level.
-    ///
-    /// For example, `index(a, 1) = 2` if a = ((f1, f2), f3).
-    /// `index(index(a, 0), 1) = 1`.
+    /// Compute offset from root object. The final offset is in byte-level.
     pub fn compute_offset(&self) -> Expr {
         if self.is_symbol() {
             return self.ctx.constant_isize(0);
@@ -348,7 +344,7 @@ impl Expr {
 
         if self.is_slice() {
             let mut offset = self.extract_object().compute_offset();
-            let elem_size = self.ty().elem_type().num_fields();
+            let elem_size = self.ty().elem_type().size();
             let start = self.extract_slice_start();
             offset = self
                 .ctx
@@ -359,37 +355,35 @@ impl Expr {
 
         if self.is_index_non_zero() {
             let inner_object = self.extract_object();
+            let ty = inner_object.ty();
             let mut offset = inner_object.compute_offset();
             let index = self.extract_index();
 
-            let collected_offset = if inner_object.ty().is_array() || inner_object.ty().is_slice() {
-                let elem_size = inner_object.ty().elem_type().num_fields();
-                self.ctx.mul(index, self.ctx.constant_isize(elem_size as isize))
-            } else if inner_object.ty().is_struct() {
-                assert!(index.is_constant());
-                let idx = index.extract_constant().to_integer();
-                let def = inner_object.ty().struct_def();
-                assert!(BigInt::ZERO <= idx && idx < def.1.len().into());
-                let i = bigint_to_usize(&idx);
-                let mut res = 0;
-                for j in 0..i {
-                    res += def.1[j].1.num_fields();
-                }
-                self.ctx.constant_isize(res as isize)
+            let collected_offset = if ty.is_array() || ty.is_slice() {
+                let elem_size = ty.elem_type().size();
+                self.ctx.mul(index, self.ctx.constant_usize(elem_size))
             } else {
-                assert!(inner_object.ty().is_tuple());
+                assert!(ty.is_struct() || ty.is_tuple());
                 assert!(index.is_constant());
                 let idx = index.extract_constant().to_integer();
-                let def = inner_object.ty().tuple_def();
-                assert!(BigInt::ZERO <= idx && idx < def.len().into());
-                let i = bigint_to_usize(&idx);
-                let mut res = 0;
-                for j in 0..i {
-                    res += def[j].num_fields();
-                }
-                self.ctx.constant_isize(res as isize)
+                assert!(BigInt::ZERO <= idx && idx < ty.fields().into());
+                let mut i = bigint_to_usize(&idx);
+                ty.fix_index_field(&mut i);
+                let align = ty.align();
+                self.ctx.constant_usize(i * align)
             };
             offset = self.ctx.add(offset, collected_offset);
+            offset.simplify();
+            return offset;
+        }
+
+        // If a field is zero-sized type, return the end of the object.
+        if self.is_index_zero_sized() {
+            let inner_object = self.extract_object();
+            let mut offset = self.ctx.add(
+                inner_object.compute_offset(),
+                self.ctx.constant_usize(inner_object.ty().size())
+            );
             offset.simplify();
             return offset;
         }

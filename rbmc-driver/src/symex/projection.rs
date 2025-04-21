@@ -245,7 +245,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
                 Some(o) => o,
                 None => BigInt::ZERO,
             };
-            let len = object.ty().array_size().expect("array must has len");
+            let len = object.ty().array_len().expect("array must has len");
             (object, start, BigInt::from(len as usize))
         } else {
             let root_object = inner_expr.extract_object();
@@ -306,7 +306,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     fn bound_check(&mut self, object: Expr, offset: Expr, guard: Guard) -> Option<bool> {
         assert!(object.is_object());
         let array_ty = object.ty();
-        let s = array_ty.array_size();
+        let s = array_ty.array_len();
         let mut res = None;
         if let Some(len) = s {
             let mut out_of_bound = self._ctx.or(

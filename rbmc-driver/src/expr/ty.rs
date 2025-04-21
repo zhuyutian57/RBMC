@@ -240,42 +240,6 @@ impl Type {
         self.is_unit() || self.is_empty_struct()
     }
 
-    /// Size will be in field-level
-    pub fn num_fields(&self) -> usize {
-        if self.is_unit() {
-            return 0;
-        }
-        if self.is_bool() || self.is_integer() || self.is_any_ptr() {
-            return 1;
-        }
-
-        if self.is_array() {
-            return self.array_size().unwrap() as usize;
-        }
-
-        if self.is_struct() {
-            let def = self.struct_def();
-            let size = def.1.iter().fold(0, |acc, x| acc + x.1.num_fields());
-            return size;
-        }
-
-        if self.is_tuple() {
-            let def = self.tuple_def();
-            let size = def.iter().fold(0, |acc, x| acc + x.num_fields());
-            return size;
-        }
-
-        if self.is_enum() {
-            let mut mx = 1;
-            for variant in self.enum_def().1 {
-                mx = std::cmp::max(mx, variant.1.len());
-            }
-            return mx;
-        }
-
-        todo!("{self:?}")
-    }
-
     pub fn pointee_ty(&self) -> Self {
         assert!(self.is_any_ptr());
         match self.0.kind() {
@@ -294,7 +258,7 @@ impl Type {
         }
     }
 
-    pub fn array_size(&self) -> Option<u64> {
+    pub fn array_len(&self) -> Option<usize> {
         assert!(self.is_array());
         let size = match self.0.kind() {
             TyKind::RigidTy(r) => match r {
@@ -304,7 +268,7 @@ impl Type {
             _ => panic!("Not array"),
         }
         .expect("Wrong array size");
-        if size == 0 { None } else { Some(size) }
+        if size == 0 { None } else { Some(size as usize) }
     }
 
     /// Assume that all index is integer.
@@ -332,42 +296,39 @@ impl Type {
             if let RigidTy::Adt(adt, args) = r {
                 def.0 = NString::from(adt.trimmed_name());
                 for variant in adt.variants() {
-                    let name = NString::from(variant.name());
+                    let variant_name = NString::from(variant.name());
                     // Type of a variant is a tuple
                     let mut ftypes = Vec::new();
                     for fdef in variant.fields() {
                         ftypes.push(Type(fdef.ty_with_args(&args)));
                     }
-                    let mut fields = Vec::new();
-                    if !ftypes.is_empty() {
-                        let fname = NString::from("_data_") + name;
-                        fields.push((fname, Type::tuple_type(ftypes)));
-                    }
-                    def.1.push((name, fields));
+                    let tuple_type = Type::tuple_type(ftypes);
+                    let fname =  if !tuple_type.is_unit() {
+                        NString::from("_data_") + variant_name
+                    } else {
+                        NString::from("-")
+                    };
+                    def.1.push((variant_name, vec![(fname, tuple_type)]));
                 }
             }
         }
         def
     }
 
-    pub fn enum_variant_data_type(&self, variant_idx: usize) -> Option<Self> {
+    pub fn enum_variant_data_type(&self, variant_idx: usize) -> Self {
         assert!(self.is_enum());
-        if let TyKind::RigidTy(r) = self.0.kind() {
-            if let RigidTy::Adt(adt, args) = r {
-                let variants = adt.variants();
-                assert!(variant_idx < variants.len());
-                if variants[variant_idx].fields().is_empty() {
-                    return None;
-                }
-                let ftypes = variants[variant_idx]
-                    .fields()
-                    .iter()
-                    .map(|fdef| Type(fdef.ty_with_args(&args)))
-                    .collect::<Vec<_>>();
-                return Some(Type::tuple_type(ftypes));
-            }
+        let def = self.enum_def();
+        assert!(variant_idx < def.1.len());
+        def.1[variant_idx].1[0].1
+    }
+
+    pub fn fields(&self) -> usize {
+        assert!(self.is_struct() || self.is_tuple());
+        match self.0.kind() {
+            TyKind::RigidTy(RigidTy::Adt(adt, _)) => adt.variants()[0].fields().len(),
+            TyKind::RigidTy(RigidTy::Tuple(def)) => def.len(),
+            _ => panic!("Impossible"),
         }
-        panic!("Impossible")
     }
 
     pub fn struct_def(&self) -> StructDef {
@@ -449,6 +410,117 @@ impl Type {
             }
             _ => todo!(),
         }
+    }
+
+    pub fn size(&self) -> usize {
+        if self.is_unit() {
+            return size_of::<()>();
+        }
+
+        if self.is_bool() {
+            return size_of::<bool>();
+        }
+
+        if self.is_integer() {
+            return match self.0.kind().rigid().unwrap() {
+                RigidTy::Int(IntTy::I8) | RigidTy::Uint(UintTy::U8) => size_of::<u8>(),
+                RigidTy::Int(IntTy::I16) | RigidTy::Uint(UintTy::U16) => size_of::<u16>(),
+                RigidTy::Int(IntTy::I32) | RigidTy::Uint(UintTy::U32) => size_of::<u32>(),
+                RigidTy::Int(IntTy::I64) | RigidTy::Uint(UintTy::U64) => size_of::<u64>(),
+                RigidTy::Int(IntTy::I128) | RigidTy::Uint(UintTy::U128) => size_of::<u128>(),
+                RigidTy::Int(IntTy::Isize) | RigidTy::Uint(UintTy::Usize) => size_of::<usize>(),
+                _ => panic!("Impossible"),
+            };
+        }
+
+        if self.is_array() {
+            let len = self.array_len().unwrap() as usize;
+            let elem_size = self.elem_type().size();
+            return elem_size * len;
+        }
+
+        if self.is_primitive_ptr() {
+            return size_of::<usize>();
+        }
+
+        // Do not support repr(align(N))
+        if self.is_struct() || self.is_tuple() {
+            let n = self.fields();
+            let mut size = 0;
+            for i in 0..n {
+                let ty = self.field_type(i);
+                let _align = ty.align();
+                size = (size / _align + if size % _align != 0 { 1 } else { 0 }) * _align;
+                size += ty.size();
+            }
+            let align = self.align();
+            return (size / align + if size % align != 0 { 1 } else { 0 }) * align;
+        }
+
+        if self.is_enum() {
+            // Discriminant size
+            let discr_size = size_of::<isize>();
+            let mut data_size = 1;
+            for variant in self.enum_def().1 {
+                let variant_size = variant.1[0].1.size();
+                data_size = std::cmp::max(data_size, variant_size);
+            }
+            let size = discr_size + data_size;
+            let align = self.align();
+            return (size / align + if size % align != 0 { 1 } else { 0 }) * align;
+        }
+
+        todo!("{self:?}")
+    }
+
+    pub fn align(&self) -> usize {
+        if self.is_unit() {
+            return align_of::<()>();
+        }
+
+        if self.is_bool() {
+            return align_of::<bool>();
+        }
+
+        if self.is_integer() {
+            return match self.0.kind().rigid().unwrap() {
+                RigidTy::Int(IntTy::I8) | RigidTy::Uint(UintTy::U8) => align_of::<u8>(),
+                RigidTy::Int(IntTy::I16) | RigidTy::Uint(UintTy::U16) => align_of::<u16>(),
+                RigidTy::Int(IntTy::I32) | RigidTy::Uint(UintTy::U32) => align_of::<u32>(),
+                RigidTy::Int(IntTy::I64) | RigidTy::Uint(UintTy::U64) => align_of::<u64>(),
+                RigidTy::Int(IntTy::I128) | RigidTy::Uint(UintTy::U128) => align_of::<u128>(),
+                RigidTy::Int(IntTy::Isize) | RigidTy::Uint(UintTy::Usize) => align_of::<usize>(),
+                _ => panic!("Impossible"),
+            };
+        }
+
+        if self.is_array() {
+            return self.elem_type().align();
+        }
+
+        if self.is_primitive_ptr() {
+            return align_of::<usize>();
+        }
+
+        // Do not support repr(align(N))
+        if self.is_struct() || self.is_tuple() {
+            return (0..self.fields()).into_iter().fold(
+                1,
+                |acc, i|
+                std::cmp::max(acc, self.field_type(i).align())
+            );
+        }
+
+        if self.is_enum() {
+            // Discriminant align
+            let mut align = size_of::<isize>();
+            for variant in self.enum_def().1 {
+                align = std::cmp::max(align, variant.1[0].1.align());
+            }
+            return align;
+        }
+
+        todo!("{self:?}")
     }
 
     /// Reindex struct/tuple fields by eliminating prefix zero-sized type.
