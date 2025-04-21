@@ -296,7 +296,6 @@ impl<'cfg> ExecutionState<'cfg> {
             // Fix non-constant
             assert!(lhs.extract_index().is_constant());
             let mut l1_lhs = lhs.clone();
-            self.rename(&mut l1_lhs, Level::Level1);
             let name = Symbol::from(NString::from(format!("{l1_lhs:?}")));
             let new_lhs = self.ctx.mk_symbol(name, lhs.ty());
             let mut new_rhs = rhs.clone();
@@ -311,10 +310,6 @@ impl<'cfg> ExecutionState<'cfg> {
 
     pub fn assignment(&mut self, mut lhs: Expr, rhs: Expr) {
         assert!(lhs.is_symbol() && !lhs.extract_symbol().is_level2());
-
-        if !lhs.extract_symbol().is_level1() {
-            self.rename(&mut lhs, Level::Level1);
-        }
 
         // Constant propagation
         self.constant_propagate(lhs.clone(), rhs.clone());
@@ -332,7 +327,6 @@ impl<'cfg> ExecutionState<'cfg> {
         if lhs.ty().is_any_ptr() {
             let mut l1_lhs = lhs.clone();
             let mut l1_rhs = rhs.clone();
-            self.rename(&mut l1_lhs, Level::Level1);
             self.rename(&mut l1_rhs, Level::Level1);
             let mut objects = ObjectSet::new();
             self.cur_state().get_value_set(l1_rhs.clone(), &mut objects);

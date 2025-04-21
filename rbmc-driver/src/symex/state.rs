@@ -85,7 +85,7 @@ impl State {
     fn assign_rec(&mut self, expr: Expr, suffix: NString, values: ObjectSet) {
         if expr.is_symbol() {
             let symbol = expr.extract_symbol();
-            let ident = symbol.l1_name() + suffix;
+            let ident = symbol.name() + suffix;
             if values.is_empty() {
                 // just clear
                 self.value_set.remove(ident);
@@ -220,7 +220,7 @@ impl State {
         if expr.is_index_non_zero() {
             let inner_expr = expr.extract_object().extract_inner_expr();
             let i = bigint_to_usize(&expr.extract_index().extract_constant().to_integer());
-            let new_suffix = suffix + if inner_expr.ty().is_array() {
+            let new_suffix = NString::from(if inner_expr.ty().is_array() {
                 format!("[{i}]")
             } else if inner_expr.ty().is_tuple() {
                 format!(".{i}")
@@ -228,7 +228,7 @@ impl State {
                 assert!(inner_expr.ty().is_struct());
                 let field = inner_expr.ty().struct_def().1[i].0;
                 format!(".{field:?}")
-            };
+            }) + suffix;
             if inner_expr.is_symbol() {
                 self.get_value_set_rec(inner_expr.clone(), new_suffix, values);
             } else if inner_expr.is_aggregate() {

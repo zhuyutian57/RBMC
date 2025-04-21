@@ -25,11 +25,14 @@ impl<'cfg> Symex<'cfg> {
     }
 
     fn assign_symbol(&mut self, mut lhs: Expr, mut rhs: Expr, guard: Guard) {
-        assert!(lhs.is_symbol());
+        assert!(lhs.is_symbol() && !lhs.extract_symbol().is_level2());
 
         if !guard.is_true() {
             rhs = self.ctx.ite(guard.to_expr(), rhs, lhs.clone());
         }
+
+        // Rename to l1 rhs
+        self.exec_state.rename(&mut lhs, Level::Level1);
 
         // Rename to l2 rhs
         self.replace_predicates(&mut rhs);
@@ -187,7 +190,11 @@ impl<'cfg> Symex<'cfg> {
     }
 
     fn make_aggregate(&mut self, k: &AggregateKind, operands: &Vec<Operand>, ty: Type) -> Expr {
-        let operand_exprs = operands.iter().map(|o| self.make_operand(o)).collect::<Vec<Expr>>();
+        let operand_exprs = operands
+            .iter()
+            .map(|o| self.make_operand(o))
+            .filter(|e| !e.ty().is_zero_sized_type())
+            .collect::<Vec<Expr>>();
         match k {
             AggregateKind::Array(..) => {
                 assert!(ty.is_array());
