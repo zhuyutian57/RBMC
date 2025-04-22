@@ -126,7 +126,7 @@ impl<'cfg> Symex<'cfg> {
                 let alloac_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
                 let address_of = self.ctx.address_of(object.clone(), object.extract_address_type());
                 let ident = self.ctx.pointer_base(address_of);
-                self.ctx.index_non_zero(alloac_array, ident, Type::bool_type())
+                self.ctx.index(alloac_array, ident, Type::bool_type())
             } else {
                 self.ctx._true()
             };
@@ -149,18 +149,97 @@ impl<'cfg> Symex<'cfg> {
             ConstantKind::Ty(tyconst) => self.make_tyconst(tyconst),
             ConstantKind::Allocated(allocation) => {
                 if allocation.provenance.ptrs.is_empty() {
-                    self.make_constant_from_allocation(allocation, ty)
+                    self.make_allocation(allocation, ty)
                 } else {
                     assert!(allocation.provenance.ptrs.len() == 1);
                     let (_, prov) = &allocation.provenance.ptrs[0];
                     self.make_global_alloc(prov, ty)
                 }
             }
-            ConstantKind::Unevaluated(uneval_const) => {
-                todo!("{uneval_const:?}")
-            }
             ConstantKind::ZeroSized => self.ctx.mk_type(ty),
             _ => panic!("Not support {:?}", mirconst.kind()),
+        }
+    }
+
+    pub(super) fn make_tyconst(&mut self, tyconst: &TyConst) -> Expr {
+        match tyconst.kind() {
+            TyConstKind::Value(ty, _) => {
+                let ty = Type::from(*ty);
+                if ty.is_unsigned() {
+                    let n = tyconst.eval_target_usize().expect("Not usize") as usize;
+                    self.ctx.constant_integer(BigInt::from(n), ty)
+                } else {
+                    todo!()
+                }
+            }
+            _ => todo!("{:?}", tyconst.kind()),
+        }
+    }
+
+    pub(super) fn make_allocation(&mut self, allocation: &Allocation, ty: Type) -> Expr {
+        if ty.is_ptr() {
+            let is_null = allocation.is_null().expect("Must exists");
+            assert!(is_null);
+            return self.ctx.null(ty);
+        }
+
+        let value = self.make_allocation_rec(&allocation.bytes, ty);
+        self.ctx.constant(value, ty)
+    }
+
+    fn make_allocation_rec(&mut self, allocation: &[Option<u8>], ty: Type) -> Constant {
+        if ty.is_zero_sized_type() {
+            Constant::Zst(ty)
+        } else if ty.is_bool() {
+            Constant::Bool(allocation[0].unwrap() != 0)
+        } else if ty.is_integer() {
+            let bytes =
+                allocation
+                    .iter()
+                    .filter(|&&byte| byte != None)
+                    .map(|byte| byte.unwrap())
+                    .collect::<Vec<_>>();
+            assert!(bytes.len() == ty.size());
+            Constant::Integer(read_target_integer(&bytes))
+        } else if ty.is_struct() || ty.is_tuple() {
+            let n = ty.fields();
+            let mut prefix_bytes = 0;
+            let mut fields = Vec::new();
+            for i in 0..n {
+                let size = ty.field_size(i);
+                let mut endian = self.config.machine_info.endian;
+                // Bug for MIR?
+                if ty.name() == "Range" { endian = Endian::Big; }
+                let (l, r) = match endian {
+                    Endian::Big => (prefix_bytes, prefix_bytes + size),
+                    Endian::Little => {
+                        let r = allocation.len() - prefix_bytes;
+                        (r - size, r)
+                    }
+                };
+                let field = self.make_allocation_rec(&allocation[l..r], ty.field_type(i));
+                fields.push(field);
+                prefix_bytes += size;
+            }
+            Constant::Adt(fields, ty)
+        } else if ty.is_enum() {
+            let align = ty.align();
+            let variant_idx_bytes =
+                allocation[0..align]
+                    .iter()
+                    .map(|&byte| byte.unwrap())
+                    .collect::<Vec<_>>();
+            let i = bigint_to_usize(&read_target_integer(&variant_idx_bytes));
+            let idx = Constant::Integer(BigInt::from(i));
+            let variant_type = ty.enum_variant_data_type(i);
+            if variant_type.is_zero_sized_type() {
+                Constant::Adt(vec![idx], ty)
+            } else {
+                let value = self.make_allocation_rec(&allocation[align..], variant_type);
+                Constant::Adt(vec![idx, value], ty)
+            }
+        } else {
+            todo!("Allocation {ty:?}")
         }
     }
 
@@ -178,66 +257,6 @@ impl<'cfg> Symex<'cfg> {
         }
     }
 
-    pub(super) fn make_constant_from_allocation(
-        &mut self,
-        allocation: &Allocation,
-        ty: Type,
-    ) -> Expr {
-        if ty.is_ptr() {
-            let is_null = allocation.is_null().expect("Must exists");
-            // TODO: maybe none-null pointer?
-            assert!(is_null);
-            return self.ctx.null(ty);
-        }
-
-        // TODO: construct value according to its type
-
-        let fields = if ty.is_struct() { ty.struct_def().1 } else { vec![(NString::EMPTY, ty)] };
-        let mut value_vec = Vec::new();
-        let bytes = &allocation.bytes;
-        for i in 0..fields.len() {
-            let l = if MachineInfo::target().endian == Endian::Little {
-                bytes.len() - allocation.align as usize * (i + 1)
-            } else {
-                allocation.align as usize * i
-            };
-            let r = l + allocation.align as usize;
-            let mut raw_bytes = Vec::new();
-            for j in l..r {
-                if let Some(x) = bytes[j] {
-                    raw_bytes.push(x);
-                }
-            }
-            if fields[i].1.is_bool() {
-                assert!(raw_bytes.len() == 1);
-                value_vec.push(Constant::Bool(raw_bytes[0] == 1));
-                continue;
-            }
-            let value = read_target_integer(raw_bytes.as_slice());
-            value_vec.push(Constant::Integer(value));
-        }
-
-        if ty.is_struct() {
-            let mut struct_fields = Vec::new();
-            for i in 0..fields.len() {
-                struct_fields.push((value_vec[i].clone(), fields[i].1.clone()));
-            }
-            self.ctx.constant_struct(struct_fields, ty)
-        } else if ty.is_enum() {
-            todo!()
-        } else {
-            assert!(value_vec.len() == 1);
-            if ty.is_bool() {
-                self.ctx.constant_bool(value_vec[0].to_bool())
-            } else if ty.is_integer() {
-                let i = value_vec[0].to_integer();
-                self.ctx.constant_integer(i, ty)
-            } else {
-                panic!("Not support construct {ty:?} from Allocation")
-            }
-        }
-    }
-
     /// Return `l1` expr
     pub(super) fn make_operand(&mut self, operand: &Operand) -> Expr {
         match operand {
@@ -247,21 +266,6 @@ impl<'cfg> Symex<'cfg> {
                 self.ctx._move(expr)
             }
             Operand::Constant(op) => self.make_mirconst(&op.const_),
-        }
-    }
-
-    pub(super) fn make_tyconst(&mut self, tyconst: &TyConst) -> Expr {
-        match tyconst.kind() {
-            TyConstKind::Value(ty, _) => {
-                let ty = Type::from(*ty);
-                if ty.is_unsigned() {
-                    let n = tyconst.eval_target_usize().expect("Not usize") as usize;
-                    self.ctx.constant_integer(BigInt::from(n), ty)
-                } else {
-                    todo!()
-                }
-            }
-            _ => todo!("{:?}", tyconst.kind()),
         }
     }
 
@@ -293,7 +297,7 @@ impl<'cfg> Symex<'cfg> {
                 .ctx
                 .pointer_base(self.ctx.address_of(object.clone(), object.extract_address_type()));
             let alloc_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
-            let alloced = self.ctx.index_non_zero(alloc_array, pt_ident, Type::bool_type());
+            let alloced = self.ctx.index(alloc_array, pt_ident, Type::bool_type());
             *expr = if expr.is_invalid() { self.ctx.not(alloced) } else { alloced };
             return;
         }

@@ -18,6 +18,7 @@ pub enum BinOp {
     And,
     Or,
     Implies,
+    Offset,
 }
 
 impl Debug for BinOp {
@@ -36,6 +37,7 @@ impl Debug for BinOp {
             BinOp::And => write!(f, "&&"),
             BinOp::Or => write!(f, "||"),
             BinOp::Implies => write!(f, "=>"),
+            BinOp::Offset => write!(f, "offset"),
         }
     }
 }
@@ -43,21 +45,21 @@ impl Debug for BinOp {
 impl From<mir::BinOp> for BinOp {
     fn from(value: mir::BinOp) -> Self {
         match value {
-            mir::BinOp::Add | mir::BinOp::AddUnchecked => Ok(BinOp::Add),
-            mir::BinOp::Sub | mir::BinOp::SubUnchecked => Ok(BinOp::Sub),
-            mir::BinOp::Mul | mir::BinOp::MulUnchecked => Ok(BinOp::Mul),
-            mir::BinOp::Div => Ok(BinOp::Div),
-            mir::BinOp::Eq => Ok(BinOp::Eq),
-            mir::BinOp::Ne => Ok(BinOp::Ne),
-            mir::BinOp::Le => Ok(BinOp::Le),
-            mir::BinOp::Lt => Ok(BinOp::Lt),
-            mir::BinOp::Ge => Ok(BinOp::Ge),
-            mir::BinOp::Gt => Ok(BinOp::Gt),
-            mir::BinOp::BitAnd => Ok(BinOp::And),
-            mir::BinOp::BitOr => Ok(BinOp::Or),
-            _ => Err(Error),
+            mir::BinOp::Add | mir::BinOp::AddUnchecked => BinOp::Add,
+            mir::BinOp::Sub | mir::BinOp::SubUnchecked => BinOp::Sub,
+            mir::BinOp::Mul | mir::BinOp::MulUnchecked => BinOp::Mul,
+            mir::BinOp::Div => BinOp::Div,
+            mir::BinOp::Eq => BinOp::Eq,
+            mir::BinOp::Ne => BinOp::Ne,
+            mir::BinOp::Le => BinOp::Le,
+            mir::BinOp::Lt => BinOp::Lt,
+            mir::BinOp::Ge => BinOp::Ge,
+            mir::BinOp::Gt => BinOp::Gt,
+            mir::BinOp::BitAnd => BinOp::And,
+            mir::BinOp::BitOr => BinOp::Or,
+            mir::BinOp::Offset => BinOp::Offset,
+            _ => todo!("{value:?}"),
         }
-        .expect("Do not support")
     }
 }
 

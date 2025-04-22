@@ -101,20 +101,13 @@ pub(super) enum NodeKind {
     /// A pointer's value is the address of an object...
     SameObject(NodeId, NodeId),
 
-    /// `IndexSized(object, index)`: index a noe-zero-sized field of an array, slice,
-    /// tuple or struct. The index is reconstructed by eliminating zero-sized fields.
-    IndexNonZero(NodeId, NodeId),
-    /// `IndexUnit(object, type)`: index zero-sized field(Unit or empty struct) of an
-    /// array, slice, tuple or struct. The index is redundant, type is required only. 
-    IndexZeroSized(NodeId, NodeId),
+    /// `IndexSized(object, index)`: index an array, slice, tuple or struct.
+    Index(NodeId, NodeId),
     /// `Store(object, index, value)` updates an array/slice or
     /// a field of a struct.
     Store(NodeId, NodeId, NodeId),
 
     // `Pointer(base, offset, meta)`: pointer/ref in a uniform.
-    // We currentlly support `usize` meta.
-    /// `Offset(pt, offset)`
-    Offset(NodeId, NodeId),
     /// `PointerBase(pt)` retrieve the ident of a pointer
     PointerBase(NodeId),
     /// `PointerOffset(pt)` retrieve the offset of a pointer
@@ -195,20 +188,12 @@ impl NodeKind {
         matches!(self, NodeKind::SameObject(..))
     }
 
-    pub fn is_index_non_zero(&self) -> bool {
-        matches!(self, NodeKind::IndexNonZero(..))
-    }
-
-    pub fn is_index_zero_sized(&self) -> bool {
-        matches!(self, NodeKind::IndexZeroSized(..))
+    pub fn is_index(&self) -> bool {
+        matches!(self, NodeKind::Index(..))
     }
 
     pub fn is_store(&self) -> bool {
         matches!(self, NodeKind::Store(..))
-    }
-
-    pub fn is_offset(&self) -> bool {
-        matches!(self, NodeKind::Offset(..))
     }
 
     pub fn is_pointer_base(&self) -> bool {
@@ -302,10 +287,8 @@ impl Node {
             NodeKind::Unary(_, o) | NodeKind::Object(o) => Some(vec![*o]),
             NodeKind::Slice(o, s, l) => Some(vec![*o, *s, *l]),
             NodeKind::Ite(c, tv, fv) => Some(vec![*c, *tv, *fv]),
-            NodeKind::IndexNonZero(o, i) => Some(vec![*o, *i]),
-            | NodeKind::IndexZeroSized(o, t) => Some(vec![*o, *t]),
+            NodeKind::Index(o, i) => Some(vec![*o, *i]),
             NodeKind::Store(o, i, v) => Some(vec![*o, *i, *v]),
-            NodeKind::Offset(p, o) => Some(vec![*p, *o]),
             NodeKind::PointerBase(p)
             | NodeKind::PointerOffset(p)
             | NodeKind::PointerMeta(p)

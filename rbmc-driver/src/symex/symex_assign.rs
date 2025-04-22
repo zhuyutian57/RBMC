@@ -39,7 +39,7 @@ impl<'cfg> Symex<'cfg> {
         self.rename(&mut rhs);
         rhs.simplify();
 
-        self.exec_state.assign(lhs.clone(), rhs.clone());
+        self.exec_state.assignment(lhs.clone(), rhs.clone());
 
         // New l2 symbol
         lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
@@ -84,7 +84,7 @@ impl<'cfg> Symex<'cfg> {
             return;
         }
 
-        if lhs.is_index_non_zero() {
+        if lhs.is_index() {
             let inner_object = lhs.extract_object();
             let mut new_lhs = inner_object.clone();
             let mut index = lhs.extract_index();
@@ -141,6 +141,7 @@ impl<'cfg> Symex<'cfg> {
                     BinOp::And => self.ctx.and(lhs, rhs),
                     BinOp::Or => self.ctx.or(lhs, rhs),
                     BinOp::Implies => self.ctx.implies(lhs, rhs),
+                    BinOp::Offset => self.ctx.offset(lhs, rhs),
                 };
                 expr
             }
@@ -216,7 +217,10 @@ impl<'cfg> Symex<'cfg> {
                     self.ctx.variant(idx, data, ty)
                 }
             }
-            _ => todo!(),
+            AggregateKind::RawPtr(t, m) => {
+                todo!()
+            }
+            _ => todo!("{k:?}"),
         }
     }
 }

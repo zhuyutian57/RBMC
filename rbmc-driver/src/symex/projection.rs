@@ -133,11 +133,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     /// Visit a field of a struct. Return `Index(object, i)`.
     fn project_field(&mut self, object: Expr, field: usize, ty: Type) -> Expr {
         assert!(object.ty().is_struct() || object.ty().is_tuple() || object.is_as_variant());
-        if ty.is_unit() || ty.is_empty_struct() {
-            self.build_zero_sized(object, ty)
-        } else {
-            self.build_with_const_offset(object, BigInt::from(field), ty)
-        }
+        self.build_with_const_offset(object, BigInt::from(field), ty)
     }
 
     /// Visit an array/slice. Return `Index(array/slice, i)`.
@@ -146,9 +142,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         assert!(ty.is_array() || ty.is_slice());
         let elem_ty = ty.elem_type();
 
-        if elem_ty.is_unit() || elem_ty.is_empty_struct() {
-            self.build_zero_sized(object, elem_ty)
-        } else if index.is_constant() {
+        if index.is_constant() {
             let offset = index.extract_constant().to_integer();
             self.build_with_const_offset(object, offset, elem_ty)
         } else {
@@ -198,21 +192,12 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         }
     }
 
-    fn build_zero_sized(&mut self, object: Expr, ty: Type) -> Expr {
-        let new_object = if object.is_object() { object } else { self._ctx.object(object) };
-        self._ctx.index_zero_sized(new_object, ty)
-    }
-
     /// Notice that `offset` is in field-level
     fn build_with_const_offset(&mut self, object: Expr, offset: BigInt, ty: Type) -> Expr {
-        if ty.is_zero_sized_type() {
-            return self.build_zero_sized(object, ty);
-        }
         let mut i = bigint_to_usize(&offset);
-        object.ty().fix_index_field(&mut i);
         let index = self._ctx.constant_usize(i);
         let new_object = if object.is_object() { object } else { self._ctx.object(object) };
-        self._ctx.index_non_zero(new_object, index, ty)
+        self._ctx.index(new_object, index, ty)
     }
 
     fn build_slice(
@@ -339,7 +324,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let not_null = self._ctx.ne(pt.clone(), self._ctx.null(pt.ty()));
         let alloc_array = self._callback_symex.exec_state.ns.lookup_object(NString::ALLOC_SYM);
         let mut not_alloced =
-            self._ctx.not(self._ctx.index_non_zero(alloc_array, pointer_base, Type::bool_type()));
+            self._ctx.not(self._ctx.index(alloc_array, pointer_base, Type::bool_type()));
         self._callback_symex.rename(&mut not_alloced);
         let msg = match mode {
             Mode::Read => NString::from("dereference failure: invalid pointer"),
@@ -367,7 +352,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let tmp_object = if object_ty.is_primitive() || object_ty.is_any_ptr() {
             object.clone()
         } else {
-            self._ctx.index_non_zero(
+            self._ctx.index(
                 object.clone(),
                 if let Some(x) = offset {
                     self._ctx.constant_integer(x, Type::isize_type())

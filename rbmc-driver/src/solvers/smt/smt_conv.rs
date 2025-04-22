@@ -74,7 +74,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         // convert sub exprs firstly
         let mut args: Vec<Ast> = Vec::new();
         if !expr.is_address_of()
-            && !expr.is_index_non_zero()
+            && !expr.is_index()
             && !expr.is_cast()
             && !expr.is_store()
             && !expr.is_match_variant()
@@ -124,6 +124,15 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
                 BinOp::And => self.mk_and(lhs, rhs),
                 BinOp::Or => self.mk_or(lhs, rhs),
                 BinOp::Implies => self.mk_implies(lhs, rhs),
+                BinOp::Offset => {
+                    let pt = lhs;
+                    let base = self.convert_pointer_base(pt);
+                    let o1 = self.convert_pointer_offset(pt);
+                    let o2 = rhs;
+                    let offset = self.mk_add(&o1, o2);
+                    let meta = self.convert_pointer_meta(pt);
+                    self.convert_pointer(&base, &offset, Some(&meta))
+                }
             });
         }
 
@@ -155,14 +164,10 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             a = Some(self.mk_eq(&base_1, &base_2));
         }
 
-        if expr.is_index_non_zero() {
+        if expr.is_index() {
             let object = expr.extract_object();
             let index = expr.extract_index();
             a = Some(self.convert_index(object, index));
-        }
-
-        if expr.is_index_zero_sized() {
-            todo!();
         }
 
         if expr.is_store() {
@@ -170,16 +175,6 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             let index = expr.extract_index();
             let value = expr.extract_update_value();
             a = Some(self.convert_store(object, index, value));
-        }
-
-        if expr.is_offset() {
-            let pt = args[0].clone();
-            let base = self.convert_pointer_base(&pt);
-            let o1 = self.convert_pointer_offset(&pt);
-            let o2 = args[1].clone();
-            let offset = self.mk_add(&o1, &o2);
-            let meta = self.convert_pointer_meta(&pt);
-            a = Some(self.convert_pointer(&base, &offset, Some(&meta)));
         }
 
         if expr.is_pointer_base() {
@@ -242,7 +237,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     fn convert_terminal(&mut self, expr: Expr) -> Option<Ast> {
         let mut a = None;
         if expr.is_constant() {
-            a = Some(self.convert_constant(&expr.extract_constant(), expr.ty()));
+            a = self.convert_constant(&expr.extract_constant(), expr.ty());
         }
 
         if expr.is_symbol() {
@@ -259,23 +254,35 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         a
     }
 
-    fn convert_constant(&mut self, constant: &Constant, ty: Type) -> Ast {
+    fn convert_constant(&mut self, constant: &Constant, ty: Type) -> Option<Ast> {
         match constant {
-            Constant::Bool(b) => self.mk_smt_bool(*b),
-            Constant::Integer(i) => self.mk_smt_int(i.clone()),
-            Constant::Null(ty) => self.convert_null(*ty),
+            Constant::Bool(b) => Some(self.mk_smt_bool(*b)),
+            Constant::Integer(i) => Some(self.mk_smt_int(i.clone())),
+            Constant::Null(ty) => Some(self.convert_null(*ty)),
             Constant::Array(c, t) => {
                 let domain = self.convert_sort(ty.array_domain());
-                let val = self.convert_constant(&**c, *t);
-                self.mk_smt_const_array(&domain, &val)
+                let val = self.convert_constant(&**c, *t).unwrap();
+                Some(self.mk_smt_const_array(&domain, &val))
             }
-            Constant::Struct(constants, _) => {
-                let mut fields = Vec::new();
-                for (c, st) in constants {
-                    fields.push(self.convert_constant(c, st.clone()));
+            Constant::Adt(constants, t) => {
+                assert!(ty == *t);
+                if ty.is_struct() || ty.is_tuple() {
+                    let mut fields = Vec::new();
+                    for i in 0..ty.fields() {
+                        if ty.field_type(i).is_zero_sized_type() { continue; }
+                        let field = self.convert_constant(&constants[i], ty.field_type(i)).unwrap();
+                        fields.push(field);
+                    }
+                    if ty.is_struct() {
+                        Some(self.convert_struct(&fields, ty))
+                    } else {
+                        Some(self.convert_tuple(&fields, ty))
+                    }
+                } else {
+                    todo!("{ty:?}")
                 }
-                self.convert_struct(&fields, ty)
             }
+            Constant::Zst(_) => None,
         }
     }
 
@@ -337,7 +344,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     fn convert_address_of(&mut self, object: Expr) -> Ast {
         assert!(object.is_object());
         let inner_expr = object.extract_inner_expr();
-        if inner_expr.is_index_non_zero() {
+        if inner_expr.is_index() {
             let inner_object = inner_expr.extract_object();
             let inner_offset = inner_expr.extract_index();
             let base = self.convert_object_space(&inner_object);

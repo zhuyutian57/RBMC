@@ -111,9 +111,9 @@ impl Context {
         matches!(self.extract_constant(i), Ok(t) if t.is_array())
     }
 
-    pub fn is_constant_struct(&self, i: NodeId) -> bool {
+    pub fn is_constant_adt(&self, i: NodeId) -> bool {
         assert!(i < self.nodes.len());
-        matches!(self.extract_constant(i), Ok(t) if t.is_struct())
+        matches!(self.extract_constant(i), Ok(t) if t.is_adt())
     }
 
     pub fn is_type(&self, i: NodeId) -> bool {
@@ -171,24 +171,14 @@ impl Context {
         self.nodes[i].kind().is_same_object()
     }
 
-    pub fn is_index_non_zero(&self, i: NodeId) -> bool {
+    pub fn is_index(&self, i: NodeId) -> bool {
         assert!(i < self.nodes.len());
-        self.nodes[i].kind().is_index_non_zero()
-    }
-
-    pub fn is_index_zero_sized(&self, i: NodeId) -> bool {
-        assert!(i < self.nodes.len());
-        self.nodes[i].kind().is_index_zero_sized()
+        self.nodes[i].kind().is_index()
     }
 
     pub fn is_store(&self, i: NodeId) -> bool {
         assert!(i < self.nodes.len());
         self.nodes[i].kind().is_store()
-    }
-
-    pub fn is_offset(&self, i: NodeId) -> bool {
-        assert!(i < self.nodes.len());
-        self.nodes[i].kind().is_offset()
     }
 
     pub fn is_pointer_base(&self, i: NodeId) -> bool {
@@ -343,6 +333,15 @@ impl Debug for Context {
 pub type ExprCtx = Rc<RefCell<Context>>;
 
 impl ExprBuilder for ExprCtx {
+    fn constant(&self, value: Constant, ty: Type) -> Expr {
+        let terminal = Terminal::Constant(value);
+        let terminal_id = self.borrow_mut().add_terminal(terminal);
+        let kind = NodeKind::Terminal(terminal_id);
+        let new_node = Node::new(kind, ty);
+        let id = self.borrow_mut().add_node(new_node);
+        Expr { ctx: self.clone(), id }
+    }
+
     fn constant_bool(&self, b: bool) -> Expr {
         Expr { ctx: self.clone(), id: if b { 0 } else { 1 } }
     }
@@ -400,8 +399,8 @@ impl ExprBuilder for ExprCtx {
         Expr { ctx: self.clone(), id }
     }
 
-    fn constant_struct(&self, fields: Vec<ConstantField>, ty: Type) -> Expr {
-        let terminal = Terminal::Constant(Constant::Struct(fields, ty));
+    fn constant_adt(&self, fields: Vec<Constant>, ty: Type) -> Expr {
+        let terminal = Terminal::Constant(Constant::Adt(fields, ty));
         let terminal_id = self.borrow_mut().add_terminal(terminal);
         let kind = NodeKind::Terminal(terminal_id);
         let new_node = Node::new(kind, ty);
@@ -577,6 +576,15 @@ impl ExprBuilder for ExprCtx {
         Expr { ctx: self.clone(), id }
     }
 
+    fn offset(&self, pt: Expr, offset: Expr) -> Expr {
+        assert!(pt.ty().is_ptr() && offset.ty().is_integer());
+        let kind = NodeKind::Binary(BinOp::Offset, pt.id, offset.id);
+        let ty = pt.ty();
+        let new_node = Node::new(kind, ty);
+        let id = self.borrow_mut().add_node(new_node);
+        Expr { ctx: self.clone(), id }
+    }
+
     fn not(&self, operand: Expr) -> Expr {
         assert!(operand.ty().is_bool());
         let kind = NodeKind::Unary(UnOp::Not, operand.id);
@@ -643,7 +651,7 @@ impl ExprBuilder for ExprCtx {
         Expr { ctx: self.clone(), id }
     }
 
-    fn index_non_zero(&self, object: Expr, i: Expr, ty: Type) -> Expr {
+    fn index(&self, object: Expr, i: Expr, ty: Type) -> Expr {
         assert!(
             object.unwrap_predicates().is_object()
                 && (object.ty().is_array()
@@ -652,24 +660,7 @@ impl ExprBuilder for ExprCtx {
                     || object.ty().is_tuple()
                     || object.ty().is_enum())
         );
-        let kind = NodeKind::IndexNonZero(object.id, i.id);
-        let new_node = Node::new(kind, ty);
-        let id = self.borrow_mut().add_node(new_node);
-        Expr { ctx: self.clone(), id }
-    }
-
-    fn index_zero_sized(&self, object: Expr, ty: Type) -> Expr {
-        assert!(
-            object.unwrap_predicates().is_object()
-                && (object.ty().is_array()
-                    || object.ty().is_struct()
-                    || object.ty().is_slice()
-                    || object.ty().is_tuple()
-                    || object.ty().is_enum())
-                && ty.is_zero_sized_type()
-        );
-        let type_node = self.mk_type(ty);
-        let kind = NodeKind::IndexZeroSized(object.id, type_node.id);
+        let kind = NodeKind::Index(object.id, i.id);
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
         Expr { ctx: self.clone(), id }
@@ -679,15 +670,6 @@ impl ExprBuilder for ExprCtx {
         assert!(object.unwrap_predicates().is_object());
         let kind = NodeKind::Store(object.id, key.id, value.id);
         let ty = object.ty();
-        let new_node = Node::new(kind, ty);
-        let id = self.borrow_mut().add_node(new_node);
-        Expr { ctx: self.clone(), id }
-    }
-
-    fn offset(&self, pt: Expr, offset: Expr) -> Expr {
-        assert!(pt.ty().is_ptr() && offset.ty().is_integer());
-        let kind = NodeKind::Offset(pt.id, offset.id);
-        let ty = pt.ty();
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
         Expr { ctx: self.clone(), id }

@@ -228,7 +228,7 @@ impl<'cfg> ExecutionState<'cfg> {
             return self.is_constant_address(expr.extract_inner_expr());
         }
 
-        if expr.is_index_non_zero() {
+        if expr.is_index() {
             let inner_object = expr.extract_object();
             let index = expr.extract_index();
             return self.is_constant_address(inner_object) && self.is_constant_value(index);
@@ -270,44 +270,6 @@ impl<'cfg> ExecutionState<'cfg> {
         panic!("Do not support place state: {place:?}");
     }
 
-    pub fn assign(&mut self, lhs: Expr, rhs: Expr) {
-        if lhs.ty().is_struct() || lhs.ty().is_tuple() {
-            // Assign fo each field
-            let fields = if lhs.ty().is_struct() {
-                lhs.ty().struct_def().1.into_iter().map(|(_, ty)| ty).collect::<Vec<_>>()
-            } else {
-                lhs.ty().tuple_def()
-            };
-            let lhs_object = self.ctx.object(lhs.clone());
-            let rhs_object = self.ctx.object(rhs.clone());
-            for (mut i, ty) in fields.into_iter().enumerate() {
-                if ty.is_zero_sized_type() { continue; }
-                // Don't forget fix the index.
-                lhs.ty().fix_index_field(&mut i);
-                let idx = self.ctx.constant_usize(i);
-                let lhs_field = self.ctx.index_non_zero(lhs_object.clone(), idx.clone(), ty);
-                let rhs_field = self.ctx.index_non_zero(rhs_object.clone(), idx.clone(), ty);
-                self.assign(lhs_field, rhs_field);
-            }
-            return;
-        }
-
-        if lhs.is_index_non_zero() {
-            // Fix non-constant
-            assert!(lhs.extract_index().is_constant());
-            let mut l1_lhs = lhs.clone();
-            let name = Symbol::from(NString::from(format!("{l1_lhs:?}")));
-            let new_lhs = self.ctx.mk_symbol(name, lhs.ty());
-            let mut new_rhs = rhs.clone();
-            new_rhs.simplify();
-            self.assignment(new_lhs, new_rhs);
-            return;
-        }
-
-        assert!(lhs.is_symbol());
-        self.assignment(lhs, rhs);
-    }
-
     pub fn assignment(&mut self, mut lhs: Expr, rhs: Expr) {
         assert!(lhs.is_symbol() && !lhs.extract_symbol().is_level2());
 
@@ -320,42 +282,50 @@ impl<'cfg> ExecutionState<'cfg> {
         }
 
         // Update value Set
-        self.update_value_set_rec(lhs, rhs);
+        self.assign_value_set(lhs, rhs);
     }
 
-    fn update_value_set_rec(&mut self, lhs: Expr, rhs: Expr) {
-        if lhs.ty().is_any_ptr() {
-            let mut l1_lhs = lhs.clone();
-            let mut l1_rhs = rhs.clone();
-            self.rename(&mut l1_rhs, Level::Level1);
-            let mut objects = ObjectSet::new();
-            self.cur_state().get_value_set(l1_rhs.clone(), &mut objects);
-            self.cur_state_mut().assign(l1_lhs, objects);
-            return;
-        }
-
-        if lhs.ty().is_struct() {
-            // We do not care the ownership here
+    fn assign_value_set(&mut self, lhs: Expr, rhs: Expr) {
+        if lhs.ty().is_struct() || lhs.ty().is_tuple() {
+            // Update for each field
+            let ty  = lhs.ty();
             let lhs_object = self.ctx.object(lhs.clone());
-            let rhs_object =
-                if rhs.is_object() { rhs.clone() } else { self.ctx.object(rhs.clone()) };
-            for (i, (_, ty)) in lhs.ty().struct_def().1.iter().enumerate() {
-                if !ty.is_any_ptr() {
-                    return;
-                }
-                let i = self.ctx.constant_isize(i as isize);
-                let new_lhs = self.ctx.index_non_zero(lhs_object.clone(), i.clone(), *ty);
-                let new_rhs = self.ctx.index_non_zero(rhs_object.clone(), i.clone(), *ty);
-                self.update_value_set_rec(new_lhs, new_rhs);
+            let rhs_object = self.ctx.object(rhs.clone());
+            for i in 0..ty.fields() {
+                let fty = ty.field_type(i);
+                if ty.field_type(i).is_zero_sized_type() { continue; }
+                let idx = self.ctx.constant_usize(i);
+                let lhs_field = self.ctx.index(lhs_object.clone(), idx.clone(), fty);
+                let rhs_field = self.ctx.index(rhs_object.clone(), idx.clone(), fty);
+                self.assign_value_set(lhs_field, rhs_field);
             }
             return;
         }
 
-        if lhs.ty().is_array() {
-            if lhs.ty().elem_type().is_any_ptr() {
-                // TODO
-            }
+        if lhs.is_index() {
+            // Identifier form: `<l1_name>.<field_id/field_name>`
+            assert!(lhs.extract_index().is_constant());
+            let mut l1_lhs = lhs.clone();
+            let name = Symbol::from(NString::from(format!("{l1_lhs:?}")));
+            let new_lhs = self.ctx.mk_symbol(name, lhs.ty());
+            let mut new_rhs = rhs.clone();
+            new_rhs.simplify();
+            self.assign_value_set(new_lhs, new_rhs);
             return;
         }
+
+        assert!(lhs.is_symbol());
+        if !lhs.ty().is_any_ptr() { return; }
+        self.assignment_value_set(lhs, rhs);
+    }
+
+    fn assignment_value_set(&mut self, lhs: Expr, rhs: Expr) {
+        let mut l1_lhs = lhs.clone();
+        let mut l1_rhs = rhs.clone();
+        // lhs is already in level1
+        self.rename(&mut l1_rhs, Level::Level1);
+        let mut objects = ObjectSet::new();
+        self.cur_state().get_value_set(l1_rhs.clone(), &mut objects);
+        self.cur_state_mut().assign(l1_lhs, objects);
     }
 }

@@ -37,7 +37,7 @@ impl<'cfg> Symex<'cfg> {
                 if !ty.is_box() && !ty.is_struct() {
                     continue;
                 }
-                let index = self.ctx.index_non_zero(expr.clone(), self.ctx.constant_isize(i as isize), *ty);
+                let index = self.ctx.index(expr.clone(), self.ctx.constant_isize(i as isize), *ty);
                 self.move_rec(index);
             }
             return;

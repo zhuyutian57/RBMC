@@ -58,7 +58,7 @@ impl<'cfg> Symex<'cfg> {
             let array = self.make_deref(_vec, Mode::Read, guard.clone(), array_ty);
             let array_object = self.ctx.object(array);
             let elem_ty = array_ty.elem_type();
-            let index = self.ctx.index_non_zero(array_object, args[1].clone(), elem_ty);
+            let index = self.ctx.index(array_object, args[1].clone(), elem_ty);
             let index_object = self.ctx.object(index);
             let rhs = self.ctx.address_of(index_object, lhs.ty());
             self.assign(lhs.clone(), rhs, guard.clone());
@@ -74,17 +74,16 @@ impl<'cfg> Symex<'cfg> {
         if name == "RangeFull" {
             (None, None)
         } else {
-            let fields = range.extract_constant().to_struct_fields();
+            let fields = range.extract_constant().to_adt().0;
             if name == "Range" {
-                // Maybe a bug for MIR
-                let l = bigint_to_usize(&fields[1].0.to_integer());
-                let r = bigint_to_usize(&fields[0].0.to_integer());
+                let l = bigint_to_usize(&fields[0].to_integer());
+                let r = bigint_to_usize(&fields[1].to_integer());
                 (Some(l), Some(r))
             } else if name == "RangeFrom" {
-                let l = bigint_to_usize(&fields[0].0.to_integer());
+                let l = bigint_to_usize(&fields[0].to_integer());
                 (Some(l), None)
             } else if name == "RangeTo" {
-                let r = bigint_to_usize(&fields[0].0.to_integer());
+                let r = bigint_to_usize(&fields[0].to_integer());
                 (None, Some(r))
             } else {
                 panic!("No support {name:?}")

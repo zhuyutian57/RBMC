@@ -363,18 +363,47 @@ impl Type {
         }
     }
 
+    /// Field type of `struct/tuple`, including ZST.
     pub fn field_type(&self, field: usize) -> Type {
-        if self.is_struct() {
-            let sdef = self.struct_def();
-            assert!(field < sdef.1.len());
-            sdef.1[field].1
-        } else if self.is_tuple() {
-            let tdef = self.tuple_def();
-            assert!(field < tdef.len());
-            tdef[field]
-        } else {
-            panic!("Not struct and tuple")
+        let fdefs =
+            if self.is_struct() {
+                self.struct_def().1.iter().map(|(_, ty)| *ty).collect::<Vec<_>>()
+            } else if self.is_tuple() {
+                self.tuple_def()
+            } else {
+                panic!("Not struct and tuple")
+            };
+        assert!(field < fdefs.len());
+        fdefs[field]
+    }
+
+    /// Field type of `struct/tuple`, excluding ZST.
+    pub fn field_type_exclude_zst(&self, field: usize) -> Type {
+        let fdefs =
+            if self.is_struct() {
+                self.struct_def().1.iter().map(|(_, ty)| *ty).collect::<Vec<_>>()
+            } else if self.is_tuple() {
+                self.tuple_def()
+            } else {
+                panic!("Not struct and tuple")
+            };
+        let (mut i, mut j) = (0, 0);
+        loop {
+            if !fdefs[i].is_zero_sized_type() { j += 1; }
+            if j == field + 1 { break; }
+            i += 1;
         }
+        assert!(i < fdefs.len());
+        fdefs[i]
+    }
+
+    /// Get the size of a field of a struct/tuple after padding
+    pub fn field_size(&self, field: usize) -> usize {
+        assert!(self.is_struct() || self.is_tuple());
+        let fty = self.field_type(field);
+        let size = fty.size();
+        let align = self.align();
+        (size / align + if size % align != 0 { 1 } else { 0 }) * align
     }
 
     pub fn fn_def(&self) -> FunctionDef {
@@ -533,7 +562,7 @@ impl Type {
 
     /// Reindex struct/tuple fields by eliminating prefix zero-sized type.
     pub fn fix_index_field(&self, i: &mut usize) {
-        if self.is_array() || self.is_slice() { return; }
+        if self.is_array() || self.is_slice() || self.is_enum() { return; }
         let prefix_types = if self.is_struct() {
             self.struct_def().1.iter().map(|(_, ty)| *ty).collect::<Vec<_>>()
         } else {

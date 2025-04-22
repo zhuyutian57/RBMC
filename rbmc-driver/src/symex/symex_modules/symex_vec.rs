@@ -64,7 +64,7 @@ impl<'cfg> Symex<'cfg> {
             self.make_deref(inner_pt.clone(), Mode::Read, guard.clone(), _vec.ty().pointee_ty());
         let array = self.ctx.object(inner_array);
         let elem_ty = array.ty().elem_type();
-        let index = self.ctx.index_non_zero(array, old_len, elem_ty);
+        let index = self.ctx.index(array, old_len, elem_ty);
         self.assign(index, value, guard.clone());
         // TODO: handle cap
 
@@ -93,7 +93,7 @@ impl<'cfg> Symex<'cfg> {
         let lhs = dest;
         let none = self.ctx.variant(self.ctx.constant_usize(0), None, lhs.ty());
         let i = sub_one;
-        let data = self.ctx.index_non_zero(array.clone(), i, array.ty().elem_type());
+        let data = self.ctx.index(array.clone(), i, array.ty().elem_type());
         let some = self.ctx.variant(self.ctx.constant_usize(1), Some(data), lhs.ty());
         let rhs = self.ctx.ite(cond, none, some);
         self.assign(lhs, rhs, guard.clone());

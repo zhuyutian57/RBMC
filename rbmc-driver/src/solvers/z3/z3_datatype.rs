@@ -169,8 +169,10 @@ impl<'ctx> DataType<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
                 self.mk_tuple_sort(ty);
             }
         }
+        let mut i = field;
+        ty.fix_index_field(&mut i);
         let args = &[&object as &dyn Ast];
-        self.datatypes.get(&sign).unwrap().variants[0].accessors[field].apply(args)
+        self.datatypes.get(&sign).unwrap().variants[0].accessors[i].apply(args)
     }
 
     fn mk_tuple_store(
@@ -190,9 +192,11 @@ impl<'ctx> DataType<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
             }
         }
         let n = self.datatypes.get(&sign).unwrap().variants[0].accessors.len();
+        let mut j = field;
+        ty.fix_index_field(&mut j);
         let mut fields_values = Vec::with_capacity(n);
         for i in 0..n {
-            if field != i {
+            if j != i {
                 fields_values.push(self.mk_tuple_select(object.clone(), i, ty));
             } else {
                 fields_values.push(value.clone());

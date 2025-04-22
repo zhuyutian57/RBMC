@@ -43,7 +43,7 @@ impl<'cfg> Symex<'cfg> {
             self.exec_state.ns.insert_object(object.clone());
 
             let init_value = match def.eval_initializer() {
-                Ok(allocation) => self.make_constant_from_allocation(&allocation, ty),
+                Ok(allocation) => self.make_allocation(&allocation, ty),
                 _ => panic!("Some thing wrong?"),
             };
             self.assign(object, init_value, self.ctx._true().into());

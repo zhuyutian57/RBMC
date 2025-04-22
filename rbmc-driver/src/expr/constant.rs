@@ -4,15 +4,17 @@ use num_bigint::BigInt;
 
 use super::ty::Type;
 
-pub type ConstantField = (Constant, Type);
-
 #[derive(Clone)]
 pub enum Constant {
     Bool(bool),
     Integer(BigInt),
     Null(Type),
     Array(Box<Constant>, Type),
-    Struct(Vec<ConstantField>, Type),
+    /// Constant `struct/tuple/enum`. The data for each `struct/tuple` is stored in order.
+    /// For `enum`, the first value is variant index.
+    Adt(Vec<Constant>, Type),
+    /// Zero-sized type is a constant
+    Zst(Type)
 }
 
 impl Constant {
@@ -32,8 +34,12 @@ impl Constant {
         matches!(self, Constant::Array(..))
     }
 
-    pub fn is_struct(&self) -> bool {
-        matches!(self, Constant::Struct(..))
+    pub fn is_adt(&self) -> bool {
+        matches!(self, Constant::Adt(..))
+    }
+
+    pub fn is_zst(&self) -> bool {
+        matches!(self, Constant::Zst(..))
     }
 
     pub fn to_bool(&self) -> bool {
@@ -50,10 +56,17 @@ impl Constant {
         }
     }
 
-    pub fn to_struct_fields(&self) -> Vec<ConstantField> {
+    pub fn to_adt(&self) -> (Vec<Constant>, Type) {
         match self {
-            Constant::Struct(fields, _) => fields.clone(),
-            _ => panic!("Not constant struct"),
+            Constant::Adt(fields, ty) => (fields.clone(), *ty),
+            _ => panic!("Not constant adt"),
+        }
+    }
+
+    pub fn to_zst(&self) -> Type {
+        match self {
+            Constant::Zst(ty) => *ty,
+            _ => panic!("Not constant ZST"),
         }
     }
 }
@@ -65,7 +78,8 @@ impl Debug for Constant {
             Constant::Integer(i) => write!(f, "{i:?}"),
             Constant::Null(..) => write!(f, "null"),
             Constant::Array(v, _) => write!(f, "as-const {:?}", *v),
-            Constant::Struct(v, ty) => write!(f, "{ty:?} {v:?}"),
+            Constant::Adt(v, ty) => write!(f, "{ty:?} {v:?}"),
+            Constant::Zst(ty) => write!(f, "ZST({ty:?})"),
         }
     }
 }

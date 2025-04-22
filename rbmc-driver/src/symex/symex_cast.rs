@@ -18,7 +18,7 @@ impl<'cfg> Symex<'cfg> {
                 if expr.ty().is_nonnull() {
                     let object = self.ctx.object(expr);
                     let i = self.ctx.constant_usize(0);
-                    self.ctx.index_non_zero(object, i, ty)
+                    self.ctx.index(object, i, ty)
                 } else {
                     todo!()
                 }

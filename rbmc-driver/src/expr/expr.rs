@@ -32,21 +32,27 @@ impl Expr {
     pub fn is_terminal(&self) -> bool {
         self.ctx.borrow().is_terminal(self.id)
     }
+
     pub fn is_true(&self) -> bool {
         self.ctx.borrow().is_true(self.id)
     }
+
     pub fn is_false(&self) -> bool {
         self.ctx.borrow().is_false(self.id)
     }
+
     pub fn is_constant(&self) -> bool {
         self.ctx.borrow().is_constant(self.id)
     }
+
     pub fn is_null(&self) -> bool {
         self.ctx.borrow().is_null(self.id)
     }
+
     pub fn is_type(&self) -> bool {
         self.ctx.borrow().is_type(self.id)
     }
+
     pub fn is_symbol(&self) -> bool {
         self.ctx.borrow().is_symbol(self.id)
     }
@@ -54,52 +60,63 @@ impl Expr {
     pub fn is_address_of(&self) -> bool {
         self.ctx.borrow().is_address_of(self.id)
     }
+
     pub fn is_aggregate(&self) -> bool {
         self.ctx.borrow().is_aggregate(self.id)
     }
+
     pub fn is_binary(&self) -> bool {
         self.ctx.borrow().is_binary(self.id)
     }
+
+    pub fn is_offset(&self) -> bool {
+        self.is_binary() && self.extract_bin_op() == BinOp::Offset
+    }
+
     pub fn is_unary(&self) -> bool {
         self.ctx.borrow().is_unary(self.id)
     }
+
     pub fn is_ite(&self) -> bool {
         self.ctx.borrow().is_ite(self.id)
     }
+
     pub fn is_cast(&self) -> bool {
         self.ctx.borrow().is_cast(self.id)
     }
+
     pub fn is_object(&self) -> bool {
         self.ctx.borrow().is_object(self.id)
     }
+
     pub fn is_slice(&self) -> bool {
         self.ctx.borrow().is_slice(self.id)
     }
+
     pub fn is_same_object(&self) -> bool {
         self.ctx.borrow().is_same_object(self.id)
     }
-    pub fn is_index_non_zero(&self) -> bool {
-        self.ctx.borrow().is_index_non_zero(self.id)
+
+    pub fn is_index(&self) -> bool {
+        self.ctx.borrow().is_index(self.id)
     }
-    pub fn is_index_zero_sized(&self) -> bool {
-        self.ctx.borrow().is_index_zero_sized(self.id)
-    }
+
     pub fn is_store(&self) -> bool {
         self.ctx.borrow().is_store(self.id)
     }
-
-    pub fn is_offset(&self) -> bool {
-        self.ctx.borrow().is_offset(self.id)
-    }
+    
     pub fn is_pointer_base(&self) -> bool {
         self.ctx.borrow().is_pointer_base(self.id)
     }
+    
     pub fn is_pointer_offset(&self) -> bool {
         self.ctx.borrow().is_pointer_offset(self.id)
     }
+
     pub fn is_pointer_meta(&self) -> bool {
         self.ctx.borrow().is_pointer_meta(self.id)
     }
+
     pub fn is_vec(&self) -> bool {
         self.ctx.borrow().is_vec(self.id)
     }
@@ -116,9 +133,11 @@ impl Expr {
     pub fn is_enum(&self) -> bool {
         self.ctx.borrow().is_enum(self.id)
     }
+
     pub fn is_as_variant(&self) -> bool {
         self.ctx.borrow().is_as_variant(self.id)
     }
+
     pub fn is_match_variant(&self) -> bool {
         self.ctx.borrow().is_match_variant(self.id)
     }
@@ -126,15 +145,19 @@ impl Expr {
     pub fn is_move(&self) -> bool {
         self.ctx.borrow().is_move(self.id)
     }
+
     pub fn is_valid(&self) -> bool {
         self.ctx.borrow().is_valid(self.id)
     }
+
     pub fn is_invalid(&self) -> bool {
         self.ctx.borrow().is_invalid(self.id)
     }
+
     pub fn is_null_object(&self) -> bool {
         self.ctx.borrow().is_null_object(self.id)
     }
+
     pub fn is_unknown(&self) -> bool {
         self.ctx.borrow().is_unknown(self.id)
     }
@@ -151,8 +174,8 @@ impl Expr {
         self.extract_constant().to_integer()
     }
 
-    pub fn extract_struct_fields(&self) -> Vec<ConstantField> {
-        self.extract_constant().to_struct_fields()
+    pub fn extract_adt(&self) -> (Vec<Constant>, Type) {
+        self.extract_constant().to_adt()
     }
 
     pub fn extract_type(&self) -> Type {
@@ -168,8 +191,7 @@ impl Expr {
         assert!(
             self.is_address_of()
                 || self.is_slice()
-                || self.is_index_non_zero()
-                || self.is_index_zero_sized()
+                || self.is_index()
                 || self.is_store()
                 || self.is_move()
                 || self.is_valid()
@@ -187,7 +209,7 @@ impl Expr {
             return self.extract_inner_expr().extract_root_object();
         }
 
-        if self.is_address_of() || self.is_slice() || self.is_index_non_zero() || self.is_store() {
+        if self.is_address_of() || self.is_slice() || self.is_index() || self.is_store() {
             return self.extract_object().extract_root_object();
         }
 
@@ -284,7 +306,7 @@ impl Expr {
     }
 
     pub fn extract_index(&self) -> Expr {
-        assert!(self.is_index_non_zero() || self.is_store());
+        assert!(self.is_index() || self.is_store());
         self.extract_sub_expr(1)
     }
 
@@ -353,7 +375,7 @@ impl Expr {
             return offset;
         }
 
-        if self.is_index_non_zero() {
+        if self.is_index() {
             let inner_object = self.extract_object();
             let ty = inner_object.ty();
             let mut offset = inner_object.compute_bytes_offset();
@@ -373,17 +395,6 @@ impl Expr {
                 self.ctx.constant_usize(i * align)
             };
             offset = self.ctx.add(offset, collected_offset);
-            offset.simplify();
-            return offset;
-        }
-
-        // If a field is zero-sized type, return the end of the object.
-        if self.is_index_zero_sized() {
-            let inner_object = self.extract_object();
-            let mut offset = self.ctx.add(
-                inner_object.compute_bytes_offset(),
-                self.ctx.constant_usize(inner_object.ty().size())
-            );
             offset.simplify();
             return offset;
         }
@@ -462,6 +473,7 @@ impl Expr {
                 BinOp::And => self.ctx.and(lhs, rhs),
                 BinOp::Or => self.ctx.or(lhs, rhs),
                 BinOp::Implies => self.ctx.implies(lhs, rhs),
+                BinOp::Offset => self.ctx.offset(lhs, rhs),
             };
             return;
         }
@@ -497,16 +509,10 @@ impl Expr {
             return;
         }
 
-        if self.is_index_non_zero() {
+        if self.is_index() {
             let object = sub_exprs[0].clone();
             let index = sub_exprs[1].clone();
-            *self = self.ctx.index_non_zero(object, index, self.ty());
-            return;
-        }
-
-        if self.is_index_zero_sized() {
-            let object = sub_exprs[0].clone();
-            *self = self.ctx.index_zero_sized(object, self.ty());
+            *self = self.ctx.index(object, index, self.ty());
             return;
         }
 
@@ -695,12 +701,12 @@ impl Debug for Expr {
                 return write!(f, "{object:?}[{start:?}, {end:?})");
             }
 
-            if self.is_index_non_zero() {
+            if self.is_index() {
                 let object = &sub_exprs[0];
                 let index = &sub_exprs[1];
                 return if object.ty().is_array() || object.ty().is_slice() {
                     write!(f, "{object:?}[{index:?}]")
-                } else if object.ty().is_tuple() {
+                } else if object.ty().is_tuple() || object.ty().is_enum() {
                     write!(f, "{object:?}.{index:?}")
                 } else {
                     assert!(object.ty().is_struct());
@@ -708,12 +714,6 @@ impl Debug for Expr {
                     let name = object.ty().struct_def().1[i].0;
                     write!(f, "{object:?}.{name:?}")
                 };
-            }
-
-            if self.is_index_zero_sized() {
-                let object = &sub_exprs[0];
-                let ty = &sub_exprs[1];
-                return write!(f, "{object:?}<{ty:?}>");
             }
 
             if self.is_ite() {
@@ -831,6 +831,7 @@ impl Debug for Expr {
 }
 
 pub trait ExprBuilder {
+    fn constant(&self, value: Constant, ty: Type) -> Expr;
     fn constant_bool(&self, b: bool) -> Expr;
     fn _true(&self) -> Expr;
     fn _false(&self) -> Expr;
@@ -839,7 +840,7 @@ pub trait ExprBuilder {
     fn constant_usize(&self, u: usize) -> Expr;
     fn null(&self, ty: Type) -> Expr;
     fn constant_array(&self, constant: Expr, len: Option<u64>) -> Expr;
-    fn constant_struct(&self, fields: Vec<ConstantField>, ty: Type) -> Expr;
+    fn constant_adt(&self, fields: Vec<Constant>, ty: Type) -> Expr;
     fn mk_symbol(&self, symbol: Symbol, ty: Type) -> Expr;
     fn mk_type(&self, ty: Type) -> Expr;
 
@@ -859,6 +860,7 @@ pub trait ExprBuilder {
     fn and(&self, lhs: Expr, rhs: Expr) -> Expr;
     fn or(&self, lhs: Expr, rhs: Expr) -> Expr;
     fn implies(&self, cond: Expr, conseq: Expr) -> Expr;
+    fn offset(&self, pt: Expr, offset: Expr) -> Expr;
     fn not(&self, operand: Expr) -> Expr;
     fn neg(&self, operand: Expr) -> Expr;
     fn ite(&self, cond: Expr, true_value: Expr, false_value: Expr) -> Expr;
@@ -867,11 +869,9 @@ pub trait ExprBuilder {
     fn object(&self, inner_expr: Expr) -> Expr;
     fn slice(&self, object: Expr, start: Expr, len: Expr) -> Expr;
     fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr;
-    fn index_non_zero(&self, object: Expr, i: Expr, ty: Type) -> Expr;
-    fn index_zero_sized(&self, object: Expr, ty: Type) -> Expr;
+    fn index(&self, object: Expr, i: Expr, ty: Type) -> Expr;
     fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
 
-    fn offset(&self, pt: Expr, offset: Expr) -> Expr;
     fn pointer_base(&self, pt: Expr) -> Expr;
     fn pointer_offset(&self, pt: Expr) -> Expr;
     fn pointer_meta(&self, pt: Expr) -> Expr;

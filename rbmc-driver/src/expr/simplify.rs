@@ -53,7 +53,7 @@ impl Expr {
             return;
         }
 
-        if self.is_index_non_zero() {
+        if self.is_index() {
             self.simplify_index(args[0].clone(), args[1].clone());
             return;
         }
@@ -169,6 +169,7 @@ impl Expr {
                 self.simplify_cmp(lhs, rhs)
             }
             BinOp::And | BinOp::Or | BinOp::Implies => self.simplify_logic(lhs, rhs),
+            BinOp::Offset => self.simplify_offset(lhs, rhs),
         };
     }
 
@@ -313,6 +314,14 @@ impl Expr {
         };
     }
 
+    fn simplify_offset(&mut self, pt: Expr, offset: Expr) {
+        if offset.is_constant() && offset.extract_constant().to_integer() == BigInt::ZERO {
+            *self = pt;
+        } else {
+            *self = self.ctx.offset(pt, offset);
+        }
+    }
+
     fn simplify_unary(&mut self, operand: Expr) {
         match self.extract_un_op() {
             UnOp::Not | UnOp::Neg => {
@@ -361,9 +370,16 @@ impl Expr {
     /// Read-Write simplify
     fn simplify_index(&mut self, object: Expr, i: Expr) {
         let inner_expr = object.extract_inner_expr();
-        if inner_expr.is_aggregate() && i.is_constant() {
+        if i.is_constant() {
             let idx = bigint_to_usize(&i.extract_constant().to_integer());
-            *self = inner_expr.extract_fields()[idx].clone();
+            if inner_expr.is_aggregate() {
+                *self = inner_expr.extract_fields()[idx].clone();
+            } else if inner_expr.is_constant() {
+                assert!(inner_expr.ty().is_struct() || inner_expr.ty().is_tuple());
+                let (fields, _) = inner_expr.extract_constant().to_adt();
+                let ty = inner_expr.ty().field_type_exclude_zst(idx);
+                *self = self.ctx.constant(fields[idx].clone(), ty);
+            }
             return;
         } else if inner_expr.is_store() {
             let mut update_index = inner_expr.extract_index();
@@ -375,7 +391,7 @@ impl Expr {
             }
             return;
         }
-        *self = self.ctx.index_non_zero(object, i, self.ty());
+        *self = self.ctx.index(object, i, self.ty());
     }
 
     /// Write-Write simplify

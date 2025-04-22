@@ -103,7 +103,7 @@ impl State {
 
         assert!(expr.ty().is_any_ptr());
 
-        if expr.is_index_non_zero() {
+        if expr.is_index() {
             let object = expr.extract_object();
             let index_str = format!("{:?}", expr.extract_index());
             let i = index_str.parse::<u128>().expect("Not integer index");
@@ -163,14 +163,10 @@ impl State {
             let inner_expr = object.extract_inner_expr();
             if inner_expr.is_symbol() || inner_expr.is_slice() {
                 values.insert((object, None));
-            } else if inner_expr.is_index_non_zero() {
+            } else if inner_expr.is_index() {
                 let root_object = inner_expr.extract_object();
                 let index = inner_expr.extract_index().extract_constant();
                 let offset = index.to_integer();
-                values.insert((root_object, Some(offset)));
-            } else if inner_expr.is_index_zero_sized() {
-                let root_object = inner_expr.extract_object();
-                let offset = root_object.ty().size().into();
                 values.insert((root_object, Some(offset)));
             } else {
                 todo!("get value set from addressof({object:?})");
@@ -217,7 +213,7 @@ impl State {
             return;
         }
 
-        if expr.is_index_non_zero() {
+        if expr.is_index() {
             let inner_expr = expr.extract_object().extract_inner_expr();
             let i = bigint_to_usize(&expr.extract_index().extract_constant().to_integer());
             let new_suffix = NString::from(if inner_expr.ty().is_array() {
@@ -245,7 +241,7 @@ impl State {
                 } else {
                     self.get_value_set_rec(inner_object, new_suffix, values);
                 }
-            } else if inner_expr.is_ite() || inner_expr.is_index_non_zero() {
+            } else if inner_expr.is_ite() || inner_expr.is_index() {
                 self.get_value_set_rec(inner_expr, new_suffix, values);
             } else if inner_expr.is_unknown() {
                 values.insert((expr.ctx.unknown(expr.ty().pointee_ty()), None));
