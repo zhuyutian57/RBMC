@@ -242,7 +242,7 @@ impl Expr {
 
     pub fn extract_root_pointer(&self) -> Expr {
         assert!(self.ty().is_ptr());
-        if self.is_offset() {
+        if self.is_pointer() || self.is_offset() {
             self.extract_inner_pointer().extract_root_pointer()
         } else {
             self.clone()
@@ -251,10 +251,10 @@ impl Expr {
 
     /// This function will compute the total offset expr.
     pub fn extract_offset(&self) -> Expr {
-        assert!(self.ty().is_ptr() && self.is_offset());
+        assert!(self.ty().is_ptr() && (self.is_offset() || self.is_pointer()));
         let pt = self.extract_inner_pointer();
         let r_offset = self.extract_sub_expr(1);
-        let l_offset = if pt.is_offset() {
+        let l_offset = if pt.is_offset() || pt.is_pointer() {
             pt.extract_offset()
         } else {
             self.ctx.constant_integer(BigInt::ZERO, r_offset.ty())
@@ -346,7 +346,8 @@ impl Expr {
 
     pub fn extract_inner_pointer(&self) -> Expr {
         assert!(
-            self.is_offset()
+            self.is_pointer()
+                || self.is_offset()
                 || self.is_pointer_base()
                 || self.is_pointer_offset()
                 || self.is_pointer_meta()

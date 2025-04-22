@@ -174,7 +174,7 @@ impl State {
             return;
         }
 
-        if expr.is_offset() {
+        if expr.is_offset() || expr.is_pointer() {
             let pt = expr.extract_root_pointer();
             let off = expr.extract_offset();
             // TODO: support dynamic offset
@@ -249,10 +249,6 @@ impl State {
                 panic!("Wrong object? {inner_expr:?}");
             }
             return;
-        }
-
-        if expr.is_pointer() {
-            todo!();
         }
 
         if expr.is_vec() || expr.is_inner_pointer() {
