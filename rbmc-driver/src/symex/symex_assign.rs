@@ -39,6 +39,8 @@ impl<'cfg> Symex<'cfg> {
         self.rename(&mut rhs);
         rhs.simplify();
 
+        println!("{lhs:?} = {rhs:?}");
+
         // Assignment for symex
         self.exec_state.assignment(lhs.clone(), rhs.clone());
 
@@ -90,7 +92,7 @@ impl<'cfg> Symex<'cfg> {
             let mut new_lhs = inner_object.clone();
             let mut index = lhs.extract_index();
 
-            if inner_object.ty().is_slice() {
+            if inner_object.is_slice() {
                 let slice = inner_object.extract_inner_expr();
                 new_lhs = slice.extract_object();
                 index = self.ctx.add(index, slice.extract_slice_start());

@@ -40,8 +40,6 @@ impl<'cfg> Symex<'cfg> {
 
         if let Some(t) = target {
             self.goto(*t, self.ctx._true());
-        } else {
-            panic!("Target must exists");
         }
 
         !ty.is_rbmc_nondet() && !ty.is_rust_builtin_function()
@@ -65,16 +63,10 @@ impl<'cfg> Symex<'cfg> {
     ) {
         let name = NString::from(instance.name());
         let ret = self.make_project(dest);
-        if name.contains("std::alloc".into()) {
-            self.symex_alloc_api(instance, args, ret);
-        } else if name.contains("std::boxed".into()) {
-            self.symex_boxed_api(instance, args, ret);
-        // } else if name.contains("std::ops".into()) {
-        //     self.symex_ops_api(instance, args_exprs.clone(), ret);
-        // } else if name.contains("std::ptr".into()) {
-        //     self.symex_ptr_api(instance, args_exprs.clone(), ret);
-        // } else if name.contains("std::vec".into()) {
-        //     self.symex_vec_api(instance, args_exprs.clone(), ret);
+        if name.starts_with("std".into()) {
+            self.symex_std_api(instance, args, ret);
+        } else if name.starts_with("core".into()) {
+            self.symex_core_api(instance, args, ret);
         } else {
             panic!("Do not support {name:?}")
         }

@@ -16,6 +16,7 @@ pub(super) mod symex_cast;
 pub(super) mod symex_drop;
 pub(super) mod symex_function;
 pub(super) mod symex_memory;
-mod symex_modules;
+mod symex_std;
+mod symex_core;
 pub(super) mod symex_move;
 pub(super) mod symex_util;
