@@ -39,6 +39,7 @@ impl<'cfg> Symex<'cfg> {
         self.rename(&mut rhs);
         rhs.simplify();
 
+        // Assignment for symex
         self.exec_state.assignment(lhs.clone(), rhs.clone());
 
         // New l2 symbol
@@ -191,34 +192,37 @@ impl<'cfg> Symex<'cfg> {
     }
 
     fn make_aggregate(&mut self, k: &AggregateKind, operands: &Vec<Operand>, ty: Type) -> Expr {
-        let operand_exprs = operands
+        let args = operands
             .iter()
             .map(|o| self.make_operand(o))
-            .filter(|e| !e.ty().is_zero_sized_type())
             .collect::<Vec<Expr>>();
         match k {
             AggregateKind::Array(..) => {
                 assert!(ty.is_array());
-                self.ctx.aggregate(operand_exprs, ty)
+                self.ctx.aggregate(args, ty)
             }
             AggregateKind::Adt(def, i, ..) => {
-                assert!(ty.is_struct() || ty.is_enum());
-                if ty.is_struct() {
-                    self.ctx.aggregate(operand_exprs, ty)
+                assert!(ty.is_struct() || ty.is_tuple() || ty.is_enum());
+                if ty.is_struct() || ty.is_tuple() {
+                    self.ctx.aggregate(args, ty)
                 } else {
-                    let def = ty.enum_def();
-                    let data = if operand_exprs.len() == 0 {
-                        None
+                    let idx = self.ctx.constant_usize(i.to_index());
+                    if args.len() == 0 {
+                        self.ctx.constant_adt(vec![idx.extract_constant()], ty)
                     } else {
                         let tuple_ty = ty.enum_variant_data_type(i.to_index());
-                        Some(self.ctx.aggregate(operand_exprs, tuple_ty))
-                    };
-                    let idx = self.ctx.constant_usize(i.to_index());
-                    self.ctx.variant(idx, data, ty)
+                        let data = self.ctx.aggregate(args, tuple_ty);
+                        self.ctx.variant(idx, data, ty)
+                    }
                 }
             }
             AggregateKind::RawPtr(t, m) => {
-                todo!()
+                assert!(ty.pointee_ty() == Type::from(t));
+                let pt = args[0].clone();
+                let base = self.ctx.pointer_base(pt.clone());
+                let offset = self.ctx.pointer_offset(pt);
+                let meta = args[1].clone();
+                self.ctx.pointer(base, offset, Some(meta), ty)
             }
             _ => todo!("{k:?}"),
         }

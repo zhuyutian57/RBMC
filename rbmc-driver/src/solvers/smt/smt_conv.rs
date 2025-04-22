@@ -206,7 +206,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             a = Some(self.convert_inner_pointer(&args[0], ty));
         }
 
-        if expr.is_enum() {
+        if expr.is_variant() {
             let ty = expr.ty();
             let idx = expr.extract_variant_idx();
             let data = if args.len() == 1 { None } else { Some(args[1].clone()) };

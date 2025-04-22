@@ -2,6 +2,8 @@ use std::fmt::Debug;
 
 use num_bigint::BigInt;
 
+use crate::program::program::bigint_to_usize;
+
 use super::ty::Type;
 
 #[derive(Clone)]
@@ -78,7 +80,19 @@ impl Debug for Constant {
             Constant::Integer(i) => write!(f, "{i:?}"),
             Constant::Null(..) => write!(f, "null"),
             Constant::Array(v, _) => write!(f, "as-const {:?}", *v),
-            Constant::Adt(v, ty) => write!(f, "{ty:?} {v:?}"),
+            Constant::Adt(v, ty) => {
+                if !ty.is_enum() {
+                    write!(f, "{:?} {v:?}", ty.name())
+                } else {
+                    let i = bigint_to_usize(&v[0].to_integer());
+                    let variant_name = ty.enum_def().1[i].0;
+                    if v.len() == 1 {
+                        write!(f, "{variant_name:?}")
+                    } else {
+                        write!(f, "{variant_name:?}({:?})", v[1])
+                    }
+                }
+            }
             Constant::Zst(ty) => write!(f, "ZST({ty:?})"),
         }
     }

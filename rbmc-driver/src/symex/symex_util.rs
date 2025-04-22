@@ -156,7 +156,7 @@ impl<'cfg> Symex<'cfg> {
                     self.make_global_alloc(prov, ty)
                 }
             }
-            ConstantKind::ZeroSized => self.ctx.mk_type(ty),
+            ConstantKind::ZeroSized => self.ctx.constant_zst(ty),
             _ => panic!("Not support {:?}", mirconst.kind()),
         }
     }

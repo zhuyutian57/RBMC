@@ -37,7 +37,7 @@ impl Debug for BinOp {
             BinOp::And => write!(f, "&&"),
             BinOp::Or => write!(f, "||"),
             BinOp::Implies => write!(f, "=>"),
-            BinOp::Offset => write!(f, "offset"),
+            BinOp::Offset => write!(f, "Offset"),
         }
     }
 }

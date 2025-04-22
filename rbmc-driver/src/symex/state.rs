@@ -251,6 +251,10 @@ impl State {
             return;
         }
 
+        if expr.is_pointer() {
+            todo!();
+        }
+
         if expr.is_vec() || expr.is_inner_pointer() {
             let inner_pt = expr.extract_inner_pointer();
             self.get_value_set_rec(inner_pt, suffix, values);

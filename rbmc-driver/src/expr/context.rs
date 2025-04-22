@@ -181,6 +181,11 @@ impl Context {
         self.nodes[i].kind().is_store()
     }
 
+    pub fn is_pointer(&self, i: NodeId) -> bool {
+        assert!(i < self.nodes.len());
+        self.nodes[i].kind().is_pointer()
+    }
+
     pub fn is_pointer_base(&self, i: NodeId) -> bool {
         assert!(i < self.nodes.len());
         self.nodes[i].kind().is_pointer_base()
@@ -216,7 +221,7 @@ impl Context {
         self.nodes[i].kind().is_inner_pointer()
     }
 
-    pub fn is_enum(&self, i: NodeId) -> bool {
+    pub fn is_variant(&self, i: NodeId) -> bool {
         assert!(i < self.nodes.len());
         self.nodes[i].kind().is_variant()
     }
@@ -400,6 +405,7 @@ impl ExprBuilder for ExprCtx {
     }
 
     fn constant_adt(&self, fields: Vec<Constant>, ty: Type) -> Expr {
+        assert!(ty.is_adt());
         let terminal = Terminal::Constant(Constant::Adt(fields, ty));
         let terminal_id = self.borrow_mut().add_terminal(terminal);
         let kind = NodeKind::Terminal(terminal_id);
@@ -419,6 +425,15 @@ impl ExprBuilder for ExprCtx {
 
     fn mk_type(&self, ty: Type) -> Expr {
         let terminal = Terminal::Type(ty);
+        let terminal_id = self.borrow_mut().add_terminal(terminal);
+        let kind = NodeKind::Terminal(terminal_id);
+        let new_node = Node::new(kind, ty);
+        let id = self.borrow_mut().add_node(new_node);
+        Expr { ctx: self.clone(), id }
+    }
+
+    fn constant_zst(&self, ty: Type) -> Expr {
+        let terminal = Terminal::Constant(Constant::Zst(ty));
         let terminal_id = self.borrow_mut().add_terminal(terminal);
         let kind = NodeKind::Terminal(terminal_id);
         let new_node = Node::new(kind, ty);
@@ -675,11 +690,26 @@ impl ExprBuilder for ExprCtx {
         Expr { ctx: self.clone(), id }
     }
 
+    fn pointer(&self, base: Expr, offset: Expr, meta: Option<Expr>, ty: Type) -> Expr {
+        assert!(base.ty().is_primitive_ptr());
+        let meta_data = if let Some(data) = meta {
+            assert!(ty.is_slice_ptr());
+            data
+        } else {
+            self.constant_usize(0)
+        };
+        let kind = NodeKind::Pointer(base.id, offset.id, meta_data.id);
+        let new_node = Node::new(kind, ty);
+        let id = self.borrow_mut().add_node(new_node);
+        Expr { ctx: self.clone(), id }
+    }
+
+
     fn pointer_base(&self, pt: Expr) -> Expr {
         assert!(pt.ty().is_any_ptr());
+        let ty = pt.ty();
         let ptr = if pt.ty().is_smart_ptr() { self.inner_pointer(pt) } else { pt };
         let kind = NodeKind::PointerBase(ptr.id);
-        let ty = Type::usize_type();
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
         Expr { ctx: self.clone(), id }
@@ -765,20 +795,12 @@ impl ExprBuilder for ExprCtx {
         Expr { ctx: self.clone(), id }
     }
 
-    fn variant(&self, idx: Expr, data: Option<Expr>, ty: Type) -> Expr {
-        assert!(ty.is_enum());
+    fn variant(&self, idx: Expr, data: Expr, ty: Type) -> Expr {
+        assert!(ty.is_enum() && !data.ty().is_zero_sized_type());
         let i = bigint_to_usize(&idx.extract_constant().to_integer());
-        if let Some(x) = &data {
-            let variant_data_ty = ty.enum_variant_data_type(i);
-            assert!(x.ty() == variant_data_ty);
-        }
-        let kind = NodeKind::Variant(
-            idx.id,
-            match data {
-                Some(e) => Some(e.id),
-                None => None,
-            },
-        );
+        let variant_data_ty = ty.enum_variant_data_type(i);
+        assert!(data.ty() == variant_data_ty);
+        let kind = NodeKind::Variant(idx.id, data.id);
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
         Expr { ctx: self.clone(), id }

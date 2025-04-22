@@ -200,6 +200,27 @@ impl<'cfg> ExecutionState<'cfg> {
             return true;
         }
 
+        if expr.is_aggregate() {
+            return expr
+                .extract_fields()
+                .iter()
+                .fold(
+                    true,
+                    |acc, field|
+                    acc && field.is_constant()
+                );
+        }
+
+        if expr.is_binary() {
+            let lhs = expr.extract_lhs();
+            let rhs = expr.extract_rhs();
+            return self.is_constant_value(lhs) && self.is_constant_value(rhs);
+        }
+
+        if expr.is_unary() {
+            return self.is_constant_value(expr.extract_inner_expr());
+        }
+
         if expr.is_cast() {
             return self.is_constant_value(expr.extract_src());
         }
@@ -207,6 +228,32 @@ impl<'cfg> ExecutionState<'cfg> {
         // Address is fixed when the memory is alloced
         if expr.is_address_of() {
             return self.is_constant_address(expr.extract_object());
+        }
+
+        if expr.is_pointer() {
+            let base = expr.extract_pointer_base();
+            let offset = expr.extract_pointer_offset();
+            let meta = expr.extract_pointer_meta();
+            return self.is_constant_value(base) &&
+                self.is_constant_value(offset) &&
+                self.is_constant_value(meta);
+        }
+
+        if expr.is_pointer_base() || expr.is_pointer_meta() {
+            return self.is_constant_value(expr.extract_inner_pointer());
+        }
+
+        if expr.is_variant() {
+            let data = expr.extract_variant_data();
+            return self.is_constant_value(expr.extract_variant_data());
+        }
+
+        if expr.is_as_variant() {
+            return self.is_constant_value(expr.extract_enum());
+        }
+
+        if expr.is_match_variant() {
+            return self.is_constant_value(expr.extract_enum());
         }
 
         if expr.is_vec() {

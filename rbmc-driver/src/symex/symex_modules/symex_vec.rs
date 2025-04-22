@@ -74,33 +74,35 @@ impl<'cfg> Symex<'cfg> {
     }
 
     fn symex_vec_pop(&mut self, dest: Expr, args: Vec<Expr>) {
-        let guard = Guard::from(self.ctx._true());
-        let _vec =
-            self.make_deref(args[0].clone(), Mode::Read, guard.clone(), args[0].ty().pointee_ty());
-        let inner_pt = self.ctx.inner_pointer(_vec.clone());
-        let inner_array =
-            self.make_deref(inner_pt.clone(), Mode::Read, guard.clone(), _vec.ty().pointee_ty());
-        let array = self.ctx.object(inner_array);
-        let old_len = self.ctx.vec_len(_vec.clone());
-        let zero = self.ctx.constant_usize(0);
-        let cond = self.ctx.eq(old_len.clone(), zero.clone());
-        let sub_one = self.ctx.sub(old_len, self.ctx.constant_usize(1));
-        let mut len = self.ctx.ite(cond.clone(), zero, sub_one.clone());
-        len.simplify();
-        let cap = self.ctx.vec_cap(_vec.clone());
+        todo!();
+        // let guard = Guard::from(self.ctx._true());
+        // let _vec =
+        //     self.make_deref(args[0].clone(), Mode::Read, guard.clone(), args[0].ty().pointee_ty());
+        // let inner_pt = self.ctx.inner_pointer(_vec.clone());
+        // let inner_array =
+        //     self.make_deref(inner_pt.clone(), Mode::Read, guard.clone(), _vec.ty().pointee_ty());
+        // let array = self.ctx.object(inner_array);
+        // let old_len = self.ctx.vec_len(_vec.clone());
+        // let zero = self.ctx.constant_usize(0);
+        // let cond = self.ctx.eq(old_len.clone(), zero.clone());
+        // let sub_one = self.ctx.sub(old_len, self.ctx.constant_usize(1));
+        // let mut len = self.ctx.ite(cond.clone(), zero, sub_one.clone());
+        // len.simplify();
+        // let cap = self.ctx.vec_cap(_vec.clone());
 
-        // Return pop value
-        let lhs = dest;
-        let none = self.ctx.variant(self.ctx.constant_usize(0), None, lhs.ty());
-        let i = sub_one;
-        let data = self.ctx.index(array.clone(), i, array.ty().elem_type());
-        let some = self.ctx.variant(self.ctx.constant_usize(1), Some(data), lhs.ty());
-        let rhs = self.ctx.ite(cond, none, some);
-        self.assign(lhs, rhs, guard.clone());
+        // // Return pop value
+        // let lhs = dest;
+        // let none = self.ctx.constant(vec![], ty)
+        // self.ctx.variant(self.ctx.constant_usize(0), None, lhs.ty());
+        // let i = sub_one;
+        // let data = self.ctx.index(array.clone(), i, array.ty().elem_type());
+        // let some = self.ctx.variant(self.ctx.constant_usize(1), data, lhs.ty());
+        // let rhs = self.ctx.ite(cond, none, some);
+        // self.assign(lhs, rhs, guard.clone());
 
-        // Update vec
-        let lhs = _vec;
-        let rhs = self.ctx._vec(inner_pt, len, cap, lhs.ty());
-        self.assign(lhs, rhs, guard);
+        // // Update vec
+        // let lhs = _vec;
+        // let rhs = self.ctx._vec(inner_pt, len, cap, lhs.ty());
+        // self.assign(lhs, rhs, guard);
     }
 }

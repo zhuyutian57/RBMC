@@ -104,6 +104,10 @@ impl Expr {
     pub fn is_store(&self) -> bool {
         self.ctx.borrow().is_store(self.id)
     }
+
+    pub fn is_pointer(&self) -> bool {
+        self.ctx.borrow().is_pointer(self.id)
+    }
     
     pub fn is_pointer_base(&self) -> bool {
         self.ctx.borrow().is_pointer_base(self.id)
@@ -130,8 +134,8 @@ impl Expr {
         self.ctx.borrow().is_inner_pointer(self.id)
     }
 
-    pub fn is_enum(&self) -> bool {
-        self.ctx.borrow().is_enum(self.id)
+    pub fn is_variant(&self) -> bool {
+        self.ctx.borrow().is_variant(self.id)
     }
 
     pub fn is_as_variant(&self) -> bool {
@@ -315,6 +319,21 @@ impl Expr {
         self.extract_sub_expr(2)
     }
 
+    pub fn extract_pointer_base(&self) -> Expr {
+        assert!(self.is_pointer());
+        self.extract_sub_expr(0)
+    }
+
+    pub fn extract_pointer_offset(&self) -> Expr {
+        assert!(self.is_pointer());
+        self.extract_sub_expr(1)
+    }
+
+    pub fn extract_pointer_meta(&self) -> Expr {
+        assert!(self.is_pointer());
+        self.extract_sub_expr(2)
+    }
+
     pub fn extract_vec_len(&self) -> Expr {
         assert!(self.is_vec());
         self.extract_sub_expr(1)
@@ -345,13 +364,18 @@ impl Expr {
     }
 
     pub fn extract_variant_idx(&self) -> usize {
-        assert!(self.is_enum() || self.is_as_variant() || self.is_match_variant());
-        let i = if self.is_enum() {
+        assert!(self.is_variant() || self.is_as_variant() || self.is_match_variant());
+        let i = if self.is_variant() {
             self.extract_sub_expr(0).extract_constant().to_integer()
         } else {
             self.extract_sub_expr(1).extract_constant().to_integer()
         };
         bigint_to_usize(&i)
+    }
+
+    pub fn extract_variant_data(&self) -> Expr {
+        assert!(self.is_variant());
+        self.extract_sub_expr(1)
     }
 
     /// Compute offset from root object. The final offset is in byte-level.
@@ -546,6 +570,14 @@ impl Expr {
             return;
         }
 
+        if self.is_pointer() {
+            let base = sub_exprs[0].clone();
+            let offset = sub_exprs[1].clone();
+            let meta = sub_exprs[2].clone();
+            *self = self.ctx.pointer(base, offset, Some(meta), self.ty());
+            return;
+        }
+
         if self.is_pointer_base() {
             let pt = sub_exprs[0].clone();
             *self = self.ctx.pointer_base(pt);
@@ -590,11 +622,11 @@ impl Expr {
             return;
         }
 
-        if self.is_enum() {
+        if self.is_variant() {
             if sub_exprs.len() == 2 {
                 let idx = sub_exprs[0].clone();
                 let data = sub_exprs[1].clone();
-                *self = self.ctx.variant(idx, Some(data), self.ty());
+                *self = self.ctx.variant(idx, data, self.ty());
             }
             return;
         }
@@ -663,21 +695,18 @@ impl Debug for Expr {
             }
 
             if self.is_aggregate() {
-                let ty = self.ty();
-                let type_info = if ty.is_struct() || ty.is_array() {
-                    ty.name()
-                } else if ty.is_tuple() {
-                    NString::from("Tuple")
-                } else {
-                    todo!("{ty:?}")
-                };
-                return write!(f, "{type_info:?} {sub_exprs:?}");
+                return write!(f, "Aggregate {sub_exprs:?}");
             }
 
             if self.is_binary() {
                 let lhs = &sub_exprs[0];
                 let rhs = &sub_exprs[1];
-                return write!(f, "({lhs:?} {:?} {rhs:?})", self.extract_bin_op());
+                let op = self.extract_bin_op();
+                return if op != BinOp::Offset {
+                    write!(f, "({lhs:?} {:?} {rhs:?})", self.extract_bin_op())
+                } else {
+                    write!(f, "{op:?}({lhs:?}, {rhs:?})")
+                };
             }
 
             if self.is_unary() {
@@ -742,19 +771,26 @@ impl Debug for Expr {
                 return write!(f, "{pt:?} + {offset:?}");
             }
 
+            if self.is_pointer() {
+                let base = &sub_exprs[0];
+                let offset = &sub_exprs[1];
+                let meta = &sub_exprs[2];
+                return write!(f, "({base:?}, {offset:?}, {meta:?})");
+            }
+
             if self.is_pointer_base() {
                 let pt = &sub_exprs[0];
-                return write!(f, "{pt:?}");
+                return write!(f, "PtrBase({pt:?})");
             }
 
             if self.is_pointer_offset() {
                 let pt = &sub_exprs[0];
-                return write!(f, "Offset({pt:?})");
+                return write!(f, "PtrOffset({pt:?})");
             }
 
             if self.is_pointer_meta() {
                 let pt = &sub_exprs[0];
-                return write!(f, "Meta({pt:?})");
+                return write!(f, "PtrMeta({pt:?})");
             }
 
             if self.is_vec() {
@@ -779,22 +815,15 @@ impl Debug for Expr {
                 return write!(f, "iptr({pt:?})");
             }
 
-            if self.is_enum() {
-                let def = self.ty().enum_def();
-                let idx = bigint_to_usize(&sub_exprs[0].extract_constant().to_integer());
-                if sub_exprs.len() == 1 {
-                    assert!(def.1[idx].1.is_empty());
-                    return write!(f, "{:?}", def.1[idx].0);
-                } else {
-                    return write!(f, "{:?}({:?})", def.1[idx].0, sub_exprs[1]);
-                }
+            if self.is_variant() {
+                return write!(f, "Variant({:?}, {:?})", sub_exprs[0], sub_exprs[1]);
             }
 
             if self.is_as_variant() {
                 let def = self.ty().enum_def();
                 let x = sub_exprs[0].clone();
                 let idx = bigint_to_usize(&sub_exprs[1].extract_constant().to_integer());
-                return write!(f, "({x:?} as {:?})", def.1[idx].0);
+                return write!(f, "AsVariant({x:?}, {:?})", def.1[idx].0);
             }
 
             if self.is_match_variant() {
@@ -843,6 +872,7 @@ pub trait ExprBuilder {
     fn constant_adt(&self, fields: Vec<Constant>, ty: Type) -> Expr;
     fn mk_symbol(&self, symbol: Symbol, ty: Type) -> Expr;
     fn mk_type(&self, ty: Type) -> Expr;
+    fn constant_zst(&self, ty: Type) -> Expr;
 
     fn address_of(&self, object: Expr, ty: Type) -> Expr;
     fn aggregate(&self, operands: Vec<Expr>, ty: Type) -> Expr;
@@ -872,6 +902,7 @@ pub trait ExprBuilder {
     fn index(&self, object: Expr, i: Expr, ty: Type) -> Expr;
     fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
 
+    fn pointer(&self, base: Expr, offset: Expr, meta: Option<Expr>, ty: Type) -> Expr;
     fn pointer_base(&self, pt: Expr) -> Expr;
     fn pointer_offset(&self, pt: Expr) -> Expr;
     fn pointer_meta(&self, pt: Expr) -> Expr;
@@ -883,7 +914,7 @@ pub trait ExprBuilder {
     fn vec_cap(&self, pt: Expr) -> Expr;
     fn inner_pointer(&self, pt: Expr) -> Expr;
 
-    fn variant(&self, idx: Expr, data: Option<Expr>, ty: Type) -> Expr;
+    fn variant(&self, idx: Expr, data: Expr, ty: Type) -> Expr;
     fn as_variant(&self, x: Expr, idx: Expr) -> Expr;
     fn match_variant(&self, x: Expr, idx: Expr) -> Expr;
 

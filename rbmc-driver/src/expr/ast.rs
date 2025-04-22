@@ -107,7 +107,9 @@ pub(super) enum NodeKind {
     /// a field of a struct.
     Store(NodeId, NodeId, NodeId),
 
-    // `Pointer(base, offset, meta)`: pointer/ref in a uniform.
+    /// `Pointer(base, offset, meta)`: pointer uniform. Rust pointer may
+    /// contains meatadata. For example. slice reference contains len as metadata
+    Pointer(NodeId, NodeId, NodeId),    
     /// `PointerBase(pt)` retrieve the ident of a pointer
     PointerBase(NodeId),
     /// `PointerOffset(pt)` retrieve the offset of a pointer
@@ -126,8 +128,8 @@ pub(super) enum NodeKind {
 
     // enum
     /// `Variant(i, x)`: variant `i` with data `x`.
-    /// If `x` is `None`, this variant does not contains anything
-    Variant(NodeId, Option<NodeId>),
+    /// The variant without data is a constant Adt
+    Variant(NodeId, NodeId),
     /// `AsVariant(x, i)`: enum `x` as variant
     AsVariant(NodeId, NodeId),
     /// `IsVariant(x, i)`: match `x` with variant `i`
@@ -194,6 +196,10 @@ impl NodeKind {
 
     pub fn is_store(&self) -> bool {
         matches!(self, NodeKind::Store(..))
+    }
+
+    pub fn is_pointer(&self) -> bool {
+        matches!(self, NodeKind::Pointer(..))
     }
 
     pub fn is_pointer_base(&self) -> bool {
@@ -289,6 +295,7 @@ impl Node {
             NodeKind::Ite(c, tv, fv) => Some(vec![*c, *tv, *fv]),
             NodeKind::Index(o, i) => Some(vec![*o, *i]),
             NodeKind::Store(o, i, v) => Some(vec![*o, *i, *v]),
+            NodeKind::Pointer(a, o, m) => Some(vec![*a, *o, *m]),
             NodeKind::PointerBase(p)
             | NodeKind::PointerOffset(p)
             | NodeKind::PointerMeta(p)
@@ -296,13 +303,7 @@ impl Node {
             | NodeKind::VecCap(p)
             | NodeKind::InnerPointer(p) => Some(vec![*p]),
             NodeKind::Vec(p, l, c) => Some(vec![*p, *l, *c]),
-            NodeKind::Variant(i, x) => {
-                if let Some(data) = x {
-                    Some(vec![*i, *data])
-                } else {
-                    Some(vec![*i])
-                }
-            }
+            NodeKind::Variant(i, x) => Some(vec![*i, *x]),
             NodeKind::AsVariant(x, i) | NodeKind::MatchVariant(x, i) => Some(vec![*x, *i]),
             NodeKind::Move(o) | NodeKind::Valid(o) | NodeKind::Invalid(o) => Some(vec![*o]),
             NodeKind::NullObject | NodeKind::Unknown(_) => Some(vec![]),

@@ -23,6 +23,11 @@ impl Expr {
         }
         let args = sub_exprs.unwrap();
 
+        if self.is_aggregate() {
+            self.simplify_aggregate(args);
+            return;
+        }
+
         if self.is_binary() {
             self.simplify_binary(args[0].clone(), args[1].clone());
             return;
@@ -63,6 +68,29 @@ impl Expr {
             return;
         }
 
+        if self.is_pointer() {
+            let base = args[0].clone();
+            let offset = args[1].clone();
+            let meta = args[2].clone();
+            *self = self.ctx.pointer(base, offset, Some(meta), self.ty());
+            return;
+        }
+
+        if self.is_pointer_base() {
+            self.simplify_pointer_base(args[0].clone());
+            return;
+        }
+
+        if self.is_pointer_offset() {
+            self.simplify_pointer_offset(args[0].clone());
+            return;
+        }
+
+        if self.is_pointer_meta() {
+            self.simplify_pointer_meta(args[0].clone());
+            return;
+        }
+
         if self.is_vec() {
             let pt = args[0].clone();
             let len = args[1].clone();
@@ -96,6 +124,21 @@ impl Expr {
             if inner_pt.is_vec() {
                 *self = inner_pt.extract_inner_pointer();
             }
+            return;
+        }
+
+        if self.is_variant() {
+            self.simplify_variant(args[0].clone(), args[1].clone());
+            return;
+        }
+
+        if self.is_as_variant() {
+            self.simplify_as_variant(args[0].clone(), args[1].clone());
+            return;
+        }
+
+        if self.is_match_variant() {
+            self.simplify_match_variant(args[0].clone(), args[1].clone());
             return;
         }
     }
@@ -159,6 +202,23 @@ impl Expr {
             Some(sub_exprs)
         } else {
             None
+        }
+    }
+
+    fn simplify_aggregate(&mut self, args: Vec<Expr>) {
+        let is_const = args.iter()
+            .fold(
+                true,
+                |acc, field|
+                acc && field.is_constant()
+            );
+        if self.ty().is_adt() && is_const {
+            let fields = args
+                .iter()
+                .map(|x| x.extract_constant()).collect::<Vec<_>>();
+            *self = self.ctx.constant_adt(fields, self.ty());
+        } else {
+            *self = self.ctx.aggregate(args, self.ty());
         }
     }
 
@@ -375,10 +435,15 @@ impl Expr {
             if inner_expr.is_aggregate() {
                 *self = inner_expr.extract_fields()[idx].clone();
             } else if inner_expr.is_constant() {
-                assert!(inner_expr.ty().is_struct() || inner_expr.ty().is_tuple());
-                let (fields, _) = inner_expr.extract_constant().to_adt();
-                let ty = inner_expr.ty().field_type_exclude_zst(idx);
-                *self = self.ctx.constant(fields[idx].clone(), ty);
+                if inner_expr.ty().is_struct() || inner_expr.ty().is_tuple() {
+                    let (fields, _) = inner_expr.extract_constant().to_adt();
+                    let ty = inner_expr.ty().field_type_exclude_zst(idx);
+                    *self = self.ctx.constant(fields[idx].clone(), ty);
+                } else {
+                    assert!(inner_expr.ty().is_enum());
+                    let (fields, _) = inner_expr.extract_constant().to_adt();
+                    *self = self.ctx.constant(fields[idx].clone(), self.ty());
+                }
             }
             return;
         } else if inner_expr.is_store() {
@@ -405,6 +470,84 @@ impl Expr {
             }
         } else {
             *self = self.ctx.store(object, i, value);
+        }
+    }
+
+    fn simplify_pointer_base(&mut self, pt: Expr) {
+        if pt.is_pointer() {
+            *self = pt.extract_pointer_base();
+        } else if pt.is_offset() {
+            *self = pt.extract_inner_pointer();
+        } else {
+            *self = self.ctx.pointer_base(pt);
+        }
+    }
+
+    fn simplify_pointer_offset(&mut self, pt: Expr) {
+        if pt.is_pointer() {
+            *self = pt.extract_pointer_offset();
+        } else if pt.is_offset() {
+            *self = pt.extract_offset();
+        } else {
+            *self = self.ctx.pointer_offset(pt);
+        }
+    }
+
+    fn simplify_pointer_meta(&mut self, pt: Expr) {
+        if pt.is_pointer() {
+            *self = pt.extract_pointer_meta();
+        } else {
+            *self = self.ctx.pointer_meta(pt);
+        }
+    }
+
+    fn simplify_variant(&mut self, i: Expr, data: Expr) {
+        if data.is_constant() {
+            let i = i.extract_constant();
+            let d = data.extract_constant();
+            *self = self.ctx.constant_adt(vec![i, d], self.ty());
+        } else {
+            *self = self.ctx.variant(i, data, self.ty());
+        }
+    }
+
+    fn simplify_as_variant(&mut self, _enum: Expr, i: Expr) {
+        let j = bigint_to_usize(&i.extract_constant().to_integer());
+        if _enum.is_variant() {
+            let idx = _enum.extract_variant_idx();
+            assert!(j == idx);
+            let data = _enum.extract_variant_data();
+            if data.is_constant() {
+                *self = self.ctx.constant_adt(
+                    vec![i.extract_constant(), data.extract_constant()],
+                    self.ty()
+                );
+                return;
+            }
+        } else if _enum.is_constant() {
+            let b = _enum.extract_constant().to_adt().0[0].to_integer();
+            let i = bigint_to_usize(&b);
+            assert!(i == j);
+            *self = _enum.clone();
+            return;
+        }
+        *self = self.ctx.as_variant(_enum, i);
+    }
+
+    fn simplify_match_variant(&mut self, _enum: Expr, i: Expr) {
+        let j = bigint_to_usize(&i.extract_constant().to_integer());
+        let idx = if _enum.is_constant() {
+            Some(_enum.extract_constant().to_adt().0[0].to_integer())
+        } else if _enum.is_variant() || _enum.is_as_variant() {
+            Some(_enum.extract_variant_idx().into())
+        } else {
+            None
+        };
+        if let Some(b) = idx {
+            let variant_idx = bigint_to_usize(&b);
+            *self = if j == variant_idx { self.ctx._true() } else { self.ctx._false() };
+        } else {
+            *self = self.ctx.match_variant(_enum, i);
         }
     }
 }

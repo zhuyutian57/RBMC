@@ -182,6 +182,10 @@ impl Type {
         }
     }
 
+    pub fn is_adt(&self) -> bool {
+        self.is_struct() || self.is_tuple() || self.is_enum()
+    }
+
     pub fn is_ref(&self) -> bool {
         self.0.kind().is_ref()
     }
