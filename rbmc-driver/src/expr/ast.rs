@@ -107,9 +107,9 @@ pub(super) enum NodeKind {
     /// a field of a struct.
     Store(NodeId, NodeId, NodeId),
 
-    /// `Pointer(base, offset, meta)`: pointer uniform. Rust pointer may
-    /// contains meatadata. For example. slice reference contains len as metadata
-    Pointer(NodeId, NodeId, NodeId),    
+    /// `Pointer(base, offset, meta)`: pointer uniform.
+    /// Rust pointer may contains meatadata. For example, slice's metadata is its `len`.
+    Pointer(NodeId, NodeId, NodeId),
     /// `PointerBase(pt)` retrieve the ident of a pointer
     PointerBase(NodeId),
     /// `PointerOffset(pt)` retrieve the offset of a pointer

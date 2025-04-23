@@ -177,6 +177,10 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             a = Some(self.convert_store(object, index, value));
         }
 
+        if expr.is_pointer() {
+            todo!();
+        }
+
         if expr.is_pointer_base() {
             a = Some(self.convert_pointer_base(&args[0]));
         }

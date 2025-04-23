@@ -116,6 +116,11 @@ impl Context {
         matches!(self.extract_constant(i), Ok(t) if t.is_adt())
     }
 
+    pub fn is_constant_zst(&self, i: NodeId) -> bool {
+        assert!(i < self.nodes.len());
+        matches!(self.extract_constant(i), Ok(t) if t.is_zst())
+    }
+
     pub fn is_type(&self, i: NodeId) -> bool {
         assert!(i < self.nodes.len());
         matches!(self.extract_terminal(i), Ok(t) if t.is_type())
@@ -690,20 +695,18 @@ impl ExprBuilder for ExprCtx {
         Expr { ctx: self.clone(), id }
     }
 
-    fn pointer(&self, base: Expr, offset: Expr, meta: Option<Expr>, ty: Type) -> Expr {
+    fn pointer(&self, base: Expr, offset: Expr, meta: Expr, ty: Type) -> Expr {
         assert!(base.ty().is_primitive_ptr());
-        let meta_data = if let Some(data) = meta {
-            assert!(ty.is_slice_ptr());
-            data
+        if ty.is_slice_ptr() {
+            assert!(meta.ty().is_usize());
         } else {
-            self.constant_usize(0)
-        };
-        let kind = NodeKind::Pointer(base.id, offset.id, meta_data.id);
+            assert!(meta.is_constant_zst());
+        }
+        let kind = NodeKind::Pointer(base.id, offset.id, meta.id);
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
         Expr { ctx: self.clone(), id }
     }
-
 
     fn pointer_base(&self, pt: Expr) -> Expr {
         assert!(pt.ty().is_any_ptr());

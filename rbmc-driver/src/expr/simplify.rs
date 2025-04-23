@@ -72,7 +72,7 @@ impl Expr {
             let base = args[0].clone();
             let offset = args[1].clone();
             let meta = args[2].clone();
-            *self = self.ctx.pointer(base, offset, Some(meta), self.ty());
+            *self = self.ctx.pointer(base, offset, meta, self.ty());
             return;
         }
 
@@ -408,15 +408,24 @@ impl Expr {
     }
 
     fn simplify_cast(&mut self, src: Expr, ty: Type) {
-        if src.is_constant() && ty.is_integer() {
-            let integer = if src.ty().is_integer() {
-                src.extract_constant().to_integer()
-            } else {
-                assert!(src.ty().is_any_ptr());
-                BigInt::ZERO
-            };
-            *self = self.ctx.constant_integer(integer, ty)
+        // TODO: simplify cast
+        if src.is_constant() {
+            if ty.is_integer() {
+                let integer = if src.ty().is_integer() {
+                    src.extract_constant().to_integer()
+                } else {
+                    assert!(src.ty().is_any_ptr());
+                    BigInt::ZERO
+                };
+                *self = self.ctx.constant_integer(integer, ty);
+                return;
+            } else if src.ty().is_coercion_to(ty) {
+                let constant = src.extract_constant();
+                *self = self.ctx.constant(constant, ty);
+                return;
+            }
         }
+        *self = self.ctx.cast(src, self.ctx.mk_type(ty));
     }
 
     fn simplify_same_object(&mut self, lhs: Expr, rhs: Expr) {

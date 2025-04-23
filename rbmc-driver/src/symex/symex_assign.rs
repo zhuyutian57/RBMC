@@ -1,5 +1,7 @@
+use stable_mir::mir;
 use stable_mir::mir::*;
 use stable_mir::ty::IndexedVal;
+use stable_mir::ty::TyConst;
 
 use super::symex::*;
 use crate::expr::expr::*;
@@ -43,6 +45,7 @@ impl<'cfg> Symex<'cfg> {
 
         // Assignment for symex
         self.exec_state.assignment(lhs.clone(), rhs.clone());
+
 
         // New l2 symbol
         lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
@@ -92,7 +95,7 @@ impl<'cfg> Symex<'cfg> {
             let mut new_lhs = inner_object.clone();
             let mut index = lhs.extract_index();
 
-            if inner_object.is_slice() {
+            if inner_object.extract_inner_expr().is_slice() {
                 let slice = inner_object.extract_inner_expr();
                 new_lhs = slice.extract_object();
                 index = self.ctx.add(index, slice.extract_slice_start());
@@ -115,81 +118,40 @@ impl<'cfg> Symex<'cfg> {
     fn make_rvalue(&mut self, rvalue: &Rvalue) -> Expr {
         let ty = self.top_mut().function.rvalue_type(rvalue);
         match rvalue {
-            Rvalue::AddressOf(_, p) => {
-                let place = self.make_project(p);
-                let object = if place.is_object() {
-                    place
-                } else {
-                    self.ctx.object(place)
-                };
-                let address_of = self.ctx.address_of(object, ty);
-                address_of
-            }
-            Rvalue::Aggregate(k, operands) => self.make_aggregate(k, operands, ty),
-            Rvalue::BinaryOp(mir_op, lop, rop) => {
-                let op = BinOp::from(mir_op.clone());
-                let lhs = self.make_operand(lop);
-                let rhs = self.make_operand(rop);
-                let expr = match op {
-                    BinOp::Add => self.ctx.add(lhs, rhs),
-                    BinOp::Sub => self.ctx.sub(lhs, rhs),
-                    BinOp::Mul => self.ctx.mul(lhs, rhs),
-                    BinOp::Div => self.ctx.div(lhs, rhs),
-                    BinOp::Eq => self.ctx.eq(lhs, rhs),
-                    BinOp::Ne => self.ctx.ne(lhs, rhs),
-                    BinOp::Ge => self.ctx.ge(lhs, rhs),
-                    BinOp::Gt => self.ctx.gt(lhs, rhs),
-                    BinOp::Le => self.ctx.le(lhs, rhs),
-                    BinOp::Lt => self.ctx.lt(lhs, rhs),
-                    BinOp::And => self.ctx.and(lhs, rhs),
-                    BinOp::Or => self.ctx.or(lhs, rhs),
-                    BinOp::Implies => self.ctx.implies(lhs, rhs),
-                    BinOp::Offset => self.ctx.offset(lhs, rhs),
-                };
-                expr
-            }
-            Rvalue::UnaryOp(mir_op, o) => {
-                let op = UnOp::from(mir_op.clone());
-                let operand = self.make_operand(o);
-                let expr = match op {
-                    UnOp::Not => self.ctx.not(operand),
-                    UnOp::Neg => self.ctx.neg(operand),
-                    UnOp::Meta => self.ctx.pointer_meta(operand),
-                };
-                expr
-            }
-            Rvalue::Cast(k, op, ty) => {
-                let expr = self.make_operand(op);
-                self.symex_cast(*k, expr, Type::from(ty))
-            }
-            Rvalue::Ref(_, _, p) => {
-                let place = self.make_project(p);
-                let object = self.ctx.object(place);
-                let address_of = self.ctx.address_of(object, ty);
-                address_of
-            }
+            Rvalue::AddressOf(_, place) => self.make_address_of(place, ty),
+            Rvalue::Aggregate(k, operands)
+                => self.make_aggregate(k, operands, ty),
+            Rvalue::BinaryOp(bop, lop, rop)
+                => self.make_binary(*bop, lop, rop),
+            Rvalue::UnaryOp(uop, operand) => self.make_unary(*uop, operand),
+            Rvalue::Cast(k, operand, ty)
+                => self.symex_cast(*k, operand, Type::from(ty)),
+            Rvalue::Ref(_, _, place) => self.make_address_of(place, ty),
+            Rvalue::NullaryOp(nop, t) => self.make_nullary(nop.clone(), ty.into()),
             Rvalue::Use(operand) => self.make_operand(operand),
-            Rvalue::Repeat(operand, tyconst) => {
-                let value = self.make_operand(operand);
-                let len_expr = self.make_tyconst(tyconst);
-                // Carefully for bits
-                let bigint = len_expr.extract_constant().to_integer();
-                let len = bigint_to_u64(&bigint);
-                self.ctx.constant_array(value, Some(len))
-            }
-            Rvalue::Discriminant(p) => {
-                let place = self.make_project(p);
-                assert!(place.ty().is_enum());
-                let def = place.ty().enum_def();
-                let mut discr = self.ctx.constant_isize(0);
-                for i in 1..def.1.len() {
-                    let idx = self.ctx.constant_isize(i as isize);
-                    let cond = self.ctx.match_variant(place.clone(), idx.clone());
-                    discr = self.ctx.ite(cond, idx, discr);
-                }
-                discr
-            }
+            Rvalue::Repeat(operand, tyconst) => self.make_repeat(operand, tyconst),
+            Rvalue::Discriminant(place) => self.make_discriminant(place),
             _ => todo!("{rvalue:?}"),
+        }
+    }
+
+    fn make_address_of(&mut self, place: &Place, ty: Type) -> Expr {
+        let mut object = self.make_project(place);
+        if ty.is_slice_ptr() {
+            assert!(object.is_slice());
+            let root_object = object.extract_object();
+            let base = self.ctx.address_of(
+                root_object.clone(),
+                root_object.extract_address_type()
+            );
+            let offset = object.extract_slice_start();
+            let meta = object.extract_slice_len();
+            self.ctx.pointer(base, offset, meta, ty)
+        } else {
+            if !object.is_object() {
+                object = self.ctx.object(object);
+            }
+            self.ctx.address_of(object, ty)
         }
     }
 
@@ -220,13 +182,73 @@ impl<'cfg> Symex<'cfg> {
             }
             AggregateKind::RawPtr(t, m) => {
                 assert!(ty.pointee_ty() == Type::from(t));
-                let pt = args[0].clone();
-                let base = self.ctx.pointer_base(pt.clone());
-                let offset = self.ctx.pointer_offset(pt);
+                let base = args[0].clone();
+                let offset = self.ctx.constant_usize(0);
                 let meta = args[1].clone();
-                self.ctx.pointer(base, offset, Some(meta), ty)
+                self.ctx.pointer(base, offset, meta, ty)
             }
             _ => todo!("{k:?}"),
         }
+    }
+
+    fn make_binary(&mut self, bop: mir::BinOp, lop: &Operand, rop: &Operand) -> Expr {
+        let op = BinOp::from(bop);
+        let lhs = self.make_operand(lop);
+        let rhs = self.make_operand(rop);
+        match op {
+            BinOp::Add => self.ctx.add(lhs, rhs),
+            BinOp::Sub => self.ctx.sub(lhs, rhs),
+            BinOp::Mul => self.ctx.mul(lhs, rhs),
+            BinOp::Div => self.ctx.div(lhs, rhs),
+            BinOp::Eq => self.ctx.eq(lhs, rhs),
+            BinOp::Ne => self.ctx.ne(lhs, rhs),
+            BinOp::Ge => self.ctx.ge(lhs, rhs),
+            BinOp::Gt => self.ctx.gt(lhs, rhs),
+            BinOp::Le => self.ctx.le(lhs, rhs),
+            BinOp::Lt => self.ctx.lt(lhs, rhs),
+            BinOp::And => self.ctx.and(lhs, rhs),
+            BinOp::Or => self.ctx.or(lhs, rhs),
+            BinOp::Implies => self.ctx.implies(lhs, rhs),
+            BinOp::Offset => self.ctx.offset(lhs, rhs),
+        }
+    }
+    
+    fn make_unary(&mut self, uop: mir::UnOp, operand: &Operand) -> Expr {
+        let op = UnOp::from(uop);
+        let operand = self.make_operand(operand);
+        match op {
+            UnOp::Not => self.ctx.not(operand),
+            UnOp::Neg => self.ctx.neg(operand),
+            UnOp::Meta => self.ctx.pointer_meta(operand),
+        }
+    }
+
+    fn make_nullary(&mut self, nop: NullOp, ty: Type) -> Expr {
+        match nop {
+            NullOp::UbChecks | NullOp::ContractChecks => self.ctx._false(),
+            _ => todo!(),
+        }
+    }
+
+    fn make_repeat(&mut self, operand: &Operand, tyconst: &TyConst) -> Expr {
+        let value = self.make_operand(operand);
+        let len_expr = self.make_tyconst(tyconst);
+        // Carefully for bits
+        let bigint = len_expr.extract_constant().to_integer();
+        let len = bigint_to_u64(&bigint);
+        self.ctx.constant_array(value, Some(len))
+    }
+
+    fn make_discriminant(&mut self, place: &Place) -> Expr {
+        let expr = self.make_project(place);
+        assert!(expr.ty().is_enum());
+        let def = expr.ty().enum_def();
+        let mut discr = self.ctx.constant_isize(0);
+        for i in 1..def.1.len() {
+            let idx = self.ctx.constant_isize(i as isize);
+            let cond = self.ctx.match_variant(expr.clone(), idx.clone());
+            discr = self.ctx.ite(cond, idx, discr);
+        }
+        discr
     }
 }

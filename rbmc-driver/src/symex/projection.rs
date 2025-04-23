@@ -18,7 +18,6 @@ pub enum Mode {
     Read,
     Drop,
     Dealloc,
-    Slice(Option<usize>, Option<usize>),
 }
 
 pub(super) struct Projection<'a, 'cfg> {
@@ -90,7 +89,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
                 continue;
             }
 
-            // Note that all pointer is constructed from a root object
+            // Note that all pointer is constructed from a root object.
+            // The root object here is used to retrieve place states.
             let root_object = object.extract_root_object();
             let mut pointer_cond = self._ctx.same_object(
                 pt.clone(),
@@ -110,7 +110,13 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
                 continue;
             }
 
-            let new_ret = self.build_ret(object, offset, mode, pointer_guard.clone(), ty);
+            let new_ret = self.build_ret(
+                pt.clone(),
+                object,
+                offset,
+                pointer_guard.clone()
+            );
+            
             if new_ret == None {
                 continue;
             }
@@ -131,12 +137,16 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     }
 
     /// Visit a field of a struct. Return `Index(object, i)`.
+    /// 
+    /// TODO: Add bound check. The projection may fail is the pointer is casted by raw pointer.
     fn project_field(&mut self, object: Expr, field: usize, ty: Type) -> Expr {
         assert!(object.ty().is_struct() || object.ty().is_tuple() || object.is_as_variant());
         self.build_with_const_offset(object, BigInt::from(field), ty)
     }
 
     /// Visit an array/slice. Return `Index(array/slice, i)`.
+    /// 
+    /// TODO: Add bound check. The projection may fail is the pointer is casted by raw pointer.
     fn project_index(&mut self, object: Expr, index: Expr) -> Expr {
         let ty = object.ty();
         assert!(ty.is_array() || ty.is_slice());
@@ -150,45 +160,67 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         }
     }
 
+    /// Build `expr` for dereference according to the pointee type.
     fn build_ret(
         &mut self,
+        pt: Expr,
         object: Expr,
         offset: Option<BigInt>,
-        mode: Mode,
-        guard: Guard,
-        ty: Type,
+        guard: Guard
     ) -> Option<Expr> {
-        match mode {
-            Mode::Read => self.build_read(object, offset, guard, ty),
-            Mode::Slice(l, r) => self.build_slice(object, offset, l, r),
-            _ => todo!(),
+        if pt.ty().pointee_ty() == object.ty() {
+            // Access the whole object
+            assert!(object.ty().is_slice() || offset == None || offset == Some(BigInt::ZERO));
+            Some(object.extract_inner_expr())
+        } else if pt.ty().is_slice_ptr() {
+            // Build slice
+            self.build_slice(pt, object, offset)
+        } else {
+            // Access one element of an array/slice, or a field of a struct/tuple
+            self.build_index(object, offset, pt.ty(), guard)
+            
         }
     }
 
-    fn build_read(
+    /// Slicing will be check by `core::slice::*`, do not need to check here?
+    /// TODO: fix more situations
+    fn build_slice(&mut self, pt: Expr, object: Expr, offset: Option<BigInt>) -> Option<Expr> {
+        // Since `pt` points to `&object + offset`, we compute the `len` of generated slice.
+        let (root_object, mut start) = if object.ty().is_array() {
+            (object, BigInt::ZERO)
+        } else {
+            assert!(object.extract_inner_expr().is_slice());
+            let inner_expr = object.extract_root_object();
+            let start = inner_expr.extract_slice_start().extract_constant().to_integer();
+            (inner_expr.extract_root_object(), start)
+        };
+        assert!(root_object.ty().is_array());
+        if let Some(x) = offset {
+            if x < BigInt::ZERO { return None; }
+            start += x;
+        }
+        let start = self._ctx.constant_usize(bigint_to_usize(&start));
+        let len = self._ctx.pointer_meta(pt);
+        Some(self._ctx.slice(root_object, start, len))
+    }
+
+    fn build_index(
         &mut self,
         object: Expr,
         offset: Option<BigInt>,
-        guard: Guard,
         ty: Type,
+        guard: Guard
     ) -> Option<Expr> {
-        // Access the whole object
-        if object.ty() == ty && offset == None { return Some(object.extract_inner_expr()); }
-        assert!(object.ty() != ty); // removed later
-        // Compute the final offset of the accessing region.
-        let final_offset = if offset != None {
-            offset.unwrap()
-        } else {
-            // Access first element
-            BigInt::ZERO
-        };
-
-        let off = self._ctx.constant_integer(final_offset.clone(), Type::isize_type());
-        let res = self.bound_check(object.clone(), off, guard);
-        if let Some(true) = res {
+        let i = self._ctx.constant_integer(
+            match offset { Some(x) => x, _ => BigInt::ZERO },
+            Type::isize_type()
+        );
+        let out_of_bound = self.bound_check(object.clone(), i.clone(), guard);
+        // TODO: check alignment
+        if out_of_bound == Some(true) {
             None
-        } else {            
-            Some(self.build_with_const_offset(object, final_offset, ty))
+        } else {
+            Some(self._ctx.index(object, i, ty))
         }
     }
 
@@ -198,55 +230,6 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let index = self._ctx.constant_usize(i);
         let new_object = if object.is_object() { object } else { self._ctx.object(object) };
         self._ctx.index(new_object, index, ty)
-    }
-
-    fn build_slice(
-        &mut self,
-        object: Expr,
-        offset: Option<BigInt>,
-        l: Option<usize>,
-        r: Option<usize>,
-    ) -> Option<Expr> {
-        let inner_expr = object.extract_inner_expr();
-        assert!(object.ty().is_array() || inner_expr.is_slice());
-        let (root_object, start, len) = if object.ty().is_array() {
-            let start = match offset {
-                Some(o) => o,
-                None => BigInt::ZERO,
-            };
-            let len = object.ty().array_len().expect("array must has len");
-            (object, start, BigInt::from(len as usize))
-        } else {
-            let root_object = inner_expr.extract_object();
-            let start = inner_expr.extract_slice_start().extract_constant().to_integer();
-            let len = inner_expr.extract_slice_len().extract_constant().to_integer();
-            (root_object, start, len)
-        };
-
-        let end = start.clone() + len.clone();
-        let new_start = start.clone()
-            + BigInt::from(match l {
-                Some(s) => s,
-                _ => 0,
-            });
-        let new_end = match r {
-            Some(e) => start.clone() + BigInt::from(e),
-            None => end.clone(),
-        };
-        let new_len = new_end.clone() - new_start.clone();
-
-        if new_start > new_end || new_end > end || new_len < BigInt::ZERO {
-            let msg = NString::from(format!(
-                "slicing fail: [{:?}, {:?}) must be in {:?}[{:?}, {:?})",
-                &new_start, &new_end, root_object, &start, &end
-            ));
-            self._callback_symex.claim(msg, self._ctx._false().into());
-            None
-        } else {
-            let slice_start = self._ctx.constant_integer(new_start, Type::usize_type());
-            let slice_len = self._ctx.constant_integer(new_len, Type::usize_type());
-            Some(self._ctx.slice(root_object, slice_start, slice_len))
-        }
     }
 
     fn make_invalid_object(&mut self, ty: Type) -> Expr {
@@ -260,7 +243,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let invalid =
             if state.is_unknown() { self._ctx.invalid(object.clone()) } else { self._ctx._true() };
         let msg = match mode {
-            Mode::Read | Mode::Slice(..) => {
+            Mode::Read => {
                 format!("dereference failure: {object:?} is dead").into()
             }
             Mode::Dealloc | Mode::Drop => {
@@ -272,7 +255,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         self._callback_symex.claim(msg, error.to_expr());
     }
 
-    /// Bound check is in field-level
+    /// Bound check is in field-level.
     fn bound_check(&mut self, object: Expr, offset: Expr, guard: Guard) -> Option<bool> {
         assert!(object.is_object());
         let ty = object.ty();

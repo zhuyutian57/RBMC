@@ -252,6 +252,18 @@ impl Type {
         self.is_unit() || self.is_empty_struct()
     }
 
+    /// Coercion in rust. 
+    pub fn is_coercion_to(&self, ty: Type) -> bool {
+        // TODO: add mores
+        if *self == ty {
+            true
+        } else if self.is_array() && ty.is_slice() {
+            return self.elem_type().is_coercion_to(ty.elem_type());
+        } else {
+            false
+        }
+    }
+
     pub fn pointee_ty(&self) -> Self {
         assert!(self.is_any_ptr());
         match self.0.kind() {

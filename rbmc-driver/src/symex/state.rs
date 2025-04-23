@@ -2,6 +2,8 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fmt::Debug;
 
+use num_bigint::BigInt;
+
 use super::place_state::*;
 use super::renaming::Renaming;
 use super::value_set::*;
@@ -161,7 +163,7 @@ impl State {
         if expr.is_address_of() {
             let object = expr.extract_object();
             let inner_expr = object.extract_inner_expr();
-            if inner_expr.is_symbol() || inner_expr.is_slice() {
+            if inner_expr.is_symbol()  || inner_expr.is_slice() {
                 values.insert((object, None));
             } else if inner_expr.is_index() {
                 let root_object = inner_expr.extract_object();
@@ -179,10 +181,10 @@ impl State {
             let off = expr.extract_offset();
             // TODO: support dynamic offset
             assert!(off.is_constant());
-            let offset = off.extract_constant().to_integer();
             let mut objects = HashSet::new();
             self.get_value_set_rec(pt, suffix, &mut objects);
-            // Compute new offset
+            // Compute new offset.
+            let offset = off.extract_constant().to_integer();
             for (object, o) in objects {
                 let new_offset = match o {
                     Some(x) => offset.clone() + x,
