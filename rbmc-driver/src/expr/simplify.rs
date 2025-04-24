@@ -65,9 +65,8 @@ impl Expr {
 
         if self.is_pointer() {
             let base = args[0].clone();
-            let offset = args[1].clone();
-            let meta = args[2].clone();
-            *self = self.ctx.pointer(base, offset, Some(meta), self.ty());
+            let meta = args[1].clone();
+            *self = self.ctx.pointer(base, Some(meta), self.ty());
             return;
         }
 
@@ -456,35 +455,45 @@ impl Expr {
         }
     }
 
-    fn simplify_pointer_base(&mut self, pt: Expr) {
-        if pt.is_address_of() {
-            *self = pt;
-        } else if pt.is_pointer() {
-            *self = pt.extract_pointer_base();
-        } else if pt.is_offset() {
-            *self = pt.extract_inner_pointer();
+    fn simplify_pointer_base(&mut self, expr: Expr) {
+        if expr.is_address_of() {
+            *self = expr;
+        } else if expr.is_pointer() {
+            let mut base = self.ctx.pointer_base(expr.extract_inner_pointer());
+            base.simplify();
+            *self = base;
+        } else if expr.is_offset() {
+            let mut base = self.ctx.pointer_base(expr.extract_lhs());
+            base.simplify();
+            *self = base;
         } else {
-            *self = self.ctx.pointer_base(pt);
+            *self = self.ctx.pointer_base(expr);
         }
     }
 
-    fn simplify_pointer_offset(&mut self, pt: Expr) {
-        if pt.is_address_of() {
+    fn simplify_pointer_offset(&mut self, expr: Expr) {
+        if expr.is_address_of() {
             *self = self.ctx.constant_usize(0);
-        } else if pt.is_pointer() {
-            *self = pt.extract_pointer_offset();
-        } else if pt.is_offset() {
-            *self = pt.extract_offset();
+        } else if expr.is_pointer() {
+            let mut offset = self.ctx.pointer_offset(expr.extract_inner_pointer());
+            offset.simplify();
+            *self = offset;
+        } else if expr.is_offset() {
+            let l_offset = self.ctx.pointer_offset(expr.extract_lhs());
+            let r_offset = expr.extract_rhs();
+            let mut offset = self.ctx.add(l_offset, r_offset);
+            offset.simplify();
+            *self = offset;
         } else {
-            *self = self.ctx.pointer_offset(pt);
+            *self = self.ctx.pointer_offset(expr);
         }
     }
 
-    fn simplify_pointer_meta(&mut self, pt: Expr) {
-        if pt.is_pointer() {
-            *self = pt.extract_pointer_meta();
+    fn simplify_pointer_meta(&mut self, expr: Expr) {
+        if expr.is_pointer() {
+            *self = expr.extract_pointer_meta();
         } else {
-            *self = self.ctx.pointer_meta(pt);
+            *self = self.ctx.pointer_meta(expr);
         }
     }
 

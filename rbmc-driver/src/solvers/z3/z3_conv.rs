@@ -59,7 +59,6 @@ impl<'ctx> SmtSolver<'ctx> for Z3Conv<'ctx> {
         // For correct data-flow, a.k.a ALLOC_SYM, we must translate rhs firstly.
         // Because before changing ALLOC_SYM in lhs, the current one may be used
         // by address_of due to the constant propagation.
-        println!("{lhs:?} = {rhs:?}");
         let b = self.convert_ast(rhs.clone());
         let a = self.convert_ast(lhs.clone());
 

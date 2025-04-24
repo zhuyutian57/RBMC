@@ -231,12 +231,9 @@ impl<'cfg> ExecutionState<'cfg> {
         }
 
         if expr.is_pointer() {
-            let base = expr.extract_pointer_base();
-            let offset = expr.extract_pointer_offset();
+            let base = expr.extract_pointer_address();
             let meta = expr.extract_pointer_meta();
-            return self.is_constant_value(base) &&
-                self.is_constant_value(offset) &&
-                self.is_constant_value(meta);
+            return self.is_constant_value(base) && self.is_constant_value(meta);
         }
 
         if expr.is_pointer_base() || expr.is_pointer_meta() {

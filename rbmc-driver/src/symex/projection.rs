@@ -34,7 +34,6 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let mut ret = self._callback_symex.exec_state.current_local(place.local, Level::Level1);
 
         for elem in place.projection.iter() {
-            println!("{elem:?} with {ret:?} {:?}", ret.ty());
             ret = match elem {
                 ProjectionElem::Deref => self.project_deref(
                     ret.clone(),

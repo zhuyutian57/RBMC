@@ -41,7 +41,7 @@ impl<'cfg> Symex<'cfg> {
         self.rename(&mut rhs);
         rhs.simplify();
 
-        println!("{lhs:?} = {rhs:?}");
+        // println!("{lhs:?} = {rhs:?}");
 
         // Assignment for symex
         self.exec_state.assignment(lhs.clone(), rhs.clone());
@@ -144,9 +144,10 @@ impl<'cfg> Symex<'cfg> {
                 root_object.clone(),
                 root_object.extract_address_type()
             );
-            let offset = object.extract_slice_start();
+            let start = object.extract_slice_start();
+            let address = self.ctx.offset(base, start);
             let meta = object.extract_slice_len();
-            self.ctx.pointer(base, offset, Some(meta), ty)
+            self.ctx.pointer(address, Some(meta), ty)
         } else {
             if !object.is_object() {
                 object = self.ctx.object(object);
@@ -182,10 +183,9 @@ impl<'cfg> Symex<'cfg> {
             }
             AggregateKind::RawPtr(t, m) => {
                 assert!(ty.pointee_ty() == Type::from(t));
-                let base = args[0].clone();
-                let offset = self.ctx.constant_usize(0);
+                let address = args[0].clone();
                 let meta = args[1].clone();
-                self.ctx.pointer(base, offset, Some(meta), ty)
+                self.ctx.pointer(address, Some(meta), ty)
             }
             _ => todo!("{k:?}"),
         }

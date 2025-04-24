@@ -695,41 +695,39 @@ impl ExprBuilder for ExprCtx {
         Expr { ctx: self.clone(), id }
     }
 
-    fn pointer(&self, base: Expr, offset: Expr, meta: Option<Expr>, ty: Type) -> Expr {
-        assert!(base.ty().is_primitive_ptr());
+    fn pointer(&self, address: Expr, meta: Option<Expr>, ty: Type) -> Expr {
+        assert!(address.ty().is_primitive_ptr());
         if ty.is_slice_ptr() {
             assert!(meta != None);
         }
         let meta = match meta { Some(data) => data, _ => self.constant_usize(0) };
-        let kind = NodeKind::Pointer(base.id, offset.id, meta.id);
+        let kind = NodeKind::Pointer(address.id, meta.id);
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
         Expr { ctx: self.clone(), id }
     }
 
-    fn pointer_base(&self, pt: Expr) -> Expr {
-        assert!(pt.ty().is_any_ptr());
-        let ty = pt.ty();
-        let ptr = if pt.ty().is_smart_ptr() { self.inner_pointer(pt) } else { pt };
-        let kind = NodeKind::PointerBase(ptr.id);
+    fn pointer_base(&self, expr: Expr) -> Expr {
+        assert!(expr.ty().is_any_ptr());
+        let ty = expr.ty();
+        let kind = NodeKind::PointerBase(expr.id);
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
         Expr { ctx: self.clone(), id }
     }
 
-    fn pointer_offset(&self, pt: Expr) -> Expr {
-        assert!(pt.ty().is_any_ptr());
-        let ptr = if pt.ty().is_smart_ptr() { self.inner_pointer(pt) } else { pt };
-        let kind = NodeKind::PointerOffset(ptr.id);
+    fn pointer_offset(&self, expr: Expr) -> Expr {
+        assert!(expr.ty().is_any_ptr());
+        let kind = NodeKind::PointerOffset(expr.id);
         let ty = Type::usize_type();
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
         Expr { ctx: self.clone(), id }
     }
 
-    fn pointer_meta(&self, pt: Expr) -> Expr {
-        assert!(pt.ty().is_slice_ptr());
-        let kind = NodeKind::PointerMeta(pt.id);
+    fn pointer_meta(&self, expr: Expr) -> Expr {
+        assert!(expr.ty().is_slice_ptr());
+        let kind = NodeKind::PointerMeta(expr.id);
         let ty = Type::usize_type();
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);

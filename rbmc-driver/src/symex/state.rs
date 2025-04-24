@@ -176,25 +176,6 @@ impl State {
             return;
         }
 
-        if expr.is_offset() || expr.is_pointer() {
-            let pt = expr.extract_root_pointer();
-            let off = expr.extract_offset();
-            // TODO: support dynamic offset
-            assert!(off.is_constant());
-            let mut objects = HashSet::new();
-            self.get_value_set_rec(pt, suffix, &mut objects);
-            // Compute new offset.
-            let offset = off.extract_constant().to_integer();
-            for (object, o) in objects {
-                let new_offset = match o {
-                    Some(x) => offset.clone() + x,
-                    None => offset.clone(),
-                };
-                values.insert((object, Some(new_offset)));
-            }
-            return;
-        }
-
         if expr.is_ite() {
             let true_value = expr.extract_true_value();
             let false_value = expr.extract_false_value();
@@ -252,6 +233,30 @@ impl State {
             }
             return;
         }
+
+        if expr.is_pointer() || expr.is_pointer_base() {
+            self.get_value_set_rec(expr.extract_inner_pointer(), suffix, values);
+            return;
+        }
+
+        if expr.is_offset() {
+            let mut objects = HashSet::new();
+            self.get_value_set_rec(expr.extract_lhs(), suffix, &mut objects);
+            let rhs = expr.extract_rhs();
+            // TODO: support dynamic offset
+            assert!(rhs.is_constant());
+            // Compute new offset.
+            let offset = rhs.extract_constant().to_integer();
+            for (object, o) in objects {
+                let new_offset = match o {
+                    Some(x) => offset.clone() + x,
+                    None => offset.clone(),
+                };
+                values.insert((object, Some(new_offset)));
+            }
+            return;
+        }
+
 
         if expr.is_vec() || expr.is_inner_pointer() {
             let inner_pt = expr.extract_inner_pointer();

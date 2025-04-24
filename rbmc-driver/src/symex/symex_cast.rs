@@ -32,11 +32,10 @@ impl<'cfg> Symex<'cfg> {
             | PointerCoercion::ArrayToPointer => todo!("Support later"),
             PointerCoercion::Unsize => {
                 if src_ty.pointee_ty().is_array() && target_ty.is_slice_ptr() {
-                    let base = pt.clone();
-                    let offset = self.ctx.constant_usize(0);
+                    let address = pt.clone();
                     let len = src_ty.pointee_ty().array_len().unwrap();
                     let meta = self.ctx.constant_usize(len);
-                    self.ctx.pointer(base, offset, Some(meta), target_ty)
+                    self.ctx.pointer(address, Some(meta), target_ty)
                 } else {
                     todo!("{src_ty:?} => {target_ty:?}")
                 }
@@ -53,17 +52,16 @@ impl<'cfg> Symex<'cfg> {
     fn symex_cast_ptrtoptr(&mut self, pt: Expr, ty: Type) -> Expr {
         if pt.ty().is_slice_ptr() {
             let base = self.ctx.pointer_base(pt.clone());
-            let offset = self.ctx.pointer_offset(pt.clone());
+            let start = self.ctx.pointer_offset(pt.clone());
+            let address = self.ctx.offset(base, start);
             let meta = self.ctx.pointer_meta(pt.clone());
             if ty.is_slice_ptr() {
-                self.ctx.pointer(base, offset, Some(meta), ty)
+                self.ctx.pointer(address, Some(meta), ty)
             } else {
-                self.ctx.pointer(base, offset, None, ty)
+                self.ctx.pointer(address, None, ty)
             }
         } else {
-            let base = self.ctx.pointer_base(pt.clone());
-            let offset = self.ctx.pointer_offset(pt.clone());
-            self.ctx.pointer(base, offset, None, ty)
+            self.ctx.pointer(pt, None, ty)
         }
     }
 

@@ -103,18 +103,17 @@ pub(super) enum NodeKind {
 
     /// `IndexSized(object, index)`: index an array, slice, tuple or struct.
     Index(NodeId, NodeId),
-    /// `Store(object, index, value)` updates an array/slice or
-    /// a field of a struct.
+    /// `Store(object, index, value)` updates an array/slice or a field of a struct.
     Store(NodeId, NodeId, NodeId),
 
-    /// `Pointer(base, offset, meta)`: pointer uniform.
+    /// `Pointer(address, meta)`: pointer uniform. `address` is an pointer expr.
     /// Rust pointer may contains meatadata. For example, slice's metadata is its `len`.
-    Pointer(NodeId, NodeId, NodeId),
-    /// `PointerBase(pt)` retrieve the ident of a pointer
+    Pointer(NodeId, NodeId),
+    /// `PointerBase(pt)` retrieve the `base` address from a pointer expr, e.g. &object.
     PointerBase(NodeId),
-    /// `PointerOffset(pt)` retrieve the offset of a pointer
+    /// `PointerOffset(pt)` retrieve the offset from a pointer expr.
     PointerOffset(NodeId),
-    /// `PtrMetaData(pt)` retrieve pointer meta data, such as slice len
+    /// `PointerMeta(pt)` retrieve meta data from a pointer expr.
     PointerMeta(NodeId),
     /// `Vec(*[T], len, cap)` encodes Vec, three-field tuple,
     /// array pointer, length and capacity
@@ -295,7 +294,7 @@ impl Node {
             NodeKind::Ite(c, tv, fv) => Some(vec![*c, *tv, *fv]),
             NodeKind::Index(o, i) => Some(vec![*o, *i]),
             NodeKind::Store(o, i, v) => Some(vec![*o, *i, *v]),
-            NodeKind::Pointer(a, o, m) => Some(vec![*a, *o, *m]),
+            NodeKind::Pointer(a, m) => Some(vec![*a, *m]),
             NodeKind::PointerBase(p)
             | NodeKind::PointerOffset(p)
             | NodeKind::PointerMeta(p)

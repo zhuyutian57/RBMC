@@ -245,14 +245,14 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         }
 
         if expr.is_symbol() {
-            let symbol = expr.extract_symbol();
-            let s = self.convert_symbol(symbol.name(), expr.ty());
+            let sym = expr.extract_symbol();
+            let symbol = self.convert_symbol(sym.name(), expr.ty());
 
-            if symbol.ident() == NString::ALLOC_SYM {
-                self.cache_alloc_ast(s.clone());
+            if sym.ident() == NString::ALLOC_SYM {
+                self.cache_alloc_ast(symbol.clone());
             }
 
-            a = Some(s);
+            a = Some(symbol);
         }
 
         a
@@ -439,7 +439,11 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     fn convert_store(&mut self, object: Expr, index: Expr, value: Expr) -> Ast {
         if object.ty().is_array() {
             let array = self.convert_ast(object.clone());
-            let i = self.convert_ast(index.clone());
+            let i = if object.ty().array_domain() != index.ty() {
+                self.convert_cast(index, object.ty().array_domain())
+            } else {
+                self.convert_ast(index.clone())
+            };
             let val = self.convert_ast(value.clone());
             return self.mk_store(&array, &i, &val);
         }

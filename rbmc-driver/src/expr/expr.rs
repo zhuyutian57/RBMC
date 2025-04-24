@@ -252,33 +252,6 @@ impl Expr {
         self.extract_sub_expr(1)
     }
 
-    /// Retrieve the start address of an object
-    pub fn extract_root_pointer(&self) -> Expr {
-        assert!(self.ty().is_primitive_ptr());
-        if self.is_offset() {
-            self.extract_inner_pointer().extract_root_pointer()
-        } else if self.is_pointer() {
-            self.extract_inner_pointer()
-        } else {
-            self.clone()
-        }
-    }
-
-    /// Compute the difference between the current address and the root pointer.
-    pub fn extract_offset(&self) -> Expr {
-        assert!(self.ty().is_primitive_ptr() && (self.is_offset() || self.is_pointer()));
-        let pt = self.extract_inner_pointer();
-        let r_offset = self.extract_sub_expr(1);
-        let l_offset = if pt.is_offset() {
-            pt.extract_offset()
-        } else {
-            self.ctx.constant_integer(BigInt::ZERO, r_offset.ty())
-        };
-        let mut offset = self.ctx.add(l_offset, r_offset);
-        offset.simplify();
-        offset
-    }
-
     pub fn extract_un_op(&self) -> UnOp {
         assert!(self.is_unary());
         self.ctx.borrow().extract_un_op(self.id).unwrap()
@@ -334,19 +307,14 @@ impl Expr {
         self.extract_sub_expr(2)
     }
 
-    pub fn extract_pointer_base(&self) -> Expr {
+    pub fn extract_pointer_address(&self) -> Expr {
         assert!(self.is_pointer());
         self.extract_sub_expr(0)
     }
 
-    pub fn extract_pointer_offset(&self) -> Expr {
-        assert!(self.is_pointer());
-        self.extract_sub_expr(1)
-    }
-
     pub fn extract_pointer_meta(&self) -> Expr {
         assert!(self.is_pointer());
-        self.extract_sub_expr(2)
+        self.extract_sub_expr(1)
     }
 
     pub fn extract_vec_len(&self) -> Expr {
@@ -362,7 +330,6 @@ impl Expr {
     pub fn extract_inner_pointer(&self) -> Expr {
         assert!(
             self.is_pointer()
-                || self.is_offset()
                 || self.is_pointer_base()
                 || self.is_pointer_offset()
                 || self.is_pointer_meta()
@@ -588,9 +555,8 @@ impl Expr {
 
         if self.is_pointer() {
             let base = sub_exprs[0].clone();
-            let offset = sub_exprs[1].clone();
-            let meta = sub_exprs[2].clone();
-            *self = self.ctx.pointer(base, offset, Some(meta), self.ty());
+            let meta = sub_exprs[1].clone();
+            *self = self.ctx.pointer(base, Some(meta), self.ty());
             return;
         }
 
@@ -789,9 +755,8 @@ impl Debug for Expr {
 
             if self.is_pointer() {
                 let base = &sub_exprs[0];
-                let offset = &sub_exprs[1];
-                let meta = &sub_exprs[2];
-                return write!(f, "({base:?}, {offset:?}, {meta:?})");
+                let meta = &sub_exprs[1];
+                return write!(f, "Ptr({base:?}, {meta:?})");
             }
 
             if self.is_pointer_base() {
@@ -918,10 +883,10 @@ pub trait ExprBuilder {
     fn index(&self, object: Expr, i: Expr, ty: Type) -> Expr;
     fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
 
-    fn pointer(&self, base: Expr, offset: Expr, meta: Option<Expr>, ty: Type) -> Expr;
-    fn pointer_base(&self, pt: Expr) -> Expr;
-    fn pointer_offset(&self, pt: Expr) -> Expr;
-    fn pointer_meta(&self, pt: Expr) -> Expr;
+    fn pointer(&self, address: Expr, meta: Option<Expr>, ty: Type) -> Expr;
+    fn pointer_base(&self, expr: Expr) -> Expr;
+    fn pointer_offset(&self, expr: Expr) -> Expr;
+    fn pointer_meta(&self, expr: Expr) -> Expr;
     fn nonnull(&self, pt: Expr, ty: Type) -> Expr;
     fn unique(&self, pt: Expr, ty: Type) -> Expr;
     fn _box(&self, pt: Expr) -> Expr;
