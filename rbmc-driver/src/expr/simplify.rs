@@ -423,7 +423,8 @@ impl Expr {
                     *self = self.ctx.constant(fields[idx].clone(), ty);
                 } else {
                     assert!(inner_expr.ty().is_enum());
-                    let (fields, _) = inner_expr.extract_constant().to_adt();
+                    let data = &inner_expr.extract_constant().to_adt().0[1];
+                    let (fields, _) = data.to_adt();
                     *self = self.ctx.constant(fields[idx].clone(), self.ty());
                 }
             }
