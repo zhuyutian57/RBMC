@@ -42,6 +42,8 @@ impl<'cfg> Symex<'cfg> {
                 self.phi_function(&mut state);
 
                 self.top_mut().cur_state.merge(&state);
+
+                // println!("after merge: {:?}", self.top().cur_state.guard);
             }
         }
 
@@ -56,7 +58,6 @@ impl<'cfg> Symex<'cfg> {
         let new_guard = nstate.guard.clone() - self.top().cur_state.guard.clone();
 
         let mut nrenaming = nstate.renaming.as_ref().unwrap().borrow_mut();
-
         for var in nrenaming.variables() {
             let l1_ident = nrenaming.current_l1_symbol(var).l1_name();
 
@@ -66,6 +67,8 @@ impl<'cfg> Symex<'cfg> {
             if cur_l2_num == n_l2_num || n_l2_num == 0 {
                 continue;
             }
+
+            // println!("find {var:?}\n{:?}", self.exec_state.ns);
 
             let mut cur_rhs = self.exec_state.ns.lookup_symbol(var);
             let mut new_rhs = self.exec_state.ns.lookup_symbol(var);

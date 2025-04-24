@@ -235,7 +235,7 @@ impl Type {
 
     pub fn is_rbmc_nondet(&self) -> bool {
         if !self.is_fn() { return false; }
-        return self.fn_def().0.name() == "rbmc::nondet::<T>";
+        return self.fn_def().0.name() == "rbmc::nondet";
     }
 
     pub fn is_rust_builtin_function(&self) -> bool {

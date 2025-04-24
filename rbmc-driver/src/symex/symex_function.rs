@@ -31,18 +31,23 @@ impl<'cfg> Symex<'cfg> {
         if ty.is_rbmc_nondet() {
             self.symex_nondet(dest);
         } else if ty.is_rust_builtin_function() {
-            self.symex_rust_builtin_function(instance, args_exprs, dest, target);
+            self.symex_rust_builtin_function(instance, args_exprs, dest);
         } else {
             // Unwinding function
             self.symex_function(instance, args_exprs, Some(dest.clone()), target);
             return true;
         }
 
-        if let Some(t) = target {
-            self.goto(*t, self.ctx._true());
+        let mut is_unwind = !ty.is_rbmc_nondet() && !ty.is_rust_builtin_function();
+
+        if !is_unwind {
+            match target {
+                Some(t) => self.goto(*t, self.ctx._true()),
+                _ => {},
+            };
         }
 
-        !ty.is_rbmc_nondet() && !ty.is_rust_builtin_function()
+        is_unwind
     }
 
     fn symex_nondet(&mut self, dest: &Place) {
@@ -58,8 +63,7 @@ impl<'cfg> Symex<'cfg> {
         &mut self,
         instance: Instance,
         args: Vec<Expr>,
-        dest: &Place,
-        target: &Option<BasicBlockIdx>,
+        dest: &Place
     ) {
         let name = NString::from(instance.name());
         let ret = self.make_project(dest);
@@ -126,17 +130,16 @@ impl<'cfg> Symex<'cfg> {
             }
         }
 
-        if let Some(t) = &frame.target {
-            let mut state = self.top().cur_state.clone();
-            state.remove_stack_places(frame.function_id());
-            self.top_mut().add_state(*t, state);
-        }
-
         // clear namspace
         self.exec_state.ns.clear_local_symbols(frame.function_id());
 
         // clear renaming
         self.exec_state.renaming.borrow_mut().cleanr_locals(frame.function_id());
+
+        if let Some(t) = &frame.target {
+            self.top_mut().cur_state.remove_stack_places(frame.function_id());
+            self.goto(*t, self.ctx._true());
+        }
 
         self.top_mut().inc_pc();
     }

@@ -745,18 +745,22 @@ impl ExprBuilder for ExprCtx {
     fn unique(&self, pt: Expr, ty: Type) -> Expr {
         assert!(pt.ty().is_const_ptr());
         assert!(ty.is_unique());
-        let nonnull_ty = ty.struct_def().1[0].1;
+        let def = ty.struct_def().1;
+        let nonnull_ty = def[0].1;
         let nonnull = self.nonnull(pt, nonnull_ty);
-        self.aggregate(vec![nonnull], ty)
+        let phantom = self.constant_zst(def[1].1);
+        self.aggregate(vec![nonnull, phantom], ty)
     }
 
     /// To construct a box from `Unique(NonNull(*const T))`
     fn _box(&self, pt: Expr) -> Expr {
         assert!(pt.ty().is_const_ptr());
         let ty = Type::box_type(pt.ty().pointee_ty());
-        let unique_ty = ty.struct_def().1[0].1;
+        let def = ty.struct_def().1;
+        let unique_ty = def[0].1;
         let unique = self.unique(pt, unique_ty);
-        self.aggregate(vec![unique], ty)
+        let global = self.constant_zst(def[1].1);
+        self.aggregate(vec![unique, global], ty)
     }
 
     fn _vec(&self, pt: Expr, len: Expr, cap: Expr, ty: Type) -> Expr {

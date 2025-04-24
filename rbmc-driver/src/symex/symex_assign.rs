@@ -166,9 +166,13 @@ impl<'cfg> Symex<'cfg> {
                 assert!(ty.is_array());
                 self.ctx.aggregate(args, ty)
             }
+            AggregateKind::Tuple => {
+                assert!(ty.is_tuple());
+                self.ctx.aggregate(args, ty)
+            }
             AggregateKind::Adt(def, i, ..) => {
-                assert!(ty.is_struct() || ty.is_tuple() || ty.is_enum());
-                if ty.is_struct() || ty.is_tuple() {
+                assert!(ty.is_struct() || ty.is_enum());
+                if ty.is_struct() {
                     self.ctx.aggregate(args, ty)
                 } else {
                     let idx = self.ctx.constant_usize(i.to_index());
