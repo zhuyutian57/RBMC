@@ -43,11 +43,6 @@ impl Expr {
             return;
         }
 
-        if self.is_cast() {
-            self.simplify_cast(args[0].clone(), self.extract_target_type());
-            return;
-        }
-
         if self.is_object() {
             *self = self.ctx.object(args[0].clone());
             return;
@@ -72,7 +67,7 @@ impl Expr {
             let base = args[0].clone();
             let offset = args[1].clone();
             let meta = args[2].clone();
-            *self = self.ctx.pointer(base, offset, meta, self.ty());
+            *self = self.ctx.pointer(base, offset, Some(meta), self.ty());
             return;
         }
 
@@ -407,27 +402,6 @@ impl Expr {
         }
     }
 
-    fn simplify_cast(&mut self, src: Expr, ty: Type) {
-        // TODO: simplify cast
-        if src.is_constant() {
-            if ty.is_integer() {
-                let integer = if src.ty().is_integer() {
-                    src.extract_constant().to_integer()
-                } else {
-                    assert!(src.ty().is_any_ptr());
-                    BigInt::ZERO
-                };
-                *self = self.ctx.constant_integer(integer, ty);
-                return;
-            } else if src.ty().is_coercion_to(ty) {
-                let constant = src.extract_constant();
-                *self = self.ctx.constant(constant, ty);
-                return;
-            }
-        }
-        *self = self.ctx.cast(src, self.ctx.mk_type(ty));
-    }
-
     fn simplify_same_object(&mut self, lhs: Expr, rhs: Expr) {
         if lhs == rhs {
             self.id = Context::TRUE_ID;
@@ -483,7 +457,9 @@ impl Expr {
     }
 
     fn simplify_pointer_base(&mut self, pt: Expr) {
-        if pt.is_pointer() {
+        if pt.is_address_of() {
+            *self = pt;
+        } else if pt.is_pointer() {
             *self = pt.extract_pointer_base();
         } else if pt.is_offset() {
             *self = pt.extract_inner_pointer();
@@ -493,7 +469,9 @@ impl Expr {
     }
 
     fn simplify_pointer_offset(&mut self, pt: Expr) {
-        if pt.is_pointer() {
+        if pt.is_address_of() {
+            *self = self.ctx.constant_usize(0);
+        } else if pt.is_pointer() {
             *self = pt.extract_pointer_offset();
         } else if pt.is_offset() {
             *self = pt.extract_offset();

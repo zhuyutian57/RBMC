@@ -590,7 +590,7 @@ impl Expr {
             let base = sub_exprs[0].clone();
             let offset = sub_exprs[1].clone();
             let meta = sub_exprs[2].clone();
-            *self = self.ctx.pointer(base, offset, meta, self.ty());
+            *self = self.ctx.pointer(base, offset, Some(meta), self.ty());
             return;
         }
 
@@ -711,7 +711,7 @@ impl Debug for Expr {
             }
 
             if self.is_aggregate() {
-                return write!(f, "Aggregate {sub_exprs:?}");
+                return write!(f, "Aggregate({:?}) {sub_exprs:?}", self.ty());
             }
 
             if self.is_binary() {
@@ -918,7 +918,7 @@ pub trait ExprBuilder {
     fn index(&self, object: Expr, i: Expr, ty: Type) -> Expr;
     fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
 
-    fn pointer(&self, base: Expr, offset: Expr, meta: Expr, ty: Type) -> Expr;
+    fn pointer(&self, base: Expr, offset: Expr, meta: Option<Expr>, ty: Type) -> Expr;
     fn pointer_base(&self, pt: Expr) -> Expr;
     fn pointer_offset(&self, pt: Expr) -> Expr;
     fn pointer_meta(&self, pt: Expr) -> Expr;

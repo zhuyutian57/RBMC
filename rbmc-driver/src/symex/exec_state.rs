@@ -207,7 +207,7 @@ impl<'cfg> ExecutionState<'cfg> {
                 .fold(
                     true,
                     |acc, field|
-                    acc && field.is_constant()
+                    acc && self.is_constant_value(field.clone())
                 );
         }
 

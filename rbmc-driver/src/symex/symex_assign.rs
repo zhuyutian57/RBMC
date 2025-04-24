@@ -146,7 +146,7 @@ impl<'cfg> Symex<'cfg> {
             );
             let offset = object.extract_slice_start();
             let meta = object.extract_slice_len();
-            self.ctx.pointer(base, offset, meta, ty)
+            self.ctx.pointer(base, offset, Some(meta), ty)
         } else {
             if !object.is_object() {
                 object = self.ctx.object(object);
@@ -185,7 +185,7 @@ impl<'cfg> Symex<'cfg> {
                 let base = args[0].clone();
                 let offset = self.ctx.constant_usize(0);
                 let meta = args[1].clone();
-                self.ctx.pointer(base, offset, meta, ty)
+                self.ctx.pointer(base, offset, Some(meta), ty)
             }
             _ => todo!("{k:?}"),
         }

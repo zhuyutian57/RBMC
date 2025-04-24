@@ -22,7 +22,7 @@ use symex_boxed::*;
 impl<'cfg> Symex<'cfg> {
     pub fn symex_std_api(&mut self, instance: Instance, args: Vec<Expr>, dest: Expr) {
         let fty = Type::from(instance.ty());
-        let name = NString::from(fty.fn_def().0.trimmed_name());
+        let name = NString::from(fty.fn_def().0.name());
         if name.starts_with("std::alloc".into()) {
             self.symex_alloc_api(instance, args, dest);
         } else if name.starts_with("std::boxed".into()) {

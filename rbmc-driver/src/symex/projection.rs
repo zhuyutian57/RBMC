@@ -34,6 +34,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let mut ret = self._callback_symex.exec_state.current_local(place.local, Level::Level1);
 
         for elem in place.projection.iter() {
+            println!("{elem:?} with {ret:?} {:?}", ret.ty());
             ret = match elem {
                 ProjectionElem::Deref => self.project_deref(
                     ret.clone(),
@@ -177,7 +178,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
             self.build_slice(pt, object, offset)
         } else {
             // Access one element of an array/slice, or a field of a struct/tuple
-            self.build_index(object, offset, pt.ty(), guard)
+            self.build_index(object, offset, pt.ty().pointee_ty(), guard)
             
         }
     }

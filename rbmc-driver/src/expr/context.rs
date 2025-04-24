@@ -695,13 +695,12 @@ impl ExprBuilder for ExprCtx {
         Expr { ctx: self.clone(), id }
     }
 
-    fn pointer(&self, base: Expr, offset: Expr, meta: Expr, ty: Type) -> Expr {
+    fn pointer(&self, base: Expr, offset: Expr, meta: Option<Expr>, ty: Type) -> Expr {
         assert!(base.ty().is_primitive_ptr());
         if ty.is_slice_ptr() {
-            assert!(meta.ty().is_usize());
-        } else {
-            assert!(meta.is_constant_zst());
+            assert!(meta != None);
         }
+        let meta = match meta { Some(data) => data, _ => self.constant_usize(0) };
         let kind = NodeKind::Pointer(base.id, offset.id, meta.id);
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);

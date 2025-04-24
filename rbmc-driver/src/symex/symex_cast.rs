@@ -13,10 +13,9 @@ impl<'cfg> Symex<'cfg> {
         match kind {
             CastKind::PointerCoercion(c)
                 => self.symex_cast_pointer_coercion(c, expr, ty),
-            CastKind::IntToInt | CastKind::PtrToPtr
-                => self.ctx.cast(expr, self.ctx.mk_type(ty)),
-            CastKind::Transmute 
-                => self.symex_cast_transmute(expr, ty),
+            CastKind::IntToInt => self.symex_cast_inttoint(expr, ty),
+            CastKind::PtrToPtr => self.symex_cast_ptrtoptr(expr, ty),
+            CastKind::Transmute => self.symex_cast_transmute(expr, ty),
             _ => todo!("{kind:?} - {expr:?} -> {ty:?}"),
         }
     }
@@ -37,12 +36,34 @@ impl<'cfg> Symex<'cfg> {
                     let offset = self.ctx.constant_usize(0);
                     let len = src_ty.pointee_ty().array_len().unwrap();
                     let meta = self.ctx.constant_usize(len);
-                    self.ctx.pointer(base, offset, meta, target_ty)
+                    self.ctx.pointer(base, offset, Some(meta), target_ty)
                 } else {
                     todo!("{src_ty:?} => {target_ty:?}")
                 }
             },
             _ => todo!("Unsupport function pointer"),
+        }
+    }
+
+    fn symex_cast_inttoint(&mut self, expr: Expr, ty: Type) -> Expr {
+        // TODO: cast follow the type information
+        self.ctx.cast(expr, self.ctx.mk_type(ty))
+    }
+
+    fn symex_cast_ptrtoptr(&mut self, pt: Expr, ty: Type) -> Expr {
+        if pt.ty().is_slice_ptr() {
+            let base = self.ctx.pointer_base(pt.clone());
+            let offset = self.ctx.pointer_offset(pt.clone());
+            let meta = self.ctx.pointer_meta(pt.clone());
+            if ty.is_slice_ptr() {
+                self.ctx.pointer(base, offset, Some(meta), ty)
+            } else {
+                self.ctx.pointer(base, offset, None, ty)
+            }
+        } else {
+            let base = self.ctx.pointer_base(pt.clone());
+            let offset = self.ctx.pointer_offset(pt.clone());
+            self.ctx.pointer(base, offset, None, ty)
         }
     }
 
