@@ -36,6 +36,10 @@ if __name__ == "__main__":
     "-r", "--file",
     type=str,
     help="Run `cargo run --bin rbmc *.rs -- <RBMC_ARGS>`")
+  parser.add_argument(
+    "--wc",
+    action="store_true",
+    help="Number of lines in of project")
 
   args, rbmc_args = parser.parse_known_args()
 
@@ -50,5 +54,14 @@ if __name__ == "__main__":
   elif args.file is not None:
     os.system("cargo build-rbmc")
     rbmc(args.file, rbmc_args)
+  elif args.wc:
+    cmd = [
+      "find",
+      "library", "rbmc-driver", "src", "utils",
+      "-name", "*rs",
+      "|",
+      "xargs", "wc", "-l"
+    ]
+    os.system(" ".join(cmd))
   else:
     parser.print_help(sys.stdout)
