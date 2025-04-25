@@ -346,7 +346,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         };
         let total_offset = tmp_object.compute_bytes_offset();
         let msg = format!(
-            "{} failure: the offset is {total_offset:?} != 0",
+            "{} failure: the offset must be 0({total_offset:?} bytes != 0)",
             format!("{mode:?}").to_lowercase()
         )
         .into();

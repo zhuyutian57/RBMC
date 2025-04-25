@@ -23,7 +23,7 @@ loop_bound = {
   "lockfree-3.3": 11,
 }
 
-def run_on_single_file(cmd, env, smt_strategy):
+def run_on_single_file(cmd, smt_strategy):
   # Save log in output
   crate = os.path.splitext(os.path.basename(cmd[1]))[0]
   out = ""
@@ -44,19 +44,13 @@ def run_on_single_file(cmd, env, smt_strategy):
   extra_args += [">", log_file, "2>&1"]
   final_cmd = cmd + extra_args
   print("Go " + " ".join(final_cmd))
-  if env == None: os.system(" ".join(final_cmd))
-  else: os.system(env + " && " + " ".join(final_cmd))
+  os.system(" ".join(final_cmd))
 
 def rbmc(file):
   assert(os.path.exists(file))
-  # set RBMC_LIBRARY_PATH
-  rbmc_lib = os.path.join(os.path.curdir, "../target/release/librbmc.rlib")
-  os.environ["RBMC_LIBRARY_PATH"] = str(os.path.abspath(rbmc_lib))
-  # set RUSTUP_TOOLCHAIN
-  env = "export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH"
   cmd = ["rbmc", file]
-  run_on_single_file(cmd, env, "forward")
-  run_on_single_file(cmd, env, "once")
+  run_on_single_file(cmd, "forward")
+  run_on_single_file(cmd, "once")
   crate = os.path.splitext(os.path.basename(file))[0]
   if os.path.exists(crate): os.system(f'rm {crate}')
 
@@ -87,7 +81,7 @@ def kani(file):
     "--cbmc-args",
     "--memory-leak-check"
   ]
-  run_on_single_file(cmd, None, None)
+  run_on_single_file(cmd, None)
 
 def esbmc(file):
   assert(os.path.exists(file) and file.endswith(".c"))
@@ -102,7 +96,7 @@ def esbmc(file):
     "--memory-leak-check",
     "--no-unwinding-assertions"
   ]
-  run_on_single_file(cmd, None, None)
+  run_on_single_file(cmd, None)
 
 def run_expriment(dir, tool):
   print(f"Run experiment in {dir} with {tool.upper()}")

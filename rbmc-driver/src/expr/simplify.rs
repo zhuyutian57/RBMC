@@ -43,6 +43,11 @@ impl Expr {
             return;
         }
 
+        if self.is_cast() {
+            self.simplify_cast(args[0].clone(), args[1].extract_type());
+            return;
+        }
+
         if self.is_object() {
             *self = self.ctx.object(args[0].clone());
             return;
@@ -398,6 +403,16 @@ impl Expr {
             self.id = false_value.id;
         } else {
             *self = self.ctx.ite(cond, true_value, false_value);
+        }
+    }
+
+    fn simplify_cast(&mut self, src: Expr, ty: Type) {
+        if src.is_constant() {
+            assert!(src.ty().is_integer() && ty.is_integer());
+            let i = src.extract_constant().to_integer();
+            *self = self.ctx.constant_integer(i, ty);
+        } else {
+            *self = self.ctx.cast(src, self.ctx.mk_type(ty));
         }
     }
 

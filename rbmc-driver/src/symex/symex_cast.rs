@@ -10,7 +10,7 @@ use crate::symbol::symbol::*;
 
 impl<'cfg> Symex<'cfg> {
     pub(super) fn symex_cast(&mut self, kind: CastKind, operand: &Operand, ty: Type) -> Expr {
-        let expr = self.make_operand(operand);
+        let expr = self.make_operand(operand).unwrap_predicates();
         match kind {
             CastKind::PointerCoercion(c)
                 => self.symex_cast_pointer_coercion(c, expr, ty),
@@ -71,7 +71,7 @@ impl<'cfg> Symex<'cfg> {
             let object = self.ctx.object(expr);
             let i = self.ctx.constant_usize(0);
             self.ctx.index(object, i, target_ty)
-        } else if expr.ty().is_integer() {
+        } else if expr.ty().is_integer() && target_ty.is_primitive() {
             let mut num = expr;
             self.rename(&mut num);
             assert!(num.is_constant() && num.extract_constant().to_integer() == BigInt::ZERO);
