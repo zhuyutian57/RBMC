@@ -29,7 +29,7 @@ pub type FunctionDef = (FnDef, GenericArgs);
 /// 
 /// `Box::*`: `Box` is a special struct in rust. In our memory model, `Box<T>` is a
 /// primitive type. Thus, some functions are executed directly instead of unwinding.
-const RUST_BUILTIN_FUNCTIONS: &[&str] = &[
+const STD_BUILTIN_FUNCTIONS: &[&str] = &[
     "alloc",
     "dealloc",
     // Box
@@ -45,6 +45,13 @@ const RUST_BUILTIN_FUNCTIONS: &[&str] = &[
     "slice_end_index_len_fail",
     // Panic
     "panic_nounwind",
+];
+
+/// To leverage the place state, some functions' semantic must be execed after unwinding.
+/// For example, `Box::<T>::from_raw` may take the ownership of the object it points to.
+const STD_FUNCTION_WITH_SPECIAL_SEMANTIC: &[&str] = &[
+    "Box::<T>::from_raw",
+    "Box::<T, A>::into_raw",
 ];
 
 /// A wrapper for `Ty` in MIR
@@ -241,11 +248,17 @@ impl Type {
     pub fn is_rust_builtin_function(&self) -> bool {
         if !self.is_fn() { return false; }
         let name = self.fn_def().0.trimmed_name();
-        return RUST_BUILTIN_FUNCTIONS.contains(&name.as_str());
+        return STD_BUILTIN_FUNCTIONS.contains(&name.as_str());
     }
 
     pub fn is_builtin_function(&self) -> bool {
         self.is_rbmc_nondet() || self.is_rust_builtin_function()
+    }
+
+    pub fn is_function_with_special_semantic(&self) -> bool {
+        if !self.is_fn() { return false; }
+        let name = self.fn_def().0.trimmed_name();
+        return STD_FUNCTION_WITH_SPECIAL_SEMANTIC.contains(&name.as_str());
     }
 
     pub fn is_zero_sized_type(&self) -> bool {

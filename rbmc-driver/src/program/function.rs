@@ -20,6 +20,7 @@ pub struct Function {
     name: NString,
     args: Args,
     body: Body,
+    ty: Type,
     /// Record the locals without StorageLive
     _local_alive: HashSet<Local>,
     _loops: LoopSet,
@@ -80,6 +81,10 @@ impl Function {
 
     pub fn name(&self) -> NString {
         self.name
+    }
+
+    pub fn ty(&self) -> Type {
+        self.ty
     }
 
     pub fn args(&self) -> &Args {
@@ -147,12 +152,13 @@ impl PartialEq for Function {
 impl Eq for Function {}
 
 
-impl From<(NString, Body)> for Function {
-    fn from(value: (NString, Body)) -> Self {
+impl From<(NString, Body, Type)> for Function {
+    fn from(value: (NString, Body, Type)) -> Self {
         let mut function = Function {
             name: NString::from(value.0),
             args: (1..value.1.arg_locals().len() + 1).collect(),
             body: value.1,
+            ty: value.2,
             _local_alive: HashSet::new(),
             _loops: HashMap::new()
         };
@@ -164,13 +170,15 @@ impl From<(NString, Body)> for Function {
 impl From<&FnDef> for Function {
     fn from(value: &FnDef) -> Self {
         assert!(value.has_body());
-        Function::from((value.trimmed_name().into(), value.body().unwrap()))
+        let ty = Type::from(value.ty());
+        Function::from((value.trimmed_name().into(), value.body().unwrap(), ty))
     }
 }
 
 impl From<&Instance> for Function {
     fn from(value: &Instance) -> Self {
         assert!(value.has_body());
-        Function::from((value.trimmed_name().into(), value.body().unwrap()))
+        let ty = Type::from(value.ty());
+        Function::from((value.trimmed_name().into(), value.body().unwrap(), ty))
     }
 }

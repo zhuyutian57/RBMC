@@ -1,3 +1,4 @@
+use num_bigint::BigInt;
 use stable_mir::mir::*;
 
 use super::symex::*;
@@ -70,8 +71,14 @@ impl<'cfg> Symex<'cfg> {
             let object = self.ctx.object(expr);
             let i = self.ctx.constant_usize(0);
             self.ctx.index(object, i, target_ty)
+        } else if expr.ty().is_integer() {
+            let mut num = expr;
+            self.rename(&mut num);
+            assert!(num.is_constant() && num.extract_constant().to_integer() == BigInt::ZERO);
+            // Create a null pointer
+            self.ctx.null(target_ty)
         } else {
-            todo!()
+            todo!("{expr:?} with {:?} -> {target_ty:?}", expr.ty())
         }
     }
 

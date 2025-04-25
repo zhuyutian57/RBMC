@@ -325,9 +325,10 @@ impl State {
                 } else if root_object.is_store() {
                     let stored_object = root_object.extract_object();
                     let update_index = root_object.extract_index();
+                    let update_value = root_object.extract_update_value();
                     let j = bigint_to_usize(&update_index.extract_constant().to_integer());
                     if i == j {
-                        stored_object.extract_update_value()
+                       update_value
                     } else {
                         self.ctx.index(stored_object, index.clone(), expr.ty())
                     }

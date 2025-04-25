@@ -1,10 +1,9 @@
 pub(super) mod symex_alloc;
 pub(super) mod symex_boxed;
-pub(super) mod symex_ops;
-pub(super) mod symex_ptr;
 pub(super) mod symex_vec;
 
 use stable_mir::mir::mono::Instance;
+use stable_mir::ty::FnDef;
 use stable_mir::CrateDef;
 
 use super::super::symex::*;
@@ -29,6 +28,17 @@ impl<'cfg> Symex<'cfg> {
             self.symex_boxed_api(instance, args, dest);
         } else {
             panic!("Not support {name:?}");
+        }
+    }
+
+    pub fn symex_special_semantic(&mut self, def: FnDef, ret: Expr) {
+        let name = NString::from(def.trimmed_name());
+        if name == "Box::<T>::from_raw" {
+            self.symex_box_from_raw(ret);
+        } else if name == "Box::<T, A>::into_raw" {
+            self.symex_box_into_raw(ret);
+        } else {
+            todo!("Not implement");
         }
     }
 }

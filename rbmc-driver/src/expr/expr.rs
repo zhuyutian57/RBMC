@@ -888,8 +888,11 @@ pub trait ExprBuilder {
     fn pointer_offset(&self, expr: Expr) -> Expr;
     fn pointer_meta(&self, expr: Expr) -> Expr;
     fn nonnull(&self, pt: Expr, ty: Type) -> Expr;
+    fn nonnull_raw(&self, nonnull: Expr) -> Expr;
     fn unique(&self, pt: Expr, ty: Type) -> Expr;
+    fn unique_raw(&self, unique: Expr) -> Expr;
     fn _box(&self, pt: Expr) -> Expr;
+    fn box_raw(&self, _box: Expr) -> Expr;
     fn _vec(&self, pt: Expr, len: Expr, cap: Expr, ty: Type) -> Expr;
     fn vec_len(&self, pt: Expr) -> Expr;
     fn vec_cap(&self, pt: Expr) -> Expr;

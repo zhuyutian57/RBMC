@@ -126,7 +126,16 @@ impl<'cfg> Symex<'cfg> {
                 let rhs_ident = frame.local_ident(0);
                 let rhs_ty = frame.function.local_type(0);
                 let rhs = self.exec_state.l0_symbol(rhs_ident, rhs_ty);
-                self.assign(lhs, rhs, self.ctx._true().into());
+                self.assign(lhs, rhs.clone(), self.ctx._true().into());
+                // Symex semantic thats relates to place state
+                // TODO: support more situations
+                let fty = frame.function.ty();
+                if fty.is_function_with_special_semantic() {
+                    let def = frame.function.ty().fn_def().0;
+                    let mut ret = rhs;
+                    self.exec_state.rename(&mut ret, Level::Level1);
+                    self.symex_special_semantic(def, ret);
+                }
             }
         }
 

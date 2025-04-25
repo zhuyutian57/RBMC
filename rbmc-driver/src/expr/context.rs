@@ -706,7 +706,10 @@ impl ExprBuilder for ExprCtx {
         if ty.is_slice_ptr() {
             assert!(meta != None);
         }
-        let meta = match meta { Some(data) => data, _ => self.constant_usize(0) };
+        let meta = match meta {
+            Some(data) if data.ty().is_usize() => data,
+            _ => self.constant_usize(0),
+        };
         let kind = NodeKind::Pointer(address.id, meta.id);
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
@@ -747,6 +750,14 @@ impl ExprBuilder for ExprCtx {
         self.aggregate(vec![pt], ty)
     }
 
+    /// Retrieve raw pointer inside a `NonNull`
+    fn nonnull_raw(&self, nonnull: Expr) -> Expr {
+        assert!(nonnull.ty().is_nonnull());
+        let i = self.constant_usize(0);
+        let ty = nonnull.ty().struct_def().1[0].1;
+        self.index(nonnull, i, ty)
+    }
+
     /// Construct a `Unique` pointer from a `NonNull(*const T)`
     fn unique(&self, pt: Expr, ty: Type) -> Expr {
         assert!(pt.ty().is_const_ptr());
@@ -758,6 +769,15 @@ impl ExprBuilder for ExprCtx {
         self.aggregate(vec![nonnull, phantom], ty)
     }
 
+    /// Retrieve raw pointer inside a `Unique`
+    fn unique_raw(&self, unique: Expr) -> Expr {
+        assert!(unique.ty().is_unique());
+        let i = self.constant_usize(0);
+        let ty = unique.ty().struct_def().1[0].1;
+        let nonnull = self.index(unique, i.clone(), ty);
+        self.nonnull_raw(nonnull)
+    }
+
     /// To construct a box from `Unique(NonNull(*const T))`
     fn _box(&self, pt: Expr) -> Expr {
         assert!(pt.ty().is_const_ptr());
@@ -767,6 +787,15 @@ impl ExprBuilder for ExprCtx {
         let unique = self.unique(pt, unique_ty);
         let global = self.constant_zst(def[1].1);
         self.aggregate(vec![unique, global], ty)
+    }
+
+    /// Retrieve raw pointer inside a `Box`
+    fn box_raw(&self, _box: Expr) -> Expr {
+        assert!(_box.ty().is_box());
+        let i = self.constant_usize(0);
+        let ty = _box.ty().struct_def().1[0].1;
+        let unique = self.index(_box, i.clone(), ty);
+        self.unique_raw(unique)
     }
 
     fn _vec(&self, pt: Expr, len: Expr, cap: Expr, ty: Type) -> Expr {
