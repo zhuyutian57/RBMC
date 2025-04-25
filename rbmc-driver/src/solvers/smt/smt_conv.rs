@@ -82,6 +82,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         {
             if let Some(sub_exrps) = expr.sub_exprs() {
                 for e in sub_exrps {
+                    if e.ty().is_zero_sized_type() { continue; }
                     args.push(self.convert_ast(e));
                 }
             }
@@ -178,7 +179,10 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         }
 
         if expr.is_pointer() {
-            todo!();
+            let base = self.convert_pointer_base(&args[0]);
+            let offset = self.convert_pointer_offset(&args[0]);
+            let meta = &args[1];
+            a = Some(self.convert_pointer(&base, &offset, Some(&meta)));
         }
 
         if expr.is_pointer_base() {

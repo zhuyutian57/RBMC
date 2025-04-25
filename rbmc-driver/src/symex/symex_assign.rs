@@ -71,22 +71,7 @@ impl<'cfg> Symex<'cfg> {
         }
 
         if lhs.is_ite() {
-            let sub_exprs = lhs.sub_exprs().unwrap();
-            let cond = sub_exprs[0].clone();
-            let true_value = sub_exprs[1].clone();
-            let false_value = sub_exprs[2].clone();
-
-            let mut true_guard = guard.clone();
-            let mut true_cond = cond.clone();
-            self.rename(&mut true_cond);
-            true_guard.add(true_cond);
-            self.assign_rec(true_value, rhs.clone(), true_guard);
-
-            let mut false_guard = guard.clone();
-            let mut false_cond = self.ctx.not(cond.clone());
-            self.rename(&mut false_cond);
-            false_guard.add(false_cond);
-            self.assign_rec(false_value, rhs.clone(), false_guard);
+            self.assign_ite(lhs, rhs, guard);
             return;
         }
 
@@ -113,6 +98,29 @@ impl<'cfg> Symex<'cfg> {
         }
 
         panic!("Do not support assignment:\n{lhs:?} = {rhs:?}");
+    }
+
+    fn assign_ite(&mut self, lhs: Expr, rhs: Expr, guard: Guard) {
+        let sub_exprs = lhs.sub_exprs().unwrap();
+        let cond = sub_exprs[0].clone();
+        let true_value = sub_exprs[1].clone();
+        let false_value = sub_exprs[2].clone();
+
+        let mut true_guard = guard.clone();
+        let mut true_cond = cond.clone();
+        self.rename(&mut true_cond);
+        true_guard.add(true_cond);
+        self.assign_rec(true_value, rhs.clone(), true_guard);
+
+        let mut false_guard = guard.clone();
+        let mut false_cond = self.ctx.not(cond.clone());
+        self.rename(&mut false_cond);
+        false_guard.add(false_cond);
+        self.assign_rec(false_value, rhs.clone(), false_guard);
+    }
+
+    fn assign_struct_or_tuple(&mut self, lhs: Expr, rhs: Expr, guard: Guard) {
+
     }
 
     fn make_rvalue(&mut self, rvalue: &Rvalue) -> Expr {

@@ -314,7 +314,6 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
             // TODO: support more smart pointer
             Mode::Drop => format!("drop failure: uninitilized {:?} pointer", pt.ty().name()).into(),
             Mode::Dealloc => NString::from("dealloc failure: invalid pointer"),
-            _ => todo!(),
         };
         let mut error = guard.clone();
         error.add(not_null);

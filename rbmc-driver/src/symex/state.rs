@@ -7,6 +7,7 @@ use num_bigint::BigInt;
 use super::place_state::*;
 use super::renaming::Renaming;
 use super::value_set::*;
+use crate::expr::constant::Constant;
 use crate::expr::context::*;
 use crate::expr::expr::*;
 use crate::expr::guard::Guard;
@@ -161,17 +162,19 @@ impl State {
         }
 
         if expr.is_address_of() {
-            let object = expr.extract_object();
-            let inner_expr = object.extract_inner_expr();
-            if inner_expr.is_symbol()  || inner_expr.is_slice() {
-                values.insert((object, None));
-            } else if inner_expr.is_index() {
-                let root_object = inner_expr.extract_object();
-                let index = inner_expr.extract_index().extract_constant();
-                let offset = index.to_integer();
-                values.insert((root_object, Some(offset)));
-            } else {
-                todo!("get value set from addressof({object:?})");
+            let expr = expr.extract_object();
+            let mut object_set = ObjectSet::new();
+            self.get_object_rec(expr, &mut object_set);
+            for (object, _) in object_set {
+                let inner_expr = object.extract_inner_expr();
+                if inner_expr.is_index() {
+                    let o = inner_expr.extract_object();
+                    let i = inner_expr.extract_index().extract_constant();
+                    let offset = bigint_to_usize(&i.to_integer());
+                    values.insert((o, Some(offset.into())));
+                } else {
+                    values.insert((object, None));
+                }
             }
             return;
         }
@@ -197,8 +200,11 @@ impl State {
         }
 
         if expr.is_index() {
+            let index = expr.extract_index().extract_constant();
             let inner_expr = expr.extract_object().extract_inner_expr();
-            let i = bigint_to_usize(&expr.extract_index().extract_constant().to_integer());
+            let i = bigint_to_usize(&index.to_integer());
+            let mut object_set = ObjectSet::new();
+            self.get_object_rec(inner_expr.clone(), &mut object_set);
             let new_suffix = NString::from(if inner_expr.ty().is_array() {
                 format!("[{i}]")
             } else if inner_expr.ty().is_tuple() {
@@ -208,28 +214,22 @@ impl State {
                 let field = inner_expr.ty().struct_def().1[i].0;
                 format!(".{field:?}")
             }) + suffix;
-            if inner_expr.is_symbol() {
-                self.get_value_set_rec(inner_expr.clone(), new_suffix, values);
-            } else if inner_expr.is_aggregate() {
-                let fields = inner_expr.extract_fields();
-                assert!(i < fields.len());
-                self.get_value_set_rec(fields[i].clone(), suffix, values);
-            } else if inner_expr.is_store() {
-                let inner_object = inner_expr.extract_object();
-                let update_index = inner_expr.extract_index();
-                let j = bigint_to_usize(&update_index.extract_constant().to_integer());
-                let update_value = inner_expr.extract_update_value();
-                if i == j {
-                    self.get_value_set_rec(update_value, suffix, values);
+            for (object, _) in object_set {
+                let _inner_expr = object.extract_inner_expr();
+                if _inner_expr.is_aggregate() {
+                    let fields = _inner_expr.extract_fields();
+                    assert!(i < fields.len());
+                    self.get_value_set_rec(fields[i].clone(), suffix, values);
+                } else if _inner_expr.is_constant() {
+                    let (fields, _) = _inner_expr.extract_constant().to_adt();
+                    let j = if _inner_expr.ty().is_enum() { i + 1 } else { i };
+                    let field = self.ctx.constant(fields[j].clone(), expr.ty());
+                    self.get_value_set_rec(field, suffix, values);
+                } else if _inner_expr.is_unknown() || _inner_expr.is_null_object() {
+                    values.insert((_inner_expr.ctx.unknown(_inner_expr.ty().pointee_ty()), None));
                 } else {
-                    self.get_value_set_rec(inner_object, new_suffix, values);
+                    self.get_value_set_rec(_inner_expr, new_suffix, values);
                 }
-            } else if inner_expr.is_ite() || inner_expr.is_index() {
-                self.get_value_set_rec(inner_expr, new_suffix, values);
-            } else if inner_expr.is_unknown() {
-                values.insert((expr.ctx.unknown(expr.ty().pointee_ty()), None));
-            } else {
-                panic!("Wrong object? {inner_expr:?}");
             }
             return;
         }
@@ -270,6 +270,79 @@ impl State {
         }
 
         panic!("Do not support dereferencing:\n{expr:?}");
+    }
+
+    /// Get objects from current expr. Similar to get_reference_rec in ESBMC.
+    /// 
+    /// TODO: support more expr
+    fn get_object_rec(&self, expr: Expr, object_set: &mut ObjectSet) {
+        if expr.is_symbol()
+            || expr.is_constant()
+            || expr.is_aggregate()
+            || expr.is_slice() 
+            || expr.is_store() 
+            || expr.is_as_variant() {
+            object_set.insert((self.ctx.object(expr), None));
+            return;
+        }
+
+        if expr.is_ite() {
+            let true_value = expr.extract_true_value();
+            let false_value = expr.extract_false_value();
+            self.get_object_rec(true_value, object_set);
+            self.get_object_rec(false_value, object_set);
+            return;
+        }
+
+        if expr.is_cast() {
+            self.get_object_rec(expr.extract_src(), object_set);
+            return;
+        }
+
+        if expr.is_object() {
+            self.get_object_rec(expr.extract_inner_expr(), object_set);
+            return;
+        }
+
+        if expr.is_index() {
+            // TODO; support dynamic offset?
+            let index = expr.extract_index();
+            let i = bigint_to_usize(&index.extract_constant().to_integer());
+            let mut root_objects = ObjectSet::new();
+            self.get_object_rec(expr.extract_object(), &mut root_objects);
+            for (o, _) in root_objects {
+                let root_object = o.extract_inner_expr();
+                let mut object = if root_object.is_aggregate() {
+                    root_object.extract_fields()[i].clone()
+                } else if root_object.is_constant() {
+                    let constant = match root_object.extract_constant() {
+                        Constant::Array(c, _) => *c,
+                        Constant::Adt(fields, ty)
+                            => if ty.is_enum() { fields[i + 1].clone() } else { fields[i].clone() },
+                        _ => panic!("Impossible"),
+                    };
+                    self.ctx.constant(constant, expr.ty())
+                } else if root_object.is_store() {
+                    let stored_object = root_object.extract_object();
+                    let update_index = root_object.extract_index();
+                    let j = bigint_to_usize(&update_index.extract_constant().to_integer());
+                    if i == j {
+                        stored_object.extract_update_value()
+                    } else {
+                        self.ctx.index(stored_object, index.clone(), expr.ty())
+                    }
+                } else {
+                    self.ctx.index(root_object, index.clone(), expr.ty())
+                };
+                if !object.is_object() {
+                    object = self.ctx.object(object);
+                }
+                object_set.insert((object, None));
+            }
+            return;
+        }
+
+        panic!("Do not support get object from: {expr:?}")
     }
 }
 

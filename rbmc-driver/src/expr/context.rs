@@ -671,23 +671,29 @@ impl ExprBuilder for ExprCtx {
         Expr { ctx: self.clone(), id }
     }
 
-    fn index(&self, object: Expr, i: Expr, ty: Type) -> Expr {
-        assert!(
-            object.unwrap_predicates().is_object()
-                && (object.ty().is_array()
-                    || object.ty().is_struct()
-                    || object.ty().is_slice()
-                    || object.ty().is_tuple()
-                    || object.ty().is_enum())
-        );
+    fn index(&self, expr: Expr, i: Expr, ty: Type) -> Expr {
+        assert!(expr.ty().is_array()
+                || expr.ty().is_struct()
+                || expr.ty().is_slice()
+                || expr.ty().is_tuple()
+                || expr.ty().is_enum());
+        let object = if !expr.unwrap_predicates().is_object() {
+            self.object(expr)
+        } else {
+            expr
+        };
         let kind = NodeKind::Index(object.id, i.id);
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
         Expr { ctx: self.clone(), id }
     }
 
-    fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr {
-        assert!(object.unwrap_predicates().is_object());
+    fn store(&self, expr: Expr, key: Expr, value: Expr) -> Expr {
+        let object = if !expr.unwrap_predicates().is_object() {
+            self.object(expr)
+        } else {
+            expr
+        };
         let kind = NodeKind::Store(object.id, key.id, value.id);
         let ty = object.ty();
         let new_node = Node::new(kind, ty);

@@ -731,7 +731,7 @@ impl Debug for Expr {
                 let cond = &sub_exprs[0];
                 let true_value = &sub_exprs[1];
                 let false_value = &sub_exprs[2];
-                return write!(f, "{:?} ? {:?} : {:?}", cond, true_value, false_value);
+                return write!(f, "({:?} ? {:?} : {:?})", cond, true_value, false_value);
             }
 
             if self.is_same_object() {
@@ -880,8 +880,8 @@ pub trait ExprBuilder {
     fn object(&self, inner_expr: Expr) -> Expr;
     fn slice(&self, object: Expr, start: Expr, len: Expr) -> Expr;
     fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr;
-    fn index(&self, object: Expr, i: Expr, ty: Type) -> Expr;
-    fn store(&self, object: Expr, key: Expr, value: Expr) -> Expr;
+    fn index(&self, expr: Expr, i: Expr, ty: Type) -> Expr;
+    fn store(&self, expr: Expr, key: Expr, value: Expr) -> Expr;
 
     fn pointer(&self, address: Expr, meta: Option<Expr>, ty: Type) -> Expr;
     fn pointer_base(&self, expr: Expr) -> Expr;
