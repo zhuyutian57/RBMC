@@ -1,6 +1,6 @@
 pub(super) mod symex_alloc;
 pub(super) mod symex_boxed;
-pub(super) mod symex_vec;
+pub(super) mod symex_ptr;
 
 use stable_mir::mir::mono::Instance;
 use stable_mir::ty::FnDef;
@@ -16,6 +16,7 @@ use crate::symex::symex::*;
 
 use symex_alloc::*;
 use symex_boxed::*;
+use symex_ptr::*;
 
 /// This mod defines symbolic execution of api in std
 impl<'cfg> Symex<'cfg> {
@@ -26,6 +27,8 @@ impl<'cfg> Symex<'cfg> {
             self.symex_alloc_api(instance, args, dest);
         } else if name.starts_with("std::boxed".into()) {
             self.symex_boxed_api(instance, args, dest);
+        } else if name.starts_with("std::ptr".into()) {
+            self.symex_ptr_api(instance, args, dest);
         } else {
             panic!("Not support {name:?}");
         }

@@ -52,7 +52,6 @@ impl<'cfg> Symex<'cfg> {
         assert!(ret_box.ty().is_box());
 
         let pt = self.ctx.box_raw(ret_box);
-        println!("{pt:?}");
 
         // Update place states for objects.
         let mut objects = ObjectSet::new();

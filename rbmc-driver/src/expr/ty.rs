@@ -39,6 +39,9 @@ const STD_BUILTIN_FUNCTIONS: &[&str] = &[
     "Layout::for_value_raw",
     "Layout::size",
     "Layout::align",
+    // Pointer arithmetic
+    "std::ptr::mut_ptr::<impl *mut T>::add",
+    "std::ptr::mut_ptr::<impl *mut T>::offset",
     // Slice
     "slice_index_order_fail",
     "slice_start_index_len_fail",

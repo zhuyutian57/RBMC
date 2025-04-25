@@ -1,4 +1,5 @@
 use stable_mir::CrateDef;
+use stable_mir::mir::mono::Instance;
 
 use super::super::symex::*;
 use crate::expr::expr::*;
@@ -9,18 +10,13 @@ use crate::symex::value_set::ObjectSet;
 /// This mod defines symbolic execution of api in std::ptr
 
 impl<'cfg> Symex<'cfg> {
-    pub fn symex_ptr_api(&mut self, fndef: &FunctionDef, args: Vec<Expr>, dest: Expr) {
-        let name = NString::from(fndef.0.trimmed_name());
-        if name == "eq" {
-            self.symex_ptr_eq(dest, args);
-        } else if name == "null_mut" || name == "null" {
-            self.symex_ptr_null(dest);
-        } else if name == "std::ptr::mut_ptr::<impl *mut T>::add" {
+    pub fn symex_ptr_api(&mut self, instance: Instance, args: Vec<Expr>, dest: Expr) {
+        let fty = Type::from(instance.ty());
+        let name = NString::from(fty.fn_def().0.trimmed_name());
+        if name == "std::ptr::mut_ptr::<impl *mut T>::add" {
             self.symex_ptr_add(dest, args);
         } else if name == "std::ptr::mut_ptr::<impl *mut T>::offset" {
             self.symex_ptr_offset(dest, args);
-        } else if name == "std::ptr::mut_ptr::<impl *mut T>::is_null" {
-            self.symex_ptr_is_null(dest, args);
         } else {
             panic!("Not support for {name:?}");
         }
