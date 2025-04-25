@@ -19,7 +19,7 @@ pub struct Program {
     name: NString,
     static_variables: Vec<StaticDef>,
     /// The number of functions in current crate
-    func_count: usize,
+    local_function_count: usize,
     functions: Vec<Function>,
     function_map: HashMap<NString, FunctionIdx>,
 }
@@ -39,7 +39,7 @@ impl Program {
         let mut program = Program {
             name: _crate.name.clone().into(),
             static_variables: _crate.statics(),
-            func_count: functions.len(),
+            local_function_count: functions.len(),
             functions: functions,
             function_map: idx
         };
@@ -92,13 +92,17 @@ impl Program {
         self.function_map.contains_key(&name)
     }
 
+    pub fn is_local_function(&self, name: NString) -> bool {
+        self.function_id(name) < self.local_function_count
+    }
+
     pub fn function_id(&self, name: NString) -> FunctionIdx {
         assert!(self.contains_function(name));
         *self.function_map.get(&name).unwrap()
     }
 
 
-    pub fn function(&self, i : FunctionIdx) -> &Function {
+    pub fn function(&self, i: FunctionIdx) -> &Function {
         assert!(i < self.functions.len());
         &self.functions[i]
     }
@@ -119,7 +123,7 @@ impl Program {
             target.pointer_width.bytes()
         );
         let n = if info == ProgramInfo::Local {
-            self.func_count
+            self.local_function_count
         } else {
             self.functions.len()
         };

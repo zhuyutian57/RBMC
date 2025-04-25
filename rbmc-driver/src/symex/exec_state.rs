@@ -22,7 +22,7 @@ use crate::symex::place_state::*;
 pub struct ExecutionState<'cfg> {
     config: &'cfg Config,
     ctx: ExprCtx,
-    pub(super) span: Option<Span>,
+    span: Option<Span>,
     pub(super) ns: Namespace,
     /// The number of frames we have created. Used for variable renaming.
     n: usize,
@@ -61,16 +61,15 @@ impl<'cfg> ExecutionState<'cfg> {
         self.frames.len() > 1 || self.frames.len() == 1 && self.top().cur_pc() != None
     }
 
-    pub fn new_object(&mut self, ty: Type) -> Expr {
-        let name = NString::from("heap_object_") + self.objects.len().to_string();
-        let symbol = Symbol::from(name);
-        let sym_expr = self.ctx.mk_symbol(symbol, ty);
-        // Record the ident
-        self.ns.insert_symbol(sym_expr.clone());
-        // Create an object not being owned by any variable.
-        let object = self.ctx.object(sym_expr);
-        self.objects.push(object.clone());
-        object
+    pub fn cur_span(&self) -> Option<Span> {
+        self.span
+    }
+
+    pub fn update_span(&mut self, span: Span) {
+        let name = self.top().function.name();
+        if self.config.program.is_local_function(name) {
+            self.span = Some(span);
+        }
     }
 
     pub fn cur_state(&self) -> &State {
@@ -116,6 +115,18 @@ impl<'cfg> ExecutionState<'cfg> {
     pub fn pop_frame(&mut self) -> Frame<'cfg> {
         assert!(!self.frames.is_empty());
         self.frames.pop().unwrap()
+    }
+    
+    pub fn new_object(&mut self, ty: Type) -> Expr {
+        let name = NString::from("heap_object_") + self.objects.len().to_string();
+        let symbol = Symbol::from(name);
+        let sym_expr = self.ctx.mk_symbol(symbol, ty);
+        // Record the ident
+        self.ns.insert_symbol(sym_expr.clone());
+        // Create an object not being owned by any variable.
+        let object = self.ctx.object(sym_expr);
+        self.objects.push(object.clone());
+        object
     }
 
     pub fn l0_symbol(&mut self, ident: NString, ty: Type) -> Expr {

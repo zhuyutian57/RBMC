@@ -44,7 +44,6 @@ impl<'cfg> Symex<'cfg> {
     }
 
     fn symex_dealloc(&mut self, args: Vec<Expr>) {
-        println!("dealloc {args:?}");
         let pt = args[0].clone();
         let mut layout = args[1].clone();
         self.replace_predicates(&mut layout);
