@@ -252,9 +252,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         let idx = as_variant.extract_variant_idx();
         let i = bigint_to_usize(&field.extract_integer());
         let args = &[&self.convert_ast(object) as &dyn Ast];
-        let variant_data_type = ty.enum_variant_data_type(idx);
-        let sign = self.create_datatype_sign(variant_data_type);
-        self.datatypes.get(&sign).unwrap().variants[0].accessors[0].apply(args)
+        self.datatypes.get(&sign).unwrap().variants[idx].accessors[i].apply(args)
     }
 
     fn convert_tuple_update(

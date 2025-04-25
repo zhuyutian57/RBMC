@@ -23,7 +23,7 @@ impl<'cfg> Symex<'cfg> {
         let state_vec = self.top_mut().states_from(pc);
 
         // If pc is the entry of a loop and reaches loop bound, do not unwind the loop
-        if self.top().function.is_loop_bb(pc) && self.top().reach_loop_bound(pc) {
+        if self.top().function.is_loop_bb(pc) && self.top().reach_loop_bound() {
             return false;
         }
 
@@ -196,12 +196,11 @@ impl<'cfg> Symex<'cfg> {
         } else if ty.is_bool() {
             Constant::Bool(allocation[0].unwrap() != 0)
         } else if ty.is_integer() {
-            let bytes =
-                allocation
-                    .iter()
-                    .filter(|&&byte| byte != None)
-                    .map(|byte| byte.unwrap())
-                    .collect::<Vec<_>>();
+            let bytes = allocation
+                .iter()
+                .filter(|&&byte| byte != None)
+                .map(|byte| byte.unwrap())
+                .collect::<Vec<_>>();
             assert!(bytes.len() == ty.size());
             Constant::Integer(read_target_integer(&bytes))
         } else if ty.is_struct() || ty.is_tuple() {
@@ -212,7 +211,9 @@ impl<'cfg> Symex<'cfg> {
                 let size = ty.field_size(i);
                 let mut endian = self.config.machine_info.endian;
                 // Bug for MIR?
-                if ty.name() == "Range" { endian = Endian::Big; }
+                if ty.name() == "Range" {
+                    endian = Endian::Big;
+                }
                 let (l, r) = match endian {
                     Endian::Big => (prefix_bytes, prefix_bytes + size),
                     Endian::Little => {
@@ -228,10 +229,7 @@ impl<'cfg> Symex<'cfg> {
         } else if ty.is_enum() {
             let align = ty.align();
             let variant_idx_bytes =
-                allocation[0..align]
-                    .iter()
-                    .map(|&byte| byte.unwrap())
-                    .collect::<Vec<_>>();
+                allocation[0..align].iter().map(|&byte| byte.unwrap()).collect::<Vec<_>>();
             let i = bigint_to_usize(&read_target_integer(&variant_idx_bytes));
             let idx = Constant::Integer(BigInt::from(i));
             let variant_type = ty.enum_variant_data_type(i);

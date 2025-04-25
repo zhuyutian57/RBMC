@@ -56,7 +56,6 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
                 ProjectionElem::Downcast(i) => {
                     assert!(ret.ty().is_enum());
                     let idx = i.to_index();
-                    let def = ret.ty().enum_def();
                     self._ctx.as_variant(ret, self._ctx.constant_usize(idx))
                 }
                 _ => panic!("Not support {elem:?} for {ret:?}"),
@@ -110,13 +109,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
                 continue;
             }
 
-            let new_ret = self.build_ret(
-                pt.clone(),
-                object,
-                offset,
-                pointer_guard.clone()
-            );
-            
+            let new_ret = self.build_ret(pt.clone(), object, offset, pointer_guard.clone());
+
             if new_ret == None {
                 continue;
             }
@@ -137,7 +131,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     }
 
     /// Visit a field of a struct. Return `Index(object, i)`.
-    /// 
+    ///
     /// TODO: Add bound check. The projection may fail is the pointer is casted by raw pointer.
     fn project_field(&mut self, object: Expr, field: usize, ty: Type) -> Expr {
         assert!(object.ty().is_struct() || object.ty().is_tuple() || object.is_as_variant());
@@ -145,7 +139,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     }
 
     /// Visit an array/slice. Return `Index(array/slice, i)`.
-    /// 
+    ///
     /// TODO: Add bound check. The projection may fail is the pointer is casted by raw pointer.
     fn project_index(&mut self, object: Expr, index: Expr) -> Expr {
         let ty = object.ty();
@@ -166,7 +160,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         pt: Expr,
         object: Expr,
         offset: Option<BigInt>,
-        guard: Guard
+        guard: Guard,
     ) -> Option<Expr> {
         if pt.ty().pointee_ty() == object.ty() {
             // Access the whole object
@@ -178,7 +172,6 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         } else {
             // Access one element of an array/slice, or a field of a struct/tuple
             self.build_index(object, offset, pt.ty().pointee_ty(), guard)
-            
         }
     }
 
@@ -196,7 +189,9 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         };
         assert!(root_object.ty().is_array());
         if let Some(x) = offset {
-            if x < BigInt::ZERO { return None; }
+            if x < BigInt::ZERO {
+                return None;
+            }
             start += x;
         }
         let start = self._ctx.constant_usize(bigint_to_usize(&start));
@@ -209,24 +204,23 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         object: Expr,
         offset: Option<BigInt>,
         ty: Type,
-        guard: Guard
+        guard: Guard,
     ) -> Option<Expr> {
         let i = self._ctx.constant_integer(
-            match offset { Some(x) => x, _ => BigInt::ZERO },
-            Type::isize_type()
+            match offset {
+                Some(x) => x,
+                _ => BigInt::ZERO,
+            },
+            Type::isize_type(),
         );
         let out_of_bound = self.bound_check(object.clone(), i.clone(), guard);
         // TODO: check alignment
-        if out_of_bound == Some(true) {
-            None
-        } else {
-            Some(self._ctx.index(object, i, ty))
-        }
+        if out_of_bound == Some(true) { None } else { Some(self._ctx.index(object, i, ty)) }
     }
 
     /// Notice that `offset` is in field-level
     fn build_with_const_offset(&mut self, object: Expr, offset: BigInt, ty: Type) -> Expr {
-        let mut i = bigint_to_usize(&offset);
+        let i = bigint_to_usize(&offset);
         let index = self._ctx.constant_usize(i);
         let new_object = if object.is_object() { object } else { self._ctx.object(object) };
         self._ctx.index(new_object, index, ty)
@@ -243,9 +237,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let invalid =
             if state.is_unknown() { self._ctx.invalid(object.clone()) } else { self._ctx._true() };
         let msg = match mode {
-            Mode::Read => {
-                format!("dereference failure: {object:?} is dead").into()
-            }
+            Mode::Read => format!("dereference failure: {object:?} is dead").into(),
             Mode::Dealloc | Mode::Drop => {
                 format!("{} failure: {object:?} is dead", format!("{mode:?}").to_lowercase()).into()
             }
@@ -275,7 +267,9 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
             self._callback_symex.rename(&mut out_of_bound);
             out_of_bound.simplify();
             // TODO: do more analysis
-            if out_of_bound.is_true() { res = Some(true); }
+            if out_of_bound.is_true() {
+                res = Some(true);
+            }
             let msg = NString::from(format!("dereference failure: index out of array bound"));
             let mut error = guard.clone();
             error.add(out_of_bound);

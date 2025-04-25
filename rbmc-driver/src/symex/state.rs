@@ -2,8 +2,6 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fmt::Debug;
 
-use num_bigint::BigInt;
-
 use super::place_state::*;
 use super::renaming::Renaming;
 use super::value_set::*;
@@ -257,7 +255,6 @@ impl State {
             return;
         }
 
-
         if expr.is_vec() || expr.is_inner_pointer() {
             let inner_pt = expr.extract_inner_pointer();
             self.get_value_set_rec(inner_pt, suffix, values);
@@ -273,15 +270,16 @@ impl State {
     }
 
     /// Get objects from current expr. Similar to get_reference_rec in ESBMC.
-    /// 
+    ///
     /// TODO: support more expr
     fn get_object_rec(&self, expr: Expr, object_set: &mut ObjectSet) {
         if expr.is_symbol()
             || expr.is_constant()
             || expr.is_aggregate()
-            || expr.is_slice() 
-            || expr.is_store() 
-            || expr.is_as_variant() {
+            || expr.is_slice()
+            || expr.is_store()
+            || expr.is_as_variant()
+        {
             object_set.insert((self.ctx.object(expr), None));
             return;
         }
@@ -317,8 +315,13 @@ impl State {
                 } else if root_object.is_constant() {
                     let constant = match root_object.extract_constant() {
                         Constant::Array(c, _) => *c,
-                        Constant::Adt(fields, ty)
-                            => if ty.is_enum() { fields[i + 1].clone() } else { fields[i].clone() },
+                        Constant::Adt(fields, ty) => {
+                            if ty.is_enum() {
+                                fields[i + 1].clone()
+                            } else {
+                                fields[i].clone()
+                            }
+                        }
                         _ => panic!("Impossible"),
                     };
                     self.ctx.constant(constant, expr.ty())
@@ -328,7 +331,7 @@ impl State {
                     let update_value = root_object.extract_update_value();
                     let j = bigint_to_usize(&update_index.extract_constant().to_integer());
                     if i == j {
-                       update_value
+                        update_value
                     } else {
                         self.ctx.index(stored_object, index.clone(), expr.ty())
                     }

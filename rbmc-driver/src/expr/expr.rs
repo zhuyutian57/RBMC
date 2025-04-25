@@ -12,7 +12,6 @@ use super::context::*;
 use super::op::*;
 use super::ty::*;
 use crate::program::program::bigint_to_usize;
-use crate::symbol::nstring::NString;
 use crate::symbol::symbol::*;
 
 /// `Expr` is a wrapper for AST node. It only carry node index that
@@ -120,11 +119,11 @@ impl Expr {
     pub fn is_pointer(&self) -> bool {
         self.ctx.borrow().is_pointer(self.id)
     }
-    
+
     pub fn is_pointer_base(&self) -> bool {
         self.ctx.borrow().is_pointer_base(self.id)
     }
-    
+
     pub fn is_pointer_offset(&self) -> bool {
         self.ctx.borrow().is_pointer_offset(self.id)
     }

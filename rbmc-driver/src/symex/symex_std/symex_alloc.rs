@@ -1,5 +1,5 @@
-use stable_mir::mir::mono::Instance;
 use stable_mir::CrateDef;
+use stable_mir::mir::mono::Instance;
 
 use super::super::symex::*;
 use crate::expr::expr::*;
@@ -65,13 +65,17 @@ impl<'cfg> Symex<'cfg> {
     fn symex_layout_api(&mut self, instance: Instance, args: Vec<Expr>, dest: Expr) {
         let name = NString::from(instance.trimmed_name());
         if name.starts_with("Layout::new".into())
-            || name.starts_with("Layout::for_value_raw".into()) {
+            || name.starts_with("Layout::for_value_raw".into())
+        {
             let ty = Type::from(instance.args().0[0].expect_ty());
             self.symex_assign_layout(dest, ty);
-        } else if  name ==  "Layout::size" || name ==  "Layout::align"{
+        } else if name == "Layout::size" || name == "Layout::align" {
             let pt = args[0].clone();
             let mut ty_expr = self.make_deref(
-                pt.clone(), Mode::Read, self.ctx._true().into(), pt.ty().pointee_ty()
+                pt.clone(),
+                Mode::Read,
+                self.ctx._true().into(),
+                pt.ty().pointee_ty(),
             );
             self.rename(&mut ty_expr);
             assert!(ty_expr.is_type());
@@ -81,7 +85,7 @@ impl<'cfg> Symex<'cfg> {
                 self.symex_layout_align(dest, ty_expr.extract_type());
             }
         } else {
-           todo!("{name:?}");
+            todo!("{name:?}");
         }
     }
 

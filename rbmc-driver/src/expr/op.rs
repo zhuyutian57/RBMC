@@ -1,5 +1,4 @@
 use std::fmt::Debug;
-use std::fmt::Error;
 
 use stable_mir::mir;
 

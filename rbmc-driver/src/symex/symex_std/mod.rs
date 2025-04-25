@@ -2,21 +2,14 @@ pub(super) mod symex_alloc;
 pub(super) mod symex_boxed;
 pub(super) mod symex_ptr;
 
+use stable_mir::CrateDef;
 use stable_mir::mir::mono::Instance;
 use stable_mir::ty::FnDef;
-use stable_mir::CrateDef;
 
-use super::super::symex::*;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::symbol::nstring::*;
-use crate::symex::place_state::PlaceState;
-use crate::symex::projection::Mode;
 use crate::symex::symex::*;
-
-use symex_alloc::*;
-use symex_boxed::*;
-use symex_ptr::*;
 
 /// This mod defines symbolic execution of api in std
 impl<'cfg> Symex<'cfg> {

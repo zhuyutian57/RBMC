@@ -82,7 +82,9 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         {
             if let Some(sub_exrps) = expr.sub_exprs() {
                 for e in sub_exrps {
-                    if e.ty().is_zero_sized_type() { continue; }
+                    if e.ty().is_zero_sized_type() {
+                        continue;
+                    }
                     args.push(self.convert_ast(e));
                 }
             }
@@ -277,7 +279,9 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
                 if ty.is_struct() || ty.is_tuple() {
                     let mut fields = Vec::new();
                     for i in 0..ty.fields() {
-                        if ty.field_type(i).is_zero_sized_type() { continue; }
+                        if ty.field_type(i).is_zero_sized_type() {
+                            continue;
+                        }
                         let field = self.convert_constant(&constants[i], ty.field_type(i)).unwrap();
                         fields.push(field);
                     }

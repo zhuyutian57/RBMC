@@ -3,17 +3,13 @@ use stable_mir::mir::*;
 
 use super::symex::*;
 use crate::expr::expr::*;
-use crate::expr::guard::*;
 use crate::expr::ty::*;
-use crate::program::program::bigint_to_u64;
-use crate::symbol::symbol::*;
 
 impl<'cfg> Symex<'cfg> {
     pub(super) fn symex_cast(&mut self, kind: CastKind, operand: &Operand, ty: Type) -> Expr {
         let expr = self.make_operand(operand).unwrap_predicates();
         match kind {
-            CastKind::PointerCoercion(c)
-                => self.symex_cast_pointer_coercion(c, expr, ty),
+            CastKind::PointerCoercion(c) => self.symex_cast_pointer_coercion(c, expr, ty),
             CastKind::IntToInt => self.symex_cast_inttoint(expr, ty),
             CastKind::PtrToPtr => self.symex_cast_ptrtoptr(expr, ty),
             CastKind::Transmute => self.symex_cast_transmute(expr, ty),
@@ -25,12 +21,13 @@ impl<'cfg> Symex<'cfg> {
         &mut self,
         coercion: PointerCoercion,
         pt: Expr,
-        target_ty: Type
+        target_ty: Type,
     ) -> Expr {
         let src_ty = pt.ty();
         match coercion {
-            PointerCoercion::MutToConstPointer
-            | PointerCoercion::ArrayToPointer => todo!("Support later"),
+            PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer => {
+                todo!("Support later")
+            }
             PointerCoercion::Unsize => {
                 if src_ty.pointee_ty().is_array() && target_ty.is_slice_ptr() {
                     let address = pt.clone();
@@ -40,7 +37,7 @@ impl<'cfg> Symex<'cfg> {
                 } else {
                     todo!("{src_ty:?} => {target_ty:?}")
                 }
-            },
+            }
             _ => todo!("Unsupport function pointer"),
         }
     }
@@ -81,5 +78,4 @@ impl<'cfg> Symex<'cfg> {
             todo!("{expr:?} with {:?} -> {target_ty:?}", expr.ty())
         }
     }
-
 }

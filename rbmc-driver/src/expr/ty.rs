@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
-use stable_mir::mir::mono::Instance;
 use stable_mir::CrateDef;
+use stable_mir::mir::mono::Instance;
 use stable_mir::mir::*;
 use stable_mir::ty::*;
 
@@ -19,14 +19,14 @@ pub type FunctionDef = (FnDef, GenericArgs);
 /// We handle some functions in `std` as builtin functions in symex. That means we
 /// execute them by their semantic instead unwinding the body. Because we focus on
 /// the memory safety issues on user program.
-/// 
+///
 /// `Layout::*`: All types in our memory models are field-level. We do not handle size
 /// and alignment now.
-/// 
+///
 /// `std::alloc::alloc`: The `alloc` function is a wrapper of `__rust_alloc`. In our
 /// memory model, we assume all allocations are successful. No need to unwind its body.
 /// `dealloc` is handled similiarly.
-/// 
+///
 /// `Box::*`: `Box` is a special struct in rust. In our memory model, `Box<T>` is a
 /// primitive type. Thus, some functions are executed directly instead of unwinding.
 const STD_BUILTIN_FUNCTIONS: &[&str] = &[
@@ -52,10 +52,8 @@ const STD_BUILTIN_FUNCTIONS: &[&str] = &[
 
 /// To leverage the place state, some functions' semantic must be execed after unwinding.
 /// For example, `Box::<T>::from_raw` may take the ownership of the object it points to.
-const STD_FUNCTION_WITH_SPECIAL_SEMANTIC: &[&str] = &[
-    "Box::<T>::from_raw",
-    "Box::<T, A>::into_raw",
-];
+const STD_FUNCTION_WITH_SPECIAL_SEMANTIC: &[&str] =
+    &["Box::<T>::from_raw", "Box::<T, A>::into_raw"];
 
 /// A wrapper for `Ty` in MIR
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -244,12 +242,16 @@ impl Type {
     }
 
     pub fn is_rbmc_nondet(&self) -> bool {
-        if !self.is_fn() { return false; }
+        if !self.is_fn() {
+            return false;
+        }
         return self.fn_def().0.name() == "rbmc::nondet";
     }
 
     pub fn is_rust_builtin_function(&self) -> bool {
-        if !self.is_fn() { return false; }
+        if !self.is_fn() {
+            return false;
+        }
         let name = self.fn_def().0.trimmed_name();
         return STD_BUILTIN_FUNCTIONS.contains(&name.as_str());
     }
@@ -259,7 +261,9 @@ impl Type {
     }
 
     pub fn is_function_with_special_semantic(&self) -> bool {
-        if !self.is_fn() { return false; }
+        if !self.is_fn() {
+            return false;
+        }
         let name = self.fn_def().0.trimmed_name();
         return STD_FUNCTION_WITH_SPECIAL_SEMANTIC.contains(&name.as_str());
     }
@@ -268,23 +272,23 @@ impl Type {
         self.is_unit() || self.is_empty_struct()
     }
 
-    /// Coercion in rust. 
-    pub fn is_coercion_to(&self, ty: Type) -> bool {
-        // TODO: add mores
-        if *self == ty {
-            true
-        } else if self.is_array() && ty.is_slice() {
-            return self.elem_type().is_coercion_to(ty.elem_type());
-        } else {
-            false
-        }
-    }
+    /// Coercion in rust.
+    // pub fn is_coercion_to(&self, ty: Type) -> bool {
+    //     // TODO: add mores
+    //     if *self == ty {
+    //         true
+    //     } else if self.is_array() && ty.is_slice() {
+    //         return self.elem_type().is_coercion_to(ty.elem_type());
+    //     } else {
+    //         false
+    //     }
+    // }
 
     pub fn pointee_ty(&self) -> Self {
         assert!(self.is_any_ptr());
         match self.0.kind() {
             TyKind::RigidTy(r) => match r {
-                RigidTy::Adt(def, args) => {
+                RigidTy::Adt(_, args) => {
                     let elem_ty = match &args.0[0] {
                         GenericArgKind::Type(ty) => Type::from(ty.clone()),
                         _ => panic!(),
@@ -343,7 +347,7 @@ impl Type {
                         ftypes.push(Type(fdef.ty_with_args(&args)));
                     }
                     let tuple_type = Type::tuple_type(ftypes);
-                    let fname =  if !tuple_type.is_unit() {
+                    let fname = if !tuple_type.is_unit() {
                         NString::from("_data_") + variant_name
                     } else {
                         NString::from("-")
@@ -397,32 +401,34 @@ impl Type {
 
     /// Field type of `struct/tuple`, including ZST.
     pub fn field_type(&self, field: usize) -> Type {
-        let fdefs =
-            if self.is_struct() {
-                self.struct_def().1.iter().map(|(_, ty)| *ty).collect::<Vec<_>>()
-            } else if self.is_tuple() {
-                self.tuple_def()
-            } else {
-                panic!("Not struct and tuple")
-            };
+        let fdefs = if self.is_struct() {
+            self.struct_def().1.iter().map(|(_, ty)| *ty).collect::<Vec<_>>()
+        } else if self.is_tuple() {
+            self.tuple_def()
+        } else {
+            panic!("Not struct and tuple")
+        };
         assert!(field < fdefs.len());
         fdefs[field]
     }
 
     /// Field type of `struct/tuple`, excluding ZST.
     pub fn field_type_exclude_zst(&self, field: usize) -> Type {
-        let fdefs =
-            if self.is_struct() {
-                self.struct_def().1.iter().map(|(_, ty)| *ty).collect::<Vec<_>>()
-            } else if self.is_tuple() {
-                self.tuple_def()
-            } else {
-                panic!("Not struct and tuple")
-            };
+        let fdefs = if self.is_struct() {
+            self.struct_def().1.iter().map(|(_, ty)| *ty).collect::<Vec<_>>()
+        } else if self.is_tuple() {
+            self.tuple_def()
+        } else {
+            panic!("Not struct and tuple")
+        };
         let (mut i, mut j) = (0, 0);
         loop {
-            if !fdefs[i].is_zero_sized_type() { j += 1; }
-            if j == field + 1 { break; }
+            if !fdefs[i].is_zero_sized_type() {
+                j += 1;
+            }
+            if j == field + 1 {
+                break;
+            }
             i += 1;
         }
         assert!(i < fdefs.len());
@@ -573,11 +579,9 @@ impl Type {
 
         // Do not support repr(align(N))
         if self.is_struct() || self.is_tuple() {
-            return (0..self.fields()).into_iter().fold(
-                1,
-                |acc, i|
-                std::cmp::max(acc, self.field_type(i).align())
-            );
+            return (0..self.fields())
+                .into_iter()
+                .fold(1, |acc, i| std::cmp::max(acc, self.field_type(i).align()));
         }
 
         if self.is_enum() {
@@ -594,19 +598,19 @@ impl Type {
 
     /// Reindex struct/tuple fields by eliminating prefix zero-sized type.
     pub fn fix_index_field(&self, i: &mut usize) {
-        if self.is_array() || self.is_slice() || self.is_enum() { return; }
+        if self.is_array() || self.is_slice() || self.is_enum() {
+            return;
+        }
         let prefix_types = if self.is_struct() {
             self.struct_def().1.iter().map(|(_, ty)| *ty).collect::<Vec<_>>()
         } else {
             self.tuple_def()
         };
-        *i -= prefix_types.iter().enumerate()
+        *i -= prefix_types
+            .iter()
+            .enumerate()
             .filter(|(j, _)| j < i)
-            .fold(
-                0,
-                |acc, (j, ty)|
-                acc + if ty.is_zero_sized_type() { 1 } else { 0 }
-            );
+            .fold(0, |acc, (_, ty)| acc + if ty.is_zero_sized_type() { 1 } else { 0 });
     }
 }
 

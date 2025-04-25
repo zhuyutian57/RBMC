@@ -153,9 +153,10 @@ impl<'cfg> Symex<'cfg> {
                 is_unwind = self.symex_call(func, args, destination, target);
             }
             TerminatorKind::Return => self.symex_return(),
-            TerminatorKind::Assert { cond, expected, msg, target, .. }
-                => self.symex_assert(cond, expected, msg, target),
-            _   => {}
+            TerminatorKind::Assert { cond, expected, msg, target, .. } => {
+                self.symex_assert(cond, expected, msg, target)
+            }
+            _ => {}
         };
         if !is_unwind {
             self.top_mut().inc_pc();

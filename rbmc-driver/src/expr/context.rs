@@ -672,16 +672,14 @@ impl ExprBuilder for ExprCtx {
     }
 
     fn index(&self, expr: Expr, i: Expr, ty: Type) -> Expr {
-        assert!(expr.ty().is_array()
+        assert!(
+            expr.ty().is_array()
                 || expr.ty().is_struct()
                 || expr.ty().is_slice()
                 || expr.ty().is_tuple()
-                || expr.ty().is_enum());
-        let object = if !expr.unwrap_predicates().is_object() {
-            self.object(expr)
-        } else {
-            expr
-        };
+                || expr.ty().is_enum()
+        );
+        let object = if !expr.unwrap_predicates().is_object() { self.object(expr) } else { expr };
         let kind = NodeKind::Index(object.id, i.id);
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
@@ -689,11 +687,7 @@ impl ExprBuilder for ExprCtx {
     }
 
     fn store(&self, expr: Expr, key: Expr, value: Expr) -> Expr {
-        let object = if !expr.unwrap_predicates().is_object() {
-            self.object(expr)
-        } else {
-            expr
-        };
+        let object = if !expr.unwrap_predicates().is_object() { self.object(expr) } else { expr };
         let kind = NodeKind::Store(object.id, key.id, value.id);
         let ty = object.ty();
         let new_node = Node::new(kind, ty);

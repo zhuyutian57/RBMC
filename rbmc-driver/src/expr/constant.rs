@@ -16,7 +16,7 @@ pub enum Constant {
     /// For `enum`, the first value is variant index.
     Adt(Vec<Constant>, Type),
     /// Zero-sized type is a constant
-    Zst(Type)
+    Zst(Type),
 }
 
 impl Constant {

@@ -1,6 +1,3 @@
-use std::io::stdout;
-
-use stable_mir::CrateDef;
 use stable_mir::mir::mono::Instance;
 use stable_mir::mir::*;
 
@@ -9,7 +6,6 @@ use super::place_state::PlaceState;
 use super::symex::*;
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
-use crate::program::function::FunctionIdx;
 use crate::symbol::nstring::NString;
 use crate::symbol::symbol::Level;
 use crate::symbol::symbol::Symbol;
@@ -22,12 +18,11 @@ impl<'cfg> Symex<'cfg> {
         dest: &Place,
         target: &Option<BasicBlockIdx>,
     ) -> bool {
-        let instance =
-            self.top_mut().function.operand_type(func).function_instance();
+        let instance = self.top_mut().function.operand_type(func).function_instance();
         let ty = Type::from(instance.ty());
 
         let args_exprs = args.iter().map(|x| self.make_operand(x)).collect::<Vec<_>>();
-        
+
         if ty.is_rbmc_nondet() {
             self.symex_nondet(dest);
         } else if ty.is_rust_builtin_function() {
@@ -38,12 +33,12 @@ impl<'cfg> Symex<'cfg> {
             return true;
         }
 
-        let mut is_unwind = !ty.is_rbmc_nondet() && !ty.is_rust_builtin_function();
+        let is_unwind = !ty.is_rbmc_nondet() && !ty.is_rust_builtin_function();
 
         if !is_unwind {
             match target {
                 Some(t) => self.goto(*t, self.ctx._true()),
-                _ => {},
+                _ => {}
             };
         }
 
@@ -59,12 +54,7 @@ impl<'cfg> Symex<'cfg> {
         self.assign(lhs, nondet, self.ctx._true().into());
     }
 
-    fn symex_rust_builtin_function(
-        &mut self,
-        instance: Instance,
-        args: Vec<Expr>,
-        dest: &Place
-    ) {
+    fn symex_rust_builtin_function(&mut self, instance: Instance, args: Vec<Expr>, dest: &Place) {
         let name = NString::from(instance.name());
         let ret = self.make_project(dest);
         if name.starts_with("std".into()) {

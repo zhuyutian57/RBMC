@@ -1,10 +1,4 @@
-use stable_mir::CrateDef;
-
 use super::symex::Symex;
-use crate::expr::expr::*;
-use crate::expr::ty::*;
-use crate::symbol::nstring::*;
-use crate::symbol::symbol::*;
 
 impl<'cfg> Symex<'cfg> {
     // pub(super) fn symex_builtin_function(

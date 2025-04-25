@@ -3,7 +3,6 @@ use clap::*;
 use crate::symbol::nstring::NString;
 
 pub const RBMC_CRATE: &str = "RBMC_CRATE";
-pub const RBMC_LIBRARY_PATH: &str = "RBMC_LIBRARY_PATH";
 pub const RBMC_FLAGS: &str = "RBMC_FLAGS";
 
 #[derive(clap::ValueEnum, Debug, Default, Clone, Copy, PartialEq, Eq)]

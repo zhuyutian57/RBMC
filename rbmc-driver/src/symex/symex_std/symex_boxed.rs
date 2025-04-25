@@ -1,5 +1,5 @@
-use stable_mir::mir::mono::Instance;
 use stable_mir::CrateDef;
+use stable_mir::mir::mono::Instance;
 
 use super::super::symex::*;
 use crate::expr::expr::*;

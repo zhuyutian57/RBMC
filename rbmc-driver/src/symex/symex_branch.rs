@@ -42,8 +42,7 @@ impl<'cfg> Symex<'cfg> {
             let _loop = self.top().function.get_loop(l.0);
             // Not exceed loop bound, keep unwinding.
             // However, if the branch guard is true, the loop stop unwinding.
-            if !_loop.contains(&pc) && !self.top().reach_loop_bound(l.0) && !branch_guard.is_true()
-            {
+            if !_loop.contains(&pc) && !self.top().reach_loop_bound() && !branch_guard.is_true() {
                 return;
             }
         }

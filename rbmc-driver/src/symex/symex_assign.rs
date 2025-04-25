@@ -46,7 +46,6 @@ impl<'cfg> Symex<'cfg> {
         // Assignment for symex
         self.exec_state.assignment(lhs.clone(), rhs.clone());
 
-
         // New l2 symbol
         lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
 
@@ -119,23 +118,16 @@ impl<'cfg> Symex<'cfg> {
         self.assign_rec(false_value, rhs.clone(), false_guard);
     }
 
-    fn assign_struct_or_tuple(&mut self, lhs: Expr, rhs: Expr, guard: Guard) {
-
-    }
-
     fn make_rvalue(&mut self, rvalue: &Rvalue) -> Expr {
         let ty = self.top_mut().function.rvalue_type(rvalue);
         match rvalue {
             Rvalue::AddressOf(_, place) => self.make_address_of(place, ty),
-            Rvalue::Aggregate(k, operands)
-                => self.make_aggregate(k, operands, ty),
-            Rvalue::BinaryOp(bop, lop, rop)
-                => self.make_binary(*bop, lop, rop),
+            Rvalue::Aggregate(k, operands) => self.make_aggregate(k, operands, ty),
+            Rvalue::BinaryOp(bop, lop, rop) => self.make_binary(*bop, lop, rop),
             Rvalue::UnaryOp(uop, operand) => self.make_unary(*uop, operand),
-            Rvalue::Cast(k, operand, ty)
-                => self.symex_cast(*k, operand, Type::from(ty)),
+            Rvalue::Cast(k, operand, ty) => self.symex_cast(*k, operand, Type::from(ty)),
             Rvalue::Ref(_, _, place) => self.make_address_of(place, ty),
-            Rvalue::NullaryOp(nop, t) => self.make_nullary(nop.clone(), ty.into()),
+            Rvalue::NullaryOp(nop, t) => self.make_nullary(nop.clone(), t.into()),
             Rvalue::Use(operand) => self.make_operand(operand),
             Rvalue::Repeat(operand, tyconst) => self.make_repeat(operand, tyconst),
             Rvalue::Discriminant(place) => self.make_discriminant(place),
@@ -148,10 +140,7 @@ impl<'cfg> Symex<'cfg> {
         if ty.is_slice_ptr() {
             assert!(object.is_slice());
             let root_object = object.extract_object();
-            let base = self.ctx.address_of(
-                root_object.clone(),
-                root_object.extract_address_type()
-            );
+            let base = self.ctx.address_of(root_object.clone(), root_object.extract_address_type());
             let start = object.extract_slice_start();
             let address = self.ctx.offset(base, start);
             let meta = object.extract_slice_len();
@@ -165,10 +154,7 @@ impl<'cfg> Symex<'cfg> {
     }
 
     fn make_aggregate(&mut self, k: &AggregateKind, operands: &Vec<Operand>, ty: Type) -> Expr {
-        let args = operands
-            .iter()
-            .map(|o| self.make_operand(o))
-            .collect::<Vec<Expr>>();
+        let args = operands.iter().map(|o| self.make_operand(o)).collect::<Vec<Expr>>();
         match k {
             AggregateKind::Array(..) => {
                 assert!(ty.is_array());
@@ -178,7 +164,7 @@ impl<'cfg> Symex<'cfg> {
                 assert!(ty.is_tuple());
                 self.ctx.aggregate(args, ty)
             }
-            AggregateKind::Adt(def, i, ..) => {
+            AggregateKind::Adt(_, i, ..) => {
                 assert!(ty.is_struct() || ty.is_enum());
                 if ty.is_struct() {
                     self.ctx.aggregate(args, ty)
@@ -193,7 +179,7 @@ impl<'cfg> Symex<'cfg> {
                     }
                 }
             }
-            AggregateKind::RawPtr(t, m) => {
+            AggregateKind::RawPtr(t, _) => {
                 assert!(ty.pointee_ty() == Type::from(t));
                 let address = args[0].clone();
                 let meta = args[1].clone();
@@ -224,7 +210,7 @@ impl<'cfg> Symex<'cfg> {
             BinOp::Offset => self.ctx.offset(lhs, rhs),
         }
     }
-    
+
     fn make_unary(&mut self, uop: mir::UnOp, operand: &Operand) -> Expr {
         let op = UnOp::from(uop);
         let operand = self.make_operand(operand);

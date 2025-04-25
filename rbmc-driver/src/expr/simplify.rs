@@ -205,16 +205,9 @@ impl Expr {
     }
 
     fn simplify_aggregate(&mut self, args: Vec<Expr>) {
-        let is_const = args.iter()
-            .fold(
-                true,
-                |acc, field|
-                acc && field.is_constant()
-            );
+        let is_const = args.iter().fold(true, |acc, field| acc && field.is_constant());
         if self.ty().is_adt() && is_const {
-            let fields = args
-                .iter()
-                .map(|x| x.extract_constant()).collect::<Vec<_>>();
+            let fields = args.iter().map(|x| x.extract_constant()).collect::<Vec<_>>();
             *self = self.ctx.constant_adt(fields, self.ty());
         } else {
             *self = self.ctx.aggregate(args, self.ty());
@@ -530,10 +523,9 @@ impl Expr {
             assert!(j == idx);
             let data = _enum.extract_variant_data();
             if data.is_constant() {
-                *self = self.ctx.constant_adt(
-                    vec![i.extract_constant(), data.extract_constant()],
-                    self.ty()
-                );
+                *self = self
+                    .ctx
+                    .constant_adt(vec![i.extract_constant(), data.extract_constant()], self.ty());
                 return;
             }
         } else if _enum.is_constant() {

@@ -52,8 +52,7 @@ impl<'cfg> ExecutionState<'cfg> {
         let alloc_array = self.ctx.object(alloc_array_symbol);
         self.ns.insert_object(alloc_array);
         // Initialized stack
-        let entry_function =
-            self.config.program.function_id(self.config.cli.entry_function);
+        let entry_function = self.config.program.function_id(self.config.cli.entry_function);
         self.push_frame(entry_function, None, None);
     }
 
@@ -95,13 +94,8 @@ impl<'cfg> ExecutionState<'cfg> {
         target: Option<BasicBlockIdx>,
     ) {
         self.n += 1;
-        let mut frame = Frame::new(
-            self.n,
-            self.config,
-            self.config.program.function(i),
-            dest,
-            target,
-        );
+        let mut frame =
+            Frame::new(self.n, self.config, self.config.program.function(i), dest, target);
         if !self.frames.is_empty() {
             frame.cur_state = self.cur_state().clone();
         }
@@ -116,7 +110,7 @@ impl<'cfg> ExecutionState<'cfg> {
         assert!(!self.frames.is_empty());
         self.frames.pop().unwrap()
     }
-    
+
     pub fn new_object(&mut self, ty: Type) -> Expr {
         let name = NString::from("heap_object_") + self.objects.len().to_string();
         let symbol = Symbol::from(name);
@@ -215,11 +209,7 @@ impl<'cfg> ExecutionState<'cfg> {
             return expr
                 .extract_fields()
                 .iter()
-                .fold(
-                    true,
-                    |acc, field|
-                    acc && self.is_constant_value(field.clone())
-                );
+                .fold(true, |acc, field| acc && self.is_constant_value(field.clone()));
         }
 
         if expr.is_binary() {
@@ -252,7 +242,6 @@ impl<'cfg> ExecutionState<'cfg> {
         }
 
         if expr.is_variant() {
-            let data = expr.extract_variant_data();
             return self.is_constant_value(expr.extract_variant_data());
         }
 
@@ -325,7 +314,7 @@ impl<'cfg> ExecutionState<'cfg> {
         panic!("Do not support place state: {place:?}");
     }
 
-    pub fn assignment(&mut self, mut lhs: Expr, rhs: Expr) {
+    pub fn assignment(&mut self, lhs: Expr, rhs: Expr) {
         assert!(lhs.is_symbol() && !lhs.extract_symbol().is_level2());
 
         // Constant propagation
@@ -343,12 +332,14 @@ impl<'cfg> ExecutionState<'cfg> {
     fn assign_value_set(&mut self, lhs: Expr, rhs: Expr) {
         if lhs.ty().is_struct() || lhs.ty().is_tuple() {
             // Update for each field
-            let ty  = lhs.ty();
+            let ty = lhs.ty();
             let lhs_object = self.ctx.object(lhs.clone());
             let rhs_object = self.ctx.object(rhs.clone());
             for i in 0..ty.fields() {
                 let fty = ty.field_type(i);
-                if ty.field_type(i).is_zero_sized_type() { continue; }
+                if ty.field_type(i).is_zero_sized_type() {
+                    continue;
+                }
                 let idx = self.ctx.constant_usize(i);
                 let lhs_field = self.ctx.index(lhs_object.clone(), idx.clone(), fty);
                 let rhs_field = self.ctx.index(rhs_object.clone(), idx.clone(), fty);
@@ -360,7 +351,7 @@ impl<'cfg> ExecutionState<'cfg> {
         if lhs.is_index() {
             // Identifier form: `<l1_name>.<field_id/field_name>`
             assert!(lhs.extract_index().is_constant());
-            let mut l1_lhs = lhs.clone();
+            let l1_lhs = lhs.clone();
             let name = Symbol::from(NString::from(format!("{l1_lhs:?}")));
             let new_lhs = self.ctx.mk_symbol(name, lhs.ty());
             let mut new_rhs = rhs.clone();
@@ -370,12 +361,14 @@ impl<'cfg> ExecutionState<'cfg> {
         }
 
         assert!(lhs.is_symbol());
-        if !lhs.ty().is_any_ptr() { return; }
+        if !lhs.ty().is_any_ptr() {
+            return;
+        }
         self.assignment_value_set(lhs, rhs);
     }
 
     fn assignment_value_set(&mut self, lhs: Expr, rhs: Expr) {
-        let mut l1_lhs = lhs.clone();
+        let l1_lhs = lhs.clone();
         let mut l1_rhs = rhs.clone();
         // lhs is already in level1
         self.rename(&mut l1_rhs, Level::Level1);

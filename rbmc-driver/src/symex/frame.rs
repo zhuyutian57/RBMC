@@ -50,7 +50,7 @@ impl<'func> Frame<'func> {
     }
 
     pub fn inc_pc(&mut self) {
-        while let Some((l, c)) = self.loop_stack.last() {
+        while let Some((l, _)) = self.loop_stack.last() {
             let mut mi = self.function.size();
             for pc in self.function.get_loop(*l) {
                 if self.state_map.contains_key(pc) {
@@ -87,7 +87,7 @@ impl<'func> Frame<'func> {
     }
 
     /// Check whether the current loop read loop bound
-    pub fn reach_loop_bound(&self, pc: Pc) -> bool {
+    pub fn reach_loop_bound(&self) -> bool {
         self.config.cli.unwind != 0
             && !self.loop_stack.is_empty()
             && self.loop_stack.last().unwrap().1 >= self.config.cli.unwind

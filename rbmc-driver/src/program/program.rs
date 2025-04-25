@@ -1,13 +1,10 @@
 use std::collections::HashMap;
-use std::io::*;
 
 use num_bigint::BigInt;
 use num_bigint::Sign;
-use stable_mir::mir::mono::Instance;
-use stable_mir::mir::mono::StaticDef;
 use stable_mir::mir::TerminatorKind;
+use stable_mir::mir::mono::StaticDef;
 use stable_mir::target::*;
-use stable_mir::ty::FnDef;
 use stable_mir::*;
 
 use super::function::*;
@@ -27,21 +24,18 @@ pub struct Program {
 impl Program {
     pub fn new(_crate: Crate, entry_function: NString) -> Self {
         let mut functions = Vec::new();
-        _crate.fn_defs().iter().for_each(
-            |def| functions.push(Function::from(def))
-        );
+        _crate.fn_defs().iter().for_each(|def| functions.push(Function::from(def)));
         let mut idx = HashMap::new();
-        functions.iter().enumerate().for_each(
-            |(i, function)|
-            { idx.insert(function.name(), i); }
-        );
+        functions.iter().enumerate().for_each(|(i, function)| {
+            idx.insert(function.name(), i);
+        });
         assert!(idx.contains_key(&entry_function));
         let mut program = Program {
             name: _crate.name.clone().into(),
             static_variables: _crate.statics(),
             local_function_count: functions.len(),
             functions: functions,
-            function_map: idx
+            function_map: idx,
         };
         program.init();
         program
@@ -59,7 +53,7 @@ impl Program {
                     TerminatorKind::Drop { place, .. } => {
                         let ty = Type::from(place.ty(locals).unwrap());
                         Some(ty.drop_instance())
-                    },
+                    }
                     TerminatorKind::Call { func, .. } => {
                         let ty = Type::from(func.ty(locals).unwrap());
                         let instance = ty.function_instance();
@@ -68,12 +62,14 @@ impl Program {
                         } else {
                             Some(instance)
                         }
-                    },
+                    }
                     _ => None, // Do nothing
                 };
                 if let Some(inst) = instance {
                     let name = NString::from(inst.trimmed_name());
-                    if self.function_map.contains_key(&name) { continue; }
+                    if self.function_map.contains_key(&name) {
+                        continue;
+                    }
                     let idx = self.functions.len() + new_functions.len();
                     self.function_map.insert(name, idx);
                     new_functions.push(Function::from(&inst));
@@ -100,7 +96,6 @@ impl Program {
         assert!(self.contains_function(name));
         *self.function_map.get(&name).unwrap()
     }
-
 
     pub fn function(&self, i: FunctionIdx) -> &Function {
         assert!(i < self.functions.len());

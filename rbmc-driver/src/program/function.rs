@@ -62,7 +62,9 @@ impl Function {
                     let mut stack = vec![i];
                     while !stack.is_empty() {
                         let n = stack.pop().unwrap();
-                        if n == j { continue; }
+                        if n == j {
+                            continue;
+                        }
                         if let Some(preds) = predecessors.get(&n) {
                             for pred in preds {
                                 if !_loop.contains(pred) {
@@ -72,7 +74,9 @@ impl Function {
                             }
                         }
                     }
-                    if !_loop.contains(&j) { continue; }
+                    if !_loop.contains(&j) {
+                        continue;
+                    }
                     self._loops.insert(j, _loop);
                 }
             }
@@ -151,7 +155,6 @@ impl PartialEq for Function {
 
 impl Eq for Function {}
 
-
 impl From<(NString, Body, Type)> for Function {
     fn from(value: (NString, Body, Type)) -> Self {
         let mut function = Function {
@@ -160,7 +163,7 @@ impl From<(NString, Body, Type)> for Function {
             body: value.1,
             ty: value.2,
             _local_alive: HashSet::new(),
-            _loops: HashMap::new()
+            _loops: HashMap::new(),
         };
         function.init();
         function
