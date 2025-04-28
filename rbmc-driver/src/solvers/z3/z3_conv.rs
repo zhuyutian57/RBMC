@@ -161,6 +161,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     }
 
     fn convert_pointer_base(&self, pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
+        if pt.get_sort() == self.mk_int_sort() { return pt.clone(); }
         self.mk_pointer_base(pt)
     }
 

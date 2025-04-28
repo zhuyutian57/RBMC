@@ -40,16 +40,14 @@ impl<'cfg> Symex<'cfg> {
         self.replace_predicates(&mut rhs);
         self.rename(&mut rhs);
         rhs.simplify();
-
-        // println!("{lhs:?} = {rhs:?}");
-
+        
         // Assignment for symex
         self.exec_state.assignment(lhs.clone(), rhs.clone());
 
         // New l2 symbol
         lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
-
-        if rhs.is_type() {
+        
+        if lhs.ty().is_zero_sized_type() || rhs.is_type() {
             return;
         }
 

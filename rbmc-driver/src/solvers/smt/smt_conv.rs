@@ -73,7 +73,8 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
 
         // convert sub exprs firstly
         let mut args: Vec<Ast> = Vec::new();
-        if !expr.is_address_of()
+        if !expr.is_terminal()
+            && !expr.is_address_of()
             && !expr.is_index()
             && !expr.is_cast()
             && !expr.is_store()

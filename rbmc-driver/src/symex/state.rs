@@ -129,7 +129,13 @@ impl State {
             // Merge value set
             self.value_set.union(&rhs.value_set);
         }
+        
+        let now = std::time::Instant::now();
         self.guard |= &rhs.guard;
+        let t = now.elapsed().as_secs_f32();
+        if t > 0.01 {
+            println!("{t}");
+        }
     }
 
     pub fn get_value_set(&self, expr: Expr, values: &mut ObjectSet) {
@@ -225,6 +231,16 @@ impl State {
                     self.get_value_set_rec(field, suffix, values);
                 } else if _inner_expr.is_unknown() || _inner_expr.is_null_object() {
                     values.insert((_inner_expr.ctx.unknown(_inner_expr.ty().pointee_ty()), None));
+                } else if _inner_expr.is_store() {
+                    let _index = _inner_expr.extract_index().extract_constant();
+                    let j = bigint_to_usize(&_index.to_integer());
+                    if i == j {
+                        let _object = _inner_expr.extract_update_value();
+                        self.get_value_set_rec(_object, suffix, values);
+                    } else {
+                        let _object = _inner_expr.extract_object();
+                        self.get_value_set_rec(_object, new_suffix, values);
+                    }
                 } else {
                     self.get_value_set_rec(_inner_expr, new_suffix, values);
                 }

@@ -9,12 +9,18 @@ impl<'cfg> Symex<'cfg> {
     pub(super) fn symex_cast(&mut self, kind: CastKind, operand: &Operand, ty: Type) -> Expr {
         let expr = self.make_operand(operand).unwrap_predicates();
         match kind {
+            CastKind::PointerExposeAddress => self.symex_cast_poniter_expose_address(operand, ty),
             CastKind::PointerCoercion(c) => self.symex_cast_pointer_coercion(c, expr, ty),
             CastKind::IntToInt => self.symex_cast_inttoint(expr, ty),
             CastKind::PtrToPtr => self.symex_cast_ptrtoptr(expr, ty),
             CastKind::Transmute => self.symex_cast_transmute(expr, ty),
             _ => todo!("{kind:?} - {expr:?} -> {ty:?}"),
         }
+    }
+
+    fn symex_cast_poniter_expose_address(&mut self, operand: &Operand, ty: Type) -> Expr {
+        let pt = self.make_operand(operand);
+        self.ctx.cast(pt, self.ctx.mk_type(ty))
     }
 
     fn symex_cast_pointer_coercion(
@@ -49,14 +55,11 @@ impl<'cfg> Symex<'cfg> {
 
     fn symex_cast_ptrtoptr(&mut self, pt: Expr, ty: Type) -> Expr {
         if pt.ty().is_slice_ptr() {
-            let base = self.ctx.pointer_base(pt.clone());
-            let start = self.ctx.pointer_offset(pt.clone());
-            let address = self.ctx.offset(base, start);
             let meta = self.ctx.pointer_meta(pt.clone());
             if ty.is_slice_ptr() {
-                self.ctx.pointer(address, Some(meta), ty)
+                self.ctx.pointer(pt.clone(), Some(meta), ty)
             } else {
-                self.ctx.pointer(address, None, ty)
+                self.ctx.pointer(pt.clone(), None, ty)
             }
         } else {
             self.ctx.pointer(pt, None, ty)
@@ -68,14 +71,14 @@ impl<'cfg> Symex<'cfg> {
             let object = self.ctx.object(expr);
             let i = self.ctx.constant_usize(0);
             self.ctx.index(object, i, target_ty)
-        } else if expr.ty().is_integer() && target_ty.is_primitive() {
+        } else if expr.ty().is_integer() && target_ty.is_primitive_ptr() {
             let mut num = expr;
             self.rename(&mut num);
             assert!(num.is_constant() && num.extract_constant().to_integer() == BigInt::ZERO);
             // Create a null pointer
             self.ctx.null(target_ty)
         } else {
-            todo!("{expr:?} with {:?} -> {target_ty:?}", expr.ty())
+            self.ctx.cast(expr, self.ctx.mk_type(target_ty))
         }
     }
 }

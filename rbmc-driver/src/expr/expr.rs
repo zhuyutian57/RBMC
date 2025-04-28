@@ -20,7 +20,7 @@ use crate::symbol::symbol::*;
 #[derive(Clone)]
 pub struct Expr {
     pub ctx: ExprCtx,
-    pub(super) id: NodeId,
+    pub id: NodeId,
 }
 
 impl Expr {

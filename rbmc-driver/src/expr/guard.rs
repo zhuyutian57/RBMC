@@ -13,7 +13,7 @@ use super::expr::*;
 #[derive(Clone)]
 pub struct Guard {
     _ctx: ExprCtx,
-    _expr_set: HashSet<Expr>,
+    pub _expr_set: HashSet<Expr>,
 }
 
 impl Guard {
@@ -113,48 +113,23 @@ impl BitOrAssign<&Guard> for Guard {
             let g1 = self.to_expr();
             let g2 = rhs.to_expr();
             self._expr_set.clear();
-            self._expr_set.insert(self._ctx.or(g1, g2));
-            return;
+            self.add(self._ctx.or(g1, g2));
         } else {
-            let mut s1 = self._expr_set.clone();
-            let mut s2 = rhs._expr_set.clone();
-            // Resolution
-            if s1.len() > 1 && s2.len() > 1 {
-                let exprs =
-                    self._expr_set.union(&rhs._expr_set).map(|x| x.clone()).collect::<HashSet<_>>();
-                for expr in exprs {
-                    if s1.len() == 1 || s2.len() == 1 {
-                        break;
-                    }
-                    let mut not_expr = self._ctx.not(expr.clone());
-                    not_expr.simplify();
-
-                    if s1.contains(&expr) && s2.contains(&not_expr) {
-                        s1.remove(&expr);
-                        s2.remove(&not_expr);
-                    } else if s1.contains(&not_expr) && s2.contains(&expr) {
-                        s1.remove(&not_expr);
-                        s2.remove(&expr);
-                    }
-                }
-            }
-            // Merge them
-            self._expr_set = s1.intersection(&s2).map(|x| x.clone()).collect::<HashSet<_>>();
-            if self._expr_set.is_empty() {
-                self.make_true();
-            }
-
-            let g1 = s1
-                .difference(&s2)
+            // Common
+            let common = self._expr_set
+                .intersection(&rhs._expr_set)
+                .map(|x| x.clone())
+                .collect::<HashSet<_>>();
+            let g1 = self._expr_set
+                .difference(&common)
                 .map(|x| x.clone())
                 .fold(self._ctx._true(), |acc, x| self._ctx.and(acc, x));
-            let g2 = s2
-                .difference(&s1)
+            let g2 = rhs._expr_set
+                .difference(&common)
                 .map(|x| x.clone())
                 .fold(self._ctx._true(), |acc, x| self._ctx.and(acc, x));
-            let mut new_g = self._ctx.or(g1, g2);
-            new_g.simplify();
-            self.add(new_g);
+            self._expr_set = common;
+            self._expr_set.insert(self._ctx.or(g1, g2));
         }
     }
 }

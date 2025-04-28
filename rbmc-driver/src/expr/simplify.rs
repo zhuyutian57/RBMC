@@ -69,9 +69,7 @@ impl Expr {
         }
 
         if self.is_pointer() {
-            let base = args[0].clone();
-            let meta = args[1].clone();
-            *self = self.ctx.pointer(base, Some(meta), self.ty());
+            self.simplify_pointer(args[0].clone(), args[1].clone());
             return;
         }
 
@@ -298,6 +296,9 @@ impl Expr {
                 true
             };
             *self = self.ctx.constant_bool(res);
+        } else if self.extract_bin_op() == BinOp::Eq && lhs == rhs {
+            // Special case
+            *self = self.ctx._true();
         } else {
             *self = match self.extract_bin_op() {
                 BinOp::Eq => self.ctx.eq(lhs, rhs),
@@ -394,6 +395,8 @@ impl Expr {
             self.id = true_value.id;
         } else if cond.is_false() {
             self.id = false_value.id;
+        } else if true_value == false_value {
+            self.id = true_value.id;
         } else {
             *self = self.ctx.ite(cond, true_value, false_value);
         }
@@ -401,9 +404,13 @@ impl Expr {
 
     fn simplify_cast(&mut self, src: Expr, ty: Type) {
         if src.is_constant() {
-            assert!(src.ty().is_integer() && ty.is_integer());
-            let i = src.extract_constant().to_integer();
-            *self = self.ctx.constant_integer(i, ty);
+            if src.ty().is_integer() && ty.is_integer() {
+                let i = src.extract_constant().to_integer();
+                *self = self.ctx.constant_integer(i, ty);
+            } else {
+                assert!(src.is_null() && ty.is_usize());
+                *self = self.ctx.constant_usize(0);
+            }
         } else {
             *self = self.ctx.cast(src, self.ctx.mk_type(ty));
         }
@@ -411,9 +418,9 @@ impl Expr {
 
     fn simplify_same_object(&mut self, lhs: Expr, rhs: Expr) {
         if lhs == rhs {
-            self.id = Context::TRUE_ID;
+            *self = self.ctx._true();
         } else {
-            *self = self.ctx.same_object(lhs, rhs)
+            *self = self.ctx.same_object(lhs, rhs);
         }
     }
 
@@ -461,6 +468,14 @@ impl Expr {
             }
         } else {
             *self = self.ctx.store(object, i, value);
+        }
+    }
+
+    fn simplify_pointer(&mut self, expr: Expr, meta: Expr) {
+        if expr.is_null() {
+            *self = expr;
+        } else {
+            *self = self.ctx.pointer(expr, Some(meta), self.ty());
         }
     }
 

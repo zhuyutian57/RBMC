@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use num_bigint::BigInt;
 use stable_mir::CrateDef;
 use stable_mir::mir::Operand;
@@ -42,8 +44,6 @@ impl<'cfg> Symex<'cfg> {
                 self.phi_function(&mut state);
 
                 self.top_mut().cur_state.merge(&state);
-
-                // println!("after merge: {:?}", self.top().cur_state.guard);
             }
         }
 
@@ -82,7 +82,7 @@ impl<'cfg> Symex<'cfg> {
             // Other assignment
             nrenaming.l2_rename(&mut new_rhs, true);
 
-            let rhs = if self.exec_state.cur_state().guard.is_false() {
+            let rhs = if self.top().cur_state.guard.is_false() {
                 new_rhs
             } else {
                 self.ctx.ite(new_guard.to_expr(), new_rhs, cur_rhs)
@@ -128,8 +128,7 @@ impl<'cfg> Symex<'cfg> {
             let is_leak = if object_state.is_unknown() {
                 let alloac_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
                 let address_of = self.ctx.address_of(object.clone(), object.extract_address_type());
-                let ident = self.ctx.pointer_base(address_of);
-                self.ctx.index(alloac_array, ident, Type::bool_type())
+                self.ctx.index(alloac_array, address_of, Type::bool_type())
             } else {
                 self.ctx._true()
             };

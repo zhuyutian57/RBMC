@@ -314,8 +314,6 @@ impl Node {
 impl Hash for Node {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.kind.hash(state);
-        if matches!(self.kind, NodeKind::Terminal(_)) {
-            self.ty.hash(state);
-        }
+        self.ty.hash(state);
     }
 }
