@@ -154,7 +154,7 @@ impl State {
         }
 
         if expr.is_null() {
-            values.insert((expr.ctx.null_object(expr.ty().pointee_ty()), None));
+            values.insert((expr.ctx.null_object(), None));
             return;
         }
 

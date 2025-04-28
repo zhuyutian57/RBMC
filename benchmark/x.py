@@ -68,7 +68,7 @@ def kani(file):
   with open(tmp_file, "w") as crate: crate.write("".join(code))
 
   # close warnings
-  os.environ["RUSTFLAGS"] = "-Awarnings"
+  os.environ["RUSTFLAGS"] = "-Awarnings -Copt-level=1"
 
   cmd = [
     "kani",

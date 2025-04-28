@@ -879,9 +879,9 @@ impl ExprBuilder for ExprCtx {
         Expr { ctx: self.clone(), id }
     }
 
-    fn null_object(&self, ty: Type) -> Expr {
+    fn null_object(&self) -> Expr {
         let kind = NodeKind::NullObject;
-        let new_node = Node::new(kind, ty);
+        let new_node = Node::new(kind, Type::unit_type());
         let id = self.borrow_mut().add_node(new_node);
         Expr { ctx: self.clone(), id }
     }

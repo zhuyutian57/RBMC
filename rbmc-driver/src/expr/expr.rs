@@ -904,6 +904,6 @@ pub trait ExprBuilder {
     fn _move(&self, object: Expr) -> Expr;
     fn valid(&self, object: Expr) -> Expr;
     fn invalid(&self, object: Expr) -> Expr;
-    fn null_object(&self, ty: Type) -> Expr;
+    fn null_object(&self) -> Expr;
     fn unknown(&self, ty: Type) -> Expr;
 }
