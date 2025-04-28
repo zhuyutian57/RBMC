@@ -130,12 +130,7 @@ impl State {
             self.value_set.union(&rhs.value_set);
         }
         
-        let now = std::time::Instant::now();
         self.guard |= &rhs.guard;
-        let t = now.elapsed().as_secs_f32();
-        if t > 0.01 {
-            println!("{t}");
-        }
     }
 
     pub fn get_value_set(&self, expr: Expr, values: &mut ObjectSet) {

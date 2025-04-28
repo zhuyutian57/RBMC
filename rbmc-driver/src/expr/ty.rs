@@ -41,6 +41,7 @@ const STD_BUILTIN_FUNCTIONS: &[&str] = &[
     "std::alloc::Layout::align",
     // Pointer arithmetic
     "std::ptr::null",
+    "std::ptr::null_mut",
     "std::ptr::mut_ptr::<impl *mut T>::eq",
     "std::ptr::mut_ptr::<impl *mut T>::add",
     "std::ptr::mut_ptr::<impl *mut T>::offset",

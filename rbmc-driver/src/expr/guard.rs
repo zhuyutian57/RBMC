@@ -51,9 +51,6 @@ impl Guard {
             self.make_false();
             return;
         }
-        if self.is_true() {
-            self._expr_set.clear();
-        }
 
         if expr.is_binary() && expr.extract_bin_op() == BinOp::And {
             let sub_exprs = expr.sub_exprs().unwrap();
@@ -94,7 +91,7 @@ impl Sub for Guard {
 impl BitAndAssign<&Guard> for Guard {
     fn bitand_assign(&mut self, rhs: &Guard) {
         for expr in rhs._expr_set.iter() {
-            self._expr_set.insert(expr.clone());
+            self.add(expr.clone());
         }
     }
 }
@@ -129,7 +126,9 @@ impl BitOrAssign<&Guard> for Guard {
                 .map(|x| x.clone())
                 .fold(self._ctx._true(), |acc, x| self._ctx.and(acc, x));
             self._expr_set = common;
-            self._expr_set.insert(self._ctx.or(g1, g2));
+            let mut new_g = self._ctx.or(g1, g2);
+            new_g.simplify();
+            self._expr_set.insert(new_g);
         }
     }
 }

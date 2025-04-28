@@ -75,19 +75,20 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
 
         let mut ret = None;
 
-        for (object, offset) in objects {
-            // An object is valid if it is owned by some variable
-            // according to the Ownership rule of Rust.
-            if object.is_null_object() {
-                self.dereference_null(pt.clone(), guard.clone(), mode);
-                continue;
-            }
+        if objects.iter()
+            .fold(false, |acc, (x, _)| acc | x.is_null_object()) {
+            self.dereference_null(pt.clone(), guard.clone(), mode);
+        }
 
-            if object.is_unknown() {
-                self.dereference_invalid_ptr(pt.clone(), mode, guard.clone());
-                continue;
-            }
+        if objects.iter()
+            .fold(false, |acc, (x, _)| acc | x.is_unknown()) {
+            self.dereference_invalid_ptr(pt.clone(), mode, guard.clone());
+        }
 
+        for (object, offset) in
+            objects
+                .into_iter()
+                .filter(|(x, _)| !x.is_null_object() && !x.is_unknown()) {
             // Note that all pointer is constructed from a root object.
             // The root object here is used to retrieve place states.
             let root_object = object.extract_root_object();
