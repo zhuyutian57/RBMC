@@ -30,18 +30,21 @@ pub type FunctionDef = (FnDef, GenericArgs);
 /// `Box::*`: `Box` is a special struct in rust. In our memory model, `Box<T>` is a
 /// primitive type. Thus, some functions are executed directly instead of unwinding.
 const STD_BUILTIN_FUNCTIONS: &[&str] = &[
-    "alloc",
-    "dealloc",
+    "std::alloc::alloc",
+    "std::alloc::dealloc",
     // Box
-    "Box::<T>::new",
+    "std::boxed::Box::<T>::new",
     // Layout
-    "Layout::new",
-    "Layout::for_value_raw",
-    "Layout::size",
-    "Layout::align",
+    "std::alloc::Layout::new",
+    "std::alloc::Layout::for_value_raw",
+    "std::alloc::Layout::size",
+    "std::alloc::Layout::align",
     // Pointer arithmetic
+    "std::ptr::null",
+    "std::ptr::mut_ptr::<impl *mut T>::eq",
     "std::ptr::mut_ptr::<impl *mut T>::add",
     "std::ptr::mut_ptr::<impl *mut T>::offset",
+    "std::ptr::mut_ptr::<impl *mut T>::is_null",
     // Slice
     "slice_index_order_fail",
     "slice_start_index_len_fail",
@@ -252,7 +255,7 @@ impl Type {
         if !self.is_fn() {
             return false;
         }
-        let name = self.fn_def().0.trimmed_name();
+        let name = self.fn_def().0.name();
         return STD_BUILTIN_FUNCTIONS.contains(&name.as_str());
     }
 

@@ -13,25 +13,17 @@ impl<'cfg> Symex<'cfg> {
     pub fn symex_ptr_api(&mut self, instance: Instance, args: Vec<Expr>, dest: Expr) {
         let fty = Type::from(instance.ty());
         let name = NString::from(fty.fn_def().0.trimmed_name());
-        if name == "std::ptr::mut_ptr::<impl *mut T>::add" {
+        if name == "null" || name == "null_mut" {
+            self.symex_ptr_null(dest);
+        } else if name == "std::ptr::mut_ptr::<impl *mut T>::add" {
             self.symex_ptr_add(dest, args);
         } else if name == "std::ptr::mut_ptr::<impl *mut T>::offset" {
             self.symex_ptr_offset(dest, args);
+        } else if name == "std::ptr::mut_ptr::<impl *mut T>::is_null" {
+            self.symex_ptr_is_null(dest, args);
         } else {
             panic!("Not support for {name:?}");
         }
-    }
-
-    fn symex_ptr_eq(&mut self, dest: Expr, args: Vec<Expr>) {
-        assert!(args.len() == 2);
-        let lhs = dest.clone();
-
-        let p1 = args[0].clone();
-        let p2 = args[1].clone();
-        let mut rhs = self.ctx.eq(p1, p2);
-        self.replace_predicates(&mut rhs);
-
-        self.assign(lhs, rhs, self.ctx._true().into());
     }
 
     fn symex_ptr_null(&mut self, dest: Expr) {

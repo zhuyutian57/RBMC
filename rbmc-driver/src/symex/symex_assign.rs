@@ -40,7 +40,9 @@ impl<'cfg> Symex<'cfg> {
         self.replace_predicates(&mut rhs);
         self.rename(&mut rhs);
         rhs.simplify();
-        
+
+        // println!("{lhs:?} = {rhs:?}");
+
         // Assignment for symex
         self.exec_state.assignment(lhs.clone(), rhs.clone());
 

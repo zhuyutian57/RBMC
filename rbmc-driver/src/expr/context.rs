@@ -671,11 +671,12 @@ impl ExprBuilder for ExprCtx {
 
     fn index(&self, expr: Expr, i: Expr, ty: Type) -> Expr {
         assert!(
-            expr.ty().is_array()
+            (expr.ty().is_array()
                 || expr.ty().is_struct()
                 || expr.ty().is_slice()
                 || expr.ty().is_tuple()
-                || expr.ty().is_enum()
+                || expr.ty().is_enum())
+            && i.ty().is_integer()
         );
         let object = if !expr.unwrap_predicates().is_object() { self.object(expr) } else { expr };
         let kind = NodeKind::Index(object.id, i.id);

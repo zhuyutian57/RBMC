@@ -480,9 +480,7 @@ impl Expr {
     }
 
     fn simplify_pointer_base(&mut self, expr: Expr) {
-        if expr.is_address_of() {
-            *self = expr;
-        } else if expr.is_pointer() {
+        if expr.is_pointer() {
             let mut base = self.ctx.pointer_base(expr.extract_inner_pointer());
             base.simplify();
             *self = base;

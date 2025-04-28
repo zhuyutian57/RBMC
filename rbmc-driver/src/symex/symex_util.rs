@@ -128,7 +128,8 @@ impl<'cfg> Symex<'cfg> {
             let is_leak = if object_state.is_unknown() {
                 let alloac_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
                 let address_of = self.ctx.address_of(object.clone(), object.extract_address_type());
-                self.ctx.index(alloac_array, address_of, Type::bool_type())
+                let base = self.ctx.pointer_base(address_of);
+                self.ctx.index(alloac_array, base, Type::bool_type())
             } else {
                 self.ctx._true()
             };
@@ -293,11 +294,12 @@ impl<'cfg> Symex<'cfg> {
 
         if expr.is_valid() || expr.is_invalid() {
             let object = expr.extract_object();
-            let pt_ident = self
-                .ctx
-                .pointer_base(self.ctx.address_of(object.clone(), object.extract_address_type()));
+            let base = self.ctx
+                .pointer_base(
+                    self.ctx.address_of(object.clone(), object.extract_address_type())
+                );
             let alloc_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
-            let alloced = self.ctx.index(alloc_array, pt_ident, Type::bool_type());
+            let alloced = self.ctx.index(alloc_array, base, Type::bool_type());
             *expr = if expr.is_invalid() { self.ctx.not(alloced) } else { alloced };
             return;
         }
