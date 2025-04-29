@@ -278,20 +278,16 @@ impl<'cfg> Symex<'cfg> {
     }
 
     pub(super) fn replace_predicates(&self, expr: &mut Expr) {
-        match expr.sub_exprs() {
-            Some(mut sub_exprs) => {
-                let mut has_changed = false;
-                for sub_expr in sub_exprs.iter_mut() {
-                    if sub_expr.has_predicates() {
-                        has_changed |= true;
-                        self.replace_predicates(sub_expr);
-                    }
-                }
-                if has_changed {
-                    expr.replace_sub_exprs(sub_exprs);
-                }
+        let mut sub_exprs = expr.sub_exprs();
+        let mut has_changed = false;
+        for sub_expr in sub_exprs.iter_mut() {
+            if sub_expr.has_predicates() {
+                has_changed |= true;
+                self.replace_predicates(sub_expr);
             }
-            None => {}
+        }
+        if has_changed {
+            expr.replace_sub_exprs(sub_exprs);
         }
 
         if expr.is_valid() || expr.is_invalid() {

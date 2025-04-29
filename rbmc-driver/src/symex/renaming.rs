@@ -111,7 +111,7 @@ impl Renaming {
         }
 
         // Expr is not a leaf. There must be some sub-nodes in AST
-        let mut sub_exprs = expr.sub_exprs().unwrap();
+        let mut sub_exprs = expr.sub_exprs();
         for sub_expr in sub_exprs.iter_mut() {
             self.l1_rename(sub_expr);
         }
@@ -145,7 +145,7 @@ impl Renaming {
         }
 
         // Expr is not a leaf. There must be some sub-nodes in AST
-        let mut sub_exprs = expr.sub_exprs().unwrap();
+        let mut sub_exprs = expr.sub_exprs();
 
         for (i, sub_expr) in sub_exprs.iter_mut().enumerate() {
             let prop = if i == 0 && expr.is_store() { false } else { propagate };

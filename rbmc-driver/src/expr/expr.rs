@@ -173,6 +173,10 @@ impl Expr {
         self.ctx.borrow().is_null_object(self.id)
     }
 
+    pub fn is_invalid_object(&self) -> bool {
+        self.ctx.borrow().is_invalid_object(self.id)
+    }
+
     pub fn is_unknown(&self) -> bool {
         self.ctx.borrow().is_unknown(self.id)
     }
@@ -233,7 +237,7 @@ impl Expr {
 
     pub fn extract_fields(&self) -> Vec<Expr> {
         assert!(self.is_aggregate());
-        self.sub_exprs().unwrap()
+        self.sub_exprs()
     }
 
     pub fn extract_bin_op(&self) -> BinOp {
@@ -417,37 +421,31 @@ impl Expr {
     }
 
     fn extract_sub_expr(&self, i: usize) -> Expr {
-        let sub_exprs = self.sub_exprs().expect("Must be non-empty");
+        let sub_exprs = self.sub_exprs();
         assert!(i < sub_exprs.len());
         sub_exprs[i].clone()
     }
 
     /// Construct sub-exprs from AST
-    pub fn sub_exprs(&self) -> Option<Vec<Expr>> {
-        match self.ctx.borrow().sub_nodes(self.id) {
-            Some(ids) => {
-                let mut sub_exprs = Vec::new();
-                for id in ids {
-                    sub_exprs.push(Expr { ctx: self.ctx.clone(), id });
-                }
-                Some(sub_exprs)
-            }
-            None => None,
+    pub fn sub_exprs(&self) -> Vec<Expr> {
+        let mut sub_exprs = Vec::new();
+        for id in self.ctx.borrow().sub_nodes(self.id) {
+            sub_exprs.push(Expr { ctx: self.ctx.clone(), id });
         }
+        sub_exprs
     }
 
     pub fn has_predicates(&self) -> bool {
         if self.is_invalid() | self.is_move() {
             return true;
         }
-        match self.sub_exprs() {
-            Some(sub_exprs) => sub_exprs.iter().fold(false, |res, x| res | x.has_predicates()),
-            None => false,
-        }
+        self.sub_exprs().iter().fold(false, |res, x| res | x.has_predicates())
     }
 
     pub fn replace_sub_exprs(&mut self, sub_exprs: Vec<Expr>) {
-        if self.is_terminal() || self.is_unknown() {
+        if self.is_terminal()
+            || self.is_unknown()
+            || self.is_invalid_object() {
             return;
         }
 
@@ -668,7 +666,7 @@ impl Debug for Expr {
         if self.is_terminal() {
             write!(f, "{:?}", self.ctx.borrow().extract_terminal(self.id).unwrap())
         } else {
-            let sub_exprs = self.sub_exprs().unwrap();
+            let sub_exprs = self.sub_exprs();
 
             if self.is_address_of() {
                 let place = &sub_exprs[0];
@@ -829,6 +827,10 @@ impl Debug for Expr {
                 return write!(f, "NULL_OBJECT");
             }
 
+            if self.is_invalid_object() {
+                return write!(f, "INVALID_OBJECT");
+            }
+
             if self.is_unknown() {
                 return write!(f, "Unknown");
             }
@@ -905,5 +907,6 @@ pub trait ExprBuilder {
     fn valid(&self, object: Expr) -> Expr;
     fn invalid(&self, object: Expr) -> Expr;
     fn null_object(&self) -> Expr;
+    fn invalid_object(&self, ty: Type) -> Expr;
     fn unknown(&self, ty: Type) -> Expr;
 }

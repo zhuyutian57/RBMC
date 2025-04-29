@@ -38,10 +38,10 @@ fn push() {
         },
         5 => {
             unsafe {
-                if S == t4  {
-                    S = x4;
+                if S == t1  {
+                    S = x1;
                 } else {
-                    pc4 = 1;
+                    pc1 = 3;
                 }
             }
             return;
@@ -116,7 +116,7 @@ fn main() {
         }
     }
 
-    while unsafe { garbage as usize != 0 } {
+    while unsafe { !garbage.is_null() } {
         let next = unsafe { (*garbage).next };
         unsafe {
             dealloc(garbage as *mut u8, Layout::new::<cell>());

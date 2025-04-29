@@ -17,11 +17,8 @@ impl Expr {
             self.to_nnf(false);
         }
 
-        let sub_exprs = self.simplify_args();
-        if sub_exprs == None {
-            return;
-        }
-        let args = sub_exprs.unwrap();
+        let args = self.simplify_args();
+        if args.is_empty() { return; }
 
         if self.is_aggregate() {
             self.simplify_aggregate(args);
@@ -145,7 +142,7 @@ impl Expr {
             if self.extract_bin_op() == BinOp::Implies {
                 return;
             }
-            let sub_exprs = self.sub_exprs().unwrap();
+            let sub_exprs = self.sub_exprs();
             let mut lhs = sub_exprs[0].clone();
             let mut rhs = sub_exprs[1].clone();
             if lhs.ty().is_bool() {
@@ -191,15 +188,10 @@ impl Expr {
         }
     }
 
-    fn simplify_args(&mut self) -> Option<Vec<Expr>> {
-        if let Some(mut sub_exprs) = self.sub_exprs() {
-            for sub_expr in sub_exprs.iter_mut() {
-                sub_expr.simplify();
-            }
-            Some(sub_exprs)
-        } else {
-            None
-        }
+    fn simplify_args(&mut self) -> Vec<Expr> {
+        let mut args = self.sub_exprs();
+        args.iter_mut().for_each(|e| e.simplify());
+        args
     }
 
     fn simplify_aggregate(&mut self, args: Vec<Expr>) {

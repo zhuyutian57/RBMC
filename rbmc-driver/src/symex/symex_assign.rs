@@ -42,8 +42,6 @@ impl<'cfg> Symex<'cfg> {
         self.rename(&mut rhs);
         rhs.simplify();
 
-        // println!("{lhs:?} = {rhs:?}");
-
         // Assignment for symex
         self.exec_state.assignment(lhs.clone(), rhs.clone());
 
@@ -53,12 +51,14 @@ impl<'cfg> Symex<'cfg> {
         if lhs.ty().is_zero_sized_type() || rhs.is_type() {
             return;
         }
-
+        
         // Build VC system
         self.vc_system.borrow_mut().assign(lhs, rhs, self.exec_state.cur_span());
     }
 
     fn assign_rec(&mut self, lhs: Expr, rhs: Expr, guard: Guard) {
+        if lhs.is_invalid_object() { return; }
+
         if lhs.is_symbol() {
             self.assign_symbol(lhs, rhs, guard);
             return;
@@ -101,7 +101,7 @@ impl<'cfg> Symex<'cfg> {
     }
 
     fn assign_ite(&mut self, lhs: Expr, rhs: Expr, guard: Guard) {
-        let sub_exprs = lhs.sub_exprs().unwrap();
+        let sub_exprs = lhs.sub_exprs();
         let cond = sub_exprs[0].clone();
         let true_value = sub_exprs[1].clone();
         let false_value = sub_exprs[2].clone();

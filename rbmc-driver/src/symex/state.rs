@@ -143,7 +143,7 @@ impl State {
     }
 
     pub fn get_value_set_rec(&self, expr: Expr, suffix: NString, values: &mut ObjectSet) {
-        if expr.is_unknown() {
+        if expr.is_unknown() || expr.is_invalid_object() {
             values.insert((expr.ctx.unknown(expr.ty().pointee_ty()), None));
             return;
         }

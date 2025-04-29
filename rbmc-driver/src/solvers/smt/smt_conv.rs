@@ -83,13 +83,11 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             && !expr.is_match_variant()
             && !expr.is_as_variant()
         {
-            if let Some(sub_exrps) = expr.sub_exprs() {
-                for e in sub_exrps {
-                    if e.ty().is_zero_sized_type() {
-                        continue;
-                    }
-                    args.push(self.convert_ast(e));
+            for e in expr.sub_exprs() {
+                if e.ty().is_zero_sized_type() {
+                    continue;
                 }
+                args.push(self.convert_ast(e));
             }
         }
 
@@ -236,6 +234,10 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             let x = expr.extract_enum();
             let idx = expr.extract_variant_idx();
             a = Some(self.convert_match_variant(x, idx));
+        }
+
+        if expr.is_invalid_object() {
+            a = Some(self.mk_fresh("Invalid-Object".into(), expr.ty()));
         }
 
         match a {

@@ -256,6 +256,11 @@ impl Context {
         self.nodes[i].kind().is_invalid()
     }
 
+    pub fn is_invalid_object(&self, i: NodeId) -> bool {
+        assert!(i < self.nodes.len());
+        self.nodes[i].kind().is_invalid_object()
+    }
+
     pub fn is_null_object(&self, i: NodeId) -> bool {
         assert!(i < self.nodes.len());
         self.nodes[i].kind().is_null_object()
@@ -314,7 +319,7 @@ impl Context {
         }
     }
 
-    pub fn sub_nodes(&self, i: NodeId) -> Option<Vec<NodeId>> {
+    pub fn sub_nodes(&self, i: NodeId) -> Vec<NodeId> {
         assert!(i < self.nodes.len());
         self.nodes[i].sub_nodes()
     }
@@ -882,6 +887,13 @@ impl ExprBuilder for ExprCtx {
     fn null_object(&self) -> Expr {
         let kind = NodeKind::NullObject;
         let new_node = Node::new(kind, Type::unit_type());
+        let id = self.borrow_mut().add_node(new_node);
+        Expr { ctx: self.clone(), id }
+    }
+
+    fn invalid_object(&self, ty: Type) -> Expr {
+        let kind = NodeKind::InvalidObject;
+        let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
         Expr { ctx: self.clone(), id }
     }

@@ -38,10 +38,10 @@ fn push() {
         },
         5 => {
             unsafe {
-                if S == t4  {
-                    S = x4;
+                if S == t1  {
+                    S = x1;
                 } else {
-                    pc4 = 1;
+                    pc1 = 3;
                 }
             }
             return;

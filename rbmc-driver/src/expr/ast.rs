@@ -144,6 +144,8 @@ pub(super) enum NodeKind {
     Invalid(NodeId),
     /// Representing dereference of null
     NullObject,
+    /// Representing dereference of invalid address
+    InvalidObject,
     /// `Unknown(type)` an unknown object with type
     Unknown(Type),
 }
@@ -257,6 +259,10 @@ impl NodeKind {
         matches!(self, NodeKind::NullObject)
     }
 
+    pub fn is_invalid_object(&self) -> bool {
+        matches!(self, NodeKind::InvalidObject)
+    }
+
     pub fn is_unknown(&self) -> bool {
         matches!(self, NodeKind::Unknown(..))
     }
@@ -282,31 +288,28 @@ impl Node {
     }
 
     /// Retrieve sub-nodes from AST
-    pub fn sub_nodes(&self) -> Option<Vec<NodeId>> {
+    pub fn sub_nodes(&self) -> Vec<NodeId> {
         match &self.kind {
-            NodeKind::AddressOf(p) => Some(vec![*p]),
-            NodeKind::Aggregate(nodes) => Some(nodes.clone()),
-            NodeKind::Binary(_, l, r) | NodeKind::Cast(l, r) | NodeKind::SameObject(l, r) => {
-                Some(vec![*l, *r])
-            }
-            NodeKind::Unary(_, o) | NodeKind::Object(o) => Some(vec![*o]),
-            NodeKind::Slice(o, s, l) => Some(vec![*o, *s, *l]),
-            NodeKind::Ite(c, tv, fv) => Some(vec![*c, *tv, *fv]),
-            NodeKind::Index(o, i) => Some(vec![*o, *i]),
-            NodeKind::Store(o, i, v) => Some(vec![*o, *i, *v]),
-            NodeKind::Pointer(a, m) => Some(vec![*a, *m]),
+            NodeKind::AddressOf(p) => vec![*p],
+            NodeKind::Aggregate(nodes) => nodes.clone(),
+            NodeKind::Binary(_, l, r) | NodeKind::Cast(l, r) | NodeKind::SameObject(l, r) => vec![*l, *r],
+            NodeKind::Unary(_, o) | NodeKind::Object(o) => vec![*o],
+            NodeKind::Slice(o, s, l) => vec![*o, *s, *l],
+            NodeKind::Ite(c, tv, fv) => vec![*c, *tv, *fv],
+            NodeKind::Index(o, i) => vec![*o, *i],
+            NodeKind::Store(o, i, v) => vec![*o, *i, *v],
+            NodeKind::Pointer(a, m) => vec![*a, *m],
             NodeKind::PointerBase(p)
             | NodeKind::PointerOffset(p)
             | NodeKind::PointerMeta(p)
             | NodeKind::VecLen(p)
             | NodeKind::VecCap(p)
-            | NodeKind::InnerPointer(p) => Some(vec![*p]),
-            NodeKind::Vec(p, l, c) => Some(vec![*p, *l, *c]),
-            NodeKind::Variant(i, x) => Some(vec![*i, *x]),
-            NodeKind::AsVariant(x, i) | NodeKind::MatchVariant(x, i) => Some(vec![*x, *i]),
-            NodeKind::Move(o) | NodeKind::Valid(o) | NodeKind::Invalid(o) => Some(vec![*o]),
-            NodeKind::NullObject | NodeKind::Unknown(_) => Some(vec![]),
-            _ => None,
+            | NodeKind::InnerPointer(p) => vec![*p],
+            NodeKind::Vec(p, l, c) => vec![*p, *l, *c],
+            NodeKind::Variant(i, x) => vec![*i, *x],
+            NodeKind::AsVariant(x, i) | NodeKind::MatchVariant(x, i) => vec![*x, *i],
+            NodeKind::Move(o) | NodeKind::Valid(o) | NodeKind::Invalid(o) => vec![*o],
+            _ => vec![],
         }
     }
 }

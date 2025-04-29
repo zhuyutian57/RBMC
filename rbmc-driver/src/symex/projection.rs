@@ -127,7 +127,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
 
         match ret {
             Some(x) => x,
-            None => self.make_invalid_object(pt.ty().pointee_ty()),
+            None => self._ctx.invalid_object(pt.ty().pointee_ty()),
         }
     }
 
@@ -136,6 +136,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     /// TODO: Add bound check. The projection may fail is the pointer is casted by raw pointer.
     fn project_field(&mut self, object: Expr, field: usize, ty: Type) -> Expr {
         assert!(object.ty().is_struct() || object.ty().is_tuple() || object.is_as_variant());
+        if object.is_invalid_object() { return self._ctx.invalid_object(ty); }
         self.build_with_const_offset(object, BigInt::from(field), ty)
     }
 
@@ -146,6 +147,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let ty = object.ty();
         assert!(ty.is_array() || ty.is_slice());
         let elem_ty = ty.elem_type();
+        
+        if object.is_invalid_object() { return self._ctx.invalid_object(elem_ty); }
 
         if index.is_constant() {
             let offset = index.extract_constant().to_integer();
@@ -225,12 +228,6 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let index = self._ctx.constant_usize(i);
         let new_object = if object.is_object() { object } else { self._ctx.object(object) };
         self._ctx.index(new_object, index, ty)
-    }
-
-    fn make_invalid_object(&mut self, ty: Type) -> Expr {
-        let l0_symbol = self._callback_symex.exec_state.l0_symbol(NString::INVALID_OBJECT, ty);
-        let l1_symbol = self._callback_symex.exec_state.new_symbol(&l0_symbol, Level::Level1);
-        self._ctx.object(l1_symbol)
     }
 
     fn valid_check(&mut self, object: Expr, state: PlaceState, mode: Mode, guard: Guard) {

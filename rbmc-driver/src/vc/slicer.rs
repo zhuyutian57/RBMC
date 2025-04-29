@@ -39,10 +39,8 @@ impl Slicer {
             }
         }
 
-        if let Some(sub_exprs) = expr.sub_exprs() {
-            for sub_expr in sub_exprs {
-                res |= self.get_symbols(&sub_expr, is_cached);
-            }
+        for sub_expr in expr.sub_exprs().iter() {
+            res |= self.get_symbols(sub_expr, is_cached);
         }
 
         res

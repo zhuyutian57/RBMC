@@ -53,7 +53,7 @@ impl Guard {
         }
 
         if expr.is_binary() && expr.extract_bin_op() == BinOp::And {
-            let sub_exprs = expr.sub_exprs().unwrap();
+            let sub_exprs = expr.sub_exprs();
             self.add(sub_exprs[0].clone());
             self.add(sub_exprs[1].clone());
         } else {
