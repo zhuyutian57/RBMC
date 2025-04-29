@@ -6,6 +6,7 @@ use std::slice::{Iter, IterMut};
 
 use stable_mir::ty::Span;
 
+use crate::expr::context::ExprCtx;
 use crate::expr::expr::*;
 use crate::symbol::nstring::NString;
 
@@ -73,13 +74,21 @@ impl Debug for Vc {
 
 /// Verification Condition System. The output of symbolic execution.
 /// Used for encoding SMT formulas.
-#[derive(Default)]
 pub struct VCSystem {
+    _ctx: ExprCtx,
     pub(super) vcs: Vec<Vc>,
     pub(super) asserts_map: HashMap<usize, usize>,
 }
 
 impl VCSystem {
+    pub fn new(_ctx: ExprCtx) -> Self {
+        VCSystem { _ctx, vcs: Vec::new(), asserts_map: HashMap::new() }
+    }
+
+    pub fn size(&self) -> usize {
+        self.vcs.len()
+    }
+
     pub fn num_asserts(&self) -> usize {
         self.asserts_map.len()
     }
@@ -97,13 +106,18 @@ impl VCSystem {
         self.vcs.push(Vc::new(VcKind::Assert(msg, cond), span));
     }
 
-    pub fn assume(&mut self, cond: Expr, span: Option<Span>) {
-        self.vcs.push(Vc::new(VcKind::Assume(cond), span));
+    pub fn assume(&mut self, cond: Expr) {
+        self.vcs.push(Vc::new(VcKind::Assume(cond), None));
+    }
+
+    pub fn nth(&self, n: usize) -> Vc {
+        assert!(n < self.vcs.len());
+        self.vcs[n].clone()
     }
 
     pub fn nth_assertion(&self, n: usize) -> Vc {
         assert!(n < self.asserts_map.len());
-        self.vcs[*self.asserts_map.get(&n).unwrap()].clone()
+        self.nth(*self.asserts_map.get(&n).unwrap())
     }
 
     pub fn set_nth_assertion(&mut self, n: usize) {
@@ -139,6 +153,9 @@ impl VCSystem {
             if self.vcs[m].is_sliced {
                 continue;
             }
+            if !self.vcs[m].msg().contains("memory leak".into()) {
+                continue;
+            }
             let span = self.vcs[m].span.expect("Span must exist");
             println!(
                 "\nAssertion {i}: {}:{}:{}",
@@ -148,6 +165,7 @@ impl VCSystem {
             );
             println!("-> Check: {:?}", self.vcs[m].msg());
             let mut n = 0;
+            let mut cond = self._ctx._true();
             for j in 0..m {
                 if self.vcs[j].is_sliced {
                     continue;

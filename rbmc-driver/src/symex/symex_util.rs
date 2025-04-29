@@ -107,6 +107,12 @@ impl<'cfg> Symex<'cfg> {
             if is_new_loop {
                 self.top_mut().new_loop(pc)
             }
+
+            // Assume guard
+            let guard = self.top().cur_state.guard.to_expr();
+            self.assume(guard);
+            self.top_mut().cur_state.guard.make_true();
+
             println!(
                 "Unwinding loop bb{pc} in {:?} for {} times",
                 self.top().function.name(),
@@ -120,19 +126,15 @@ impl<'cfg> Symex<'cfg> {
             let mut l1_object = object.clone();
             self.exec_state.rename(&mut l1_object, Level::Level1);
             let object_state = self.exec_state.get_place_state(&l1_object);
-            if object_state.is_dead() {
+            if object_state.is_dead() || object_state.is_own() {
                 continue;
             }
 
             let msg = NString::from(format!("memory leak: {object:?} is not dealloced"));
-            let is_leak = if object_state.is_unknown() {
-                let alloac_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
-                let address_of = self.ctx.address_of(object.clone(), object.extract_address_type());
-                let base = self.ctx.pointer_base(address_of);
-                self.ctx.index(alloac_array, base, Type::bool_type())
-            } else {
-                self.ctx._true()
-            };
+            let alloac_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
+            let address_of = self.ctx.address_of(object.clone(), object.extract_address_type());
+            let base = self.ctx.pointer_base(address_of);
+            let is_leak = self.ctx.index(alloac_array, base, Type::bool_type());
             self.claim(msg, is_leak.into());
         }
     }
@@ -308,6 +310,12 @@ impl<'cfg> Symex<'cfg> {
             *expr = expr.extract_object();
             return;
         }
+    }
+
+    pub(super) fn assume(&self, mut cond: Expr) {
+        if cond.is_true() { return; }
+        cond.simplify();
+        self.vc_system.borrow_mut().assume(cond);
     }
 
     /// Generating assertion in form: `path /\ error`,

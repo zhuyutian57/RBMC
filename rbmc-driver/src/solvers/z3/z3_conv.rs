@@ -74,6 +74,14 @@ impl<'ctx> SmtSolver<'ctx> for Z3Conv<'ctx> {
         self.assert(e);
     }
 
+    fn push(&self) {
+        self.z3_solver.push();
+    }
+
+    fn pop(&self) {
+        self.z3_solver.pop(1);
+    }
+
     fn reset(&mut self) {
         // Clear solver assertions
         self.z3_solver.reset();

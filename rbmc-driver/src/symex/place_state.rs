@@ -103,7 +103,7 @@ impl PlaceStates {
                 .and_modify(|s| s.meet(state))
                 // For a place that is not recorded in current set, the state should be
                 // unknown and solved by SMT solver.
-                .or_insert(PlaceState::Unknown);
+                .or_insert(state);
         }
     }
 }

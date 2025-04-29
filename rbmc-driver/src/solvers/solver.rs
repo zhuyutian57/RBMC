@@ -1,3 +1,6 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use crate::expr::expr::Expr;
 
 use super::context::SolverCtx;
@@ -26,6 +29,14 @@ impl<'ctx> Solver<'ctx> {
 
     pub fn check(&self) -> PResult {
         self.smt_solver.check()
+    }
+
+    pub fn push(&self) {
+        self.smt_solver.push();
+    }
+
+    pub fn pop(&self) {
+        self.smt_solver.pop();
     }
 
     pub fn reset(&mut self) {

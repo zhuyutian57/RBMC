@@ -63,10 +63,8 @@ impl Slicer {
                 }
             }
             VcKind::Assume(cond) => {
-                if self.get_symbols(cond, false) {
-                    vc.is_sliced = false;
-                    self.get_symbols(cond, true);
-                }
+                vc.is_sliced = false;
+                self.get_symbols(cond, true);
             }
         };
     }

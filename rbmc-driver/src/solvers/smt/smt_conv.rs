@@ -13,6 +13,8 @@ pub(crate) trait SmtSolver<'ctx> {
     fn init(&mut self);
     fn assert_assign(&mut self, lhs: Expr, rhs: Expr);
     fn assert_expr(&mut self, expr: Expr);
+    fn push(&self);
+    fn pop(&self);
     fn reset(&mut self);
     fn check(&self) -> PResult;
     fn eval_bool(&self, expr: Expr) -> bool;

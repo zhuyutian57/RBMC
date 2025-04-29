@@ -11,11 +11,17 @@ struct StringManager {
 
 impl StringManager {
     fn new() -> Self {
-        let strings = vec!["".to_string(), "alloc".to_string(), "INVALID-OBJECT".to_string()];
+        let strings = vec![
+            "".to_string(),
+            "alloc".to_string(),
+            "symex-guard".to_string(),
+            "INVALID-OBJECT".to_string()
+            ];
         let mut map = HashMap::new();
         map.insert("".to_string(), 0);
         map.insert("alloc".to_string(), 1);
-        map.insert("INVALID-OBJECT".to_string(), 2);
+        map.insert("symex-guard".to_string(), 2);
+        map.insert("INVALID-OBJECT".to_string(), 3);
         StringManager { strings, map }
     }
 
@@ -54,7 +60,8 @@ pub struct NString(usize);
 impl NString {
     pub const EMPTY: NString = NString(0);
     pub const ALLOC_SYM: NString = NString(1);
-    pub const INVALID_OBJECT: NString = NString(2);
+    pub const SYMEX_GUARD: NString = NString(2);
+    pub const INVALID_OBJECT: NString = NString(3);
 
     pub fn len(&self) -> usize {
         string_m().get_string(self.0).len()

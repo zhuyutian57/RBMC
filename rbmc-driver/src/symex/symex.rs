@@ -9,6 +9,7 @@ use crate::expr::context::*;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::program::program::*;
+use crate::solvers::solver::Solver;
 use crate::symbol::nstring::*;
 use crate::symbol::symbol::*;
 use crate::vc::vc::*;
@@ -27,8 +28,13 @@ impl<'cfg> Symex<'cfg> {
         let mut exec_state = ExecutionState::new(config, ctx.clone());
         exec_state.setup();
 
-        let mut symex =
-            Symex { config, program: &config.program, ctx: ctx.clone(), exec_state, vc_system };
+        let mut symex = Symex {
+            config,
+            program: &config.program,
+            ctx: ctx.clone(),
+            exec_state,
+            vc_system
+        };
         symex.init();
         symex
     }

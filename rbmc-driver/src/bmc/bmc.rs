@@ -17,7 +17,8 @@ pub struct Bmc<'cfg> {
 
 impl<'cfg> Bmc<'cfg> {
     pub fn new(config: &'cfg Config) -> Self {
-        let vc_system = VCSysPtr::new(RefCell::new(VCSystem::default()));
+        let vc_system =
+            VCSysPtr::new(RefCell::new(VCSystem::new(config.expr_ctx.clone())));
         let symex = Symex::new(config, vc_system.clone());
         let runtime_solver = Solver::new(&config.solver_config);
         Bmc { config, symex, vc_system, runtime_solver }
@@ -73,6 +74,9 @@ impl<'cfg> Bmc<'cfg> {
         let mut slicer = Slicer::default();
         let size = self.vc_system.borrow().num_asserts();
         for i in 0..size {
+            // if !self.vc_system.borrow().nth_assertion(i).msg().contains("memory leak".into()) {
+            //     continue;
+            // }
             println!("Begin checking assertion {i}");
             if self.config.cli.show_vcc {
                 print!("Verifying condition {i} ");
@@ -154,7 +158,7 @@ impl<'cfg> Bmc<'cfg> {
         println!("Converting SSA");
         let ctx = self.config.expr_ctx.clone();
 
-        let mut assumetion = ctx._true();
+        // let mut assume = ctx._true();
         let mut assertions = Vec::new();
 
         for vc in self.vc_system.borrow().iter() {
@@ -166,22 +170,19 @@ impl<'cfg> Bmc<'cfg> {
                     self.runtime_solver.assert_assign(lhs.clone(), rhs.clone());
                 }
                 VcKind::Assert(_, c) => {
-                    assertions.push(ctx.implies(assumetion.clone(), c.clone()));
+                    assertions.push(c.clone());
+                    // assertions.push(ctx.implies(assume.clone(), c.clone()));
                 }
                 VcKind::Assume(c) => {
-                    assumetion = ctx.and(assumetion, c.clone());
-                    assumetion.simplify();
+                    self.runtime_solver.assert_expr(c.clone());
+                    // assume = ctx.and(assume, c.clone());
                 }
             }
         }
 
-        self.runtime_solver.assert_expr(if assertions.is_empty() {
-            ctx._false()
-        } else {
-            let mut assertion = assertions.into_iter().fold(ctx._false(), |acc, b| ctx.or(acc, b));
-            assertion.simplify();
-            assertion
-        });
+        let mut assert = assertions.into_iter().fold(ctx._false(), |acc, b| ctx.or(acc, b));
+
+        self.runtime_solver.assert_expr(assert);
     }
 
     fn bug_report(&self, bug: Option<usize>) {

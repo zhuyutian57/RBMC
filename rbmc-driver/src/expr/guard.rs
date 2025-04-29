@@ -13,7 +13,7 @@ use super::expr::*;
 #[derive(Clone)]
 pub struct Guard {
     _ctx: ExprCtx,
-    pub _expr_set: HashSet<Expr>,
+    _expr_set: HashSet<Expr>,
 }
 
 impl Guard {

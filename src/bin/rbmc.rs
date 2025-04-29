@@ -10,8 +10,8 @@ fn main() {
         .args(rust_bmc::rbmc_args())
         .status()
         .expect("Fail to run RBMC");
-    assert!(status.success());
     remove_generated_binary();
+    assert!(status.success());
 }
 
 fn remove_generated_binary() {

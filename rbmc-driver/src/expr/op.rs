@@ -69,6 +69,20 @@ pub enum UnOp {
     Meta,
 }
 
+impl UnOp {
+    pub fn is_not(&self) -> bool {
+        matches!(self, UnOp::Not)
+    }
+    
+    pub fn is_neg(&self) -> bool {
+        matches!(self, UnOp::Neg)
+    }
+    
+    pub fn is_meta(&self) -> bool {
+        matches!(self, UnOp::Meta)
+    }
+}
+
 impl Debug for UnOp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
