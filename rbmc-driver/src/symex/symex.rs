@@ -89,13 +89,6 @@ impl<'cfg> Symex<'cfg> {
                         self.top().function.name(),
                         self.top().cur_state
                     );
-
-                    self.exec_state.renaming.borrow().constant_map.iter().for_each(
-                        |(s, v)|
-                        if s.name().starts_with("pc".into()) {
-                            println!("{s:?} = {v:?}");
-                        }
-                    );
                 }
                 let bb = self.top_mut().function.basicblock(pc);
                 self.symex_basicblock(bb);

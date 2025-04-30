@@ -84,10 +84,10 @@ impl<'func> Frame<'func> {
     }
 
     /// Check whether the current loop read loop bound
-    pub fn reach_loop_bound(&self) -> bool {
+    pub fn loop_bound_exceed(&self) -> bool {
         self.config.cli.unwind != 0
             && !self.loop_stack.is_empty()
-            && self.loop_stack.last().unwrap().1 > self.config.cli.unwind
+            && self.loop_stack.last().unwrap().1 >= self.config.cli.unwind
     }
 
     pub fn add_state(&mut self, pc: Pc, state: State) {

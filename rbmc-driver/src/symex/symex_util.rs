@@ -25,7 +25,7 @@ impl<'cfg> Symex<'cfg> {
         let mut state_vec = self.top_mut().states_from(pc);
 
         // If pc is the entry of a loop and reaches loop bound, do not unwind the loop
-        if self.top().function.is_loop_bb(pc) && self.top().reach_loop_bound() {
+        if self.top().function.is_loop_bb(pc) && self.top().loop_bound_exceed() {
             return false;
         }
 
@@ -42,7 +42,7 @@ impl<'cfg> Symex<'cfg> {
 
                 // SSA assigment
                 self.phi_function(state);
-                
+
                 self.top_mut().cur_state.merge(state);
             }
         }
