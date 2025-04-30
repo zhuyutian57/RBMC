@@ -357,6 +357,11 @@ impl State {
             return;
         }
 
+        if expr.is_invalid_object() {
+            object_set.insert((self.ctx.object(expr), None));
+            return;
+        }
+
         panic!("Do not support get object from: {expr:?}")
     }
 }

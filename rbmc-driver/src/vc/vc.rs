@@ -173,10 +173,14 @@ impl VCSystem {
                 if self.vcs[j].is_assert() {
                     continue;
                 }
+                if self.vcs[j].is_assume() {
+                    cond = self._ctx.and(cond, self.vcs[j].cond());
+                    continue;
+                }
                 println!("#{n} {:?}", self.vcs[j]);
                 n += 1;
             }
-            println!("-> ASSERT: {:?}", self.vcs[m].cond());
+            println!("-> ASSERT: {cond:?} && {:?}", self.vcs[m].cond());
         }
     }
 }

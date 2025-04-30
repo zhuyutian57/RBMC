@@ -64,14 +64,6 @@ impl<'cfg> Symex<'cfg> {
         self.replace_predicates(&mut branch_guard);
         self.rename(&mut branch_guard);
         branch_guard.simplify();
-        if let Some(l) = self.top().cur_loop() {
-            let _loop = self.top().function.get_loop(l.0);
-            // Not exceed loop bound, keep unwinding.
-            // However, if the branch guard is true, the loop stop unwinding.
-            if !_loop.contains(&pc) && !self.top().reach_loop_bound() && !branch_guard.is_true() {
-                return;
-            }
-        }
 
         let mut state = self.top().cur_state.clone();
         state.guard.add(branch_guard);

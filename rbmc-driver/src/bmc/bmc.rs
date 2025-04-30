@@ -74,9 +74,6 @@ impl<'cfg> Bmc<'cfg> {
         let mut slicer = Slicer::default();
         let size = self.vc_system.borrow().num_asserts();
         for i in 0..size {
-            // if !self.vc_system.borrow().nth_assertion(i).msg().contains("memory leak".into()) {
-            //     continue;
-            // }
             println!("Begin checking assertion {i}");
             if self.config.cli.show_vcc {
                 print!("Verifying condition {i} ");

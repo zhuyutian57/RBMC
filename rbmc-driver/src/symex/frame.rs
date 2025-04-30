@@ -19,7 +19,7 @@ pub struct Frame<'func> {
     pub(super) target: Option<BasicBlockIdx>,
     /// Current Computing
     pc: Pc,
-    loop_stack: Vec<(Pc, usize)>,
+    pub(super) loop_stack: Vec<(Pc, usize)>,
     pub(super) cur_state: State,
     state_map: HashMap<Pc, Vec<State>>,
 }
@@ -50,9 +50,9 @@ impl<'func> Frame<'func> {
     }
 
     pub fn inc_pc(&mut self) {
-        while let Some((l, _)) = self.loop_stack.last() {
+        if let Some(&(l, _)) = self.loop_stack.last() {
             let mut mi = self.function.size();
-            for pc in self.function.get_loop(*l) {
+            for pc in self.function.get_loop(l) {
                 if self.state_map.contains_key(pc) {
                     mi = std::cmp::min(mi, *pc);
                 }
@@ -60,9 +60,6 @@ impl<'func> Frame<'func> {
             if mi != self.function.size() {
                 self.pc = mi;
                 return;
-            } else {
-                // No pc in loop
-                self.loop_stack.pop();
             }
         }
 
@@ -90,7 +87,7 @@ impl<'func> Frame<'func> {
     pub fn reach_loop_bound(&self) -> bool {
         self.config.cli.unwind != 0
             && !self.loop_stack.is_empty()
-            && self.loop_stack.last().unwrap().1 >= self.config.cli.unwind
+            && self.loop_stack.last().unwrap().1 > self.config.cli.unwind
     }
 
     pub fn add_state(&mut self, pc: Pc, state: State) {

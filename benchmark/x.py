@@ -79,7 +79,8 @@ def kani(file):
     "-Z",
     "unstable-options",
     "--cbmc-args",
-    "--memory-leak-check"
+    "--memory-leak-check",
+    "--no-malloc-may-fail",
   ]
   run_on_single_file(cmd, None)
 

@@ -78,7 +78,7 @@ pub struct Cli {
     ///
     /// `Once`: encoding all assertions and check only for one time.
     #[clap(value_enum)]
-    #[arg(long, default_value_t = SmtStrategy::Forward)]
+    #[arg(long, default_value_t = SmtStrategy::Once)]
     pub smt_strategy: SmtStrategy,
 
     /// Show SMT formula

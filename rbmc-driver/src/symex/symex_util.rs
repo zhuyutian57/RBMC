@@ -22,7 +22,7 @@ use crate::symbol::symbol::*;
 
 impl<'cfg> Symex<'cfg> {
     pub(super) fn merge_states(&mut self, pc: Pc) -> bool {
-        let state_vec = self.top_mut().states_from(pc);
+        let mut state_vec = self.top_mut().states_from(pc);
 
         // If pc is the entry of a loop and reaches loop bound, do not unwind the loop
         if self.top().function.is_loop_bb(pc) && self.top().reach_loop_bound() {
@@ -34,16 +34,16 @@ impl<'cfg> Symex<'cfg> {
         // That is, make `gurad` of current state be `false`.
         self.top_mut().cur_state.guard.make_false();
 
-        if let Some(states) = state_vec {
+        if let Some(states) = state_vec.as_mut() {
             for mut state in states {
                 if state.guard.is_false() {
                     continue;
                 }
 
                 // SSA assigment
-                self.phi_function(&mut state);
-
-                self.top_mut().cur_state.merge(&state);
+                self.phi_function(state);
+                
+                self.top_mut().cur_state.merge(state);
             }
         }
 
@@ -68,8 +68,6 @@ impl<'cfg> Symex<'cfg> {
                 continue;
             }
 
-            // println!("find {var:?}\n{:?}", self.exec_state.ns);
-
             let mut cur_rhs = self.exec_state.ns.lookup_symbol(var);
             let mut new_rhs = self.exec_state.ns.lookup_symbol(var);
 
@@ -88,8 +86,17 @@ impl<'cfg> Symex<'cfg> {
                 self.ctx.ite(new_guard.to_expr(), new_rhs, cur_rhs)
             };
 
-            let lhs = self.exec_state.ns.lookup_symbol(var);
-            self.assign(lhs, rhs, self.ctx._true().into());
+            let mut lhs = self.exec_state.ns.lookup_symbol(var);
+            
+            // Rename to l1_lhs
+            self.exec_state.rename(&mut lhs, Level::Level1);
+            self.exec_state.assignment(lhs.clone(), rhs.clone());
+            // Use l2_rhs for VC
+            lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
+            if lhs.ty().is_zero_sized_type() || rhs.is_type() {
+                return;
+            }
+            self.vc_system.borrow_mut().assign(lhs, rhs, self.exec_state.cur_span());
         }
     }
 
@@ -108,16 +115,21 @@ impl<'cfg> Symex<'cfg> {
                 self.top_mut().new_loop(pc)
             }
 
-            // Assume guard
-            let guard = self.top().cur_state.guard.to_expr();
-            self.assume(guard);
-            self.top_mut().cur_state.guard.make_true();
-
             println!(
                 "Unwinding loop bb{pc} in {:?} for {} times",
                 self.top().function.name(),
                 self.top().cur_loop().unwrap().1
             );
+            return;
+        }
+
+        if let Some(&(l, _)) = self.top().cur_loop() {
+            if !self.top().function.get_loop(l).contains(&pc) {
+                self.top_mut().loop_stack.pop();
+                let guard = self.top().cur_state.guard.to_expr();
+                self.assume(guard);
+                self.top_mut().cur_state.guard.make_true();
+            }
         }
     }
 

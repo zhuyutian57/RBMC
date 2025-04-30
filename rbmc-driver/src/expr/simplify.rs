@@ -17,123 +17,41 @@ impl Expr {
             self.to_nnf(false);
         }
 
-        let args = self.simplify_args();
+        let mut args = self.sub_exprs();
         if args.is_empty() { return; }
 
         if self.is_aggregate() {
             self.simplify_aggregate(args);
-            return;
-        }
-
-        if self.is_binary() {
+        } else if self.is_binary() {
             self.simplify_binary(args[0].clone(), args[1].clone());
-            return;
-        }
-
-        if self.is_unary() {
+        } else if self.is_unary() {
             self.simplify_unary(args[0].clone());
-            return;
-        }
-
-        if self.is_ite() {
+        } else if self.is_ite() {
             self.simplify_ite(args[0].clone(), args[1].clone(), args[2].clone());
-            return;
-        }
-
-        if self.is_cast() {
+        } else if self.is_cast() {
             self.simplify_cast(args[0].clone(), args[1].extract_type());
-            return;
-        }
-
-        if self.is_object() {
+        } else if self.is_object() {
             *self = self.ctx.object(args[0].clone());
-            return;
-        }
-
-        if self.is_same_object() {
+        } else if self.is_same_object() {
             self.simplify_same_object(args[0].clone(), args[1].clone());
-            return;
-        }
-
-        if self.is_index() {
+        } else if self.is_index() {
             self.simplify_index(args[0].clone(), args[1].clone());
-            return;
-        }
-
-        if self.is_store() {
+        } else if self.is_store() {
             self.simplify_store(args[0].clone(), args[1].clone(), args[2].clone());
-            return;
-        }
-
-        if self.is_pointer() {
+        } else if self.is_pointer() {
             self.simplify_pointer(args[0].clone(), args[1].clone());
-            return;
-        }
-
-        if self.is_pointer_base() {
+        } else if self.is_pointer_base() {
             self.simplify_pointer_base(args[0].clone());
-            return;
-        }
-
-        if self.is_pointer_offset() {
+        } else if self.is_pointer_offset() {
             self.simplify_pointer_offset(args[0].clone());
-            return;
-        }
-
-        if self.is_pointer_meta() {
+        } else if self.is_pointer_meta() {
             self.simplify_pointer_meta(args[0].clone());
-            return;
-        }
-
-        if self.is_vec() {
-            let pt = args[0].clone();
-            let len = args[1].clone();
-            let cap = args[2].clone();
-            *self = self.ctx._vec(pt, len, cap, self.ty());
-            return;
-        }
-
-        if self.is_vec_len() {
-            let _vec = args[0].clone();
-            *self = if _vec.is_vec() {
-                _vec.extract_vec_len()
-            } else {
-                self.ctx.vec_len(args[0].clone())
-            };
-            return;
-        }
-
-        if self.is_vec_cap() {
-            let _vec = args[0].clone();
-            *self = if _vec.is_vec() {
-                _vec.extract_vec_cap()
-            } else {
-                self.ctx.vec_cap(args[0].clone())
-            };
-            return;
-        }
-
-        if self.is_inner_pointer() {
-            let inner_pt = self.extract_inner_pointer();
-            if inner_pt.is_vec() {
-                *self = inner_pt.extract_inner_pointer();
-            }
-            return;
-        }
-
-        if self.is_variant() {
+        } else if self.is_variant() {
             self.simplify_variant(args[0].clone(), args[1].clone());
-            return;
-        }
-
-        if self.is_as_variant() {
+        } else if self.is_as_variant() {
             self.simplify_as_variant(args[0].clone(), args[1].clone());
-            return;
-        }
-
-        if self.is_match_variant() {
+        } else if self.is_match_variant() {
             self.simplify_match_variant(args[0].clone(), args[1].clone());
-            return;
         }
     }
 
@@ -186,12 +104,6 @@ impl Expr {
         } else if is_not {
             *self = self.ctx.not(self.clone());
         }
-    }
-
-    fn simplify_args(&mut self) -> Vec<Expr> {
-        let mut args = self.sub_exprs();
-        args.iter_mut().for_each(|e| e.simplify());
-        args
     }
 
     fn simplify_aggregate(&mut self, args: Vec<Expr>) {
