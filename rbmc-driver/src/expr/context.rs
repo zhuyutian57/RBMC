@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fmt::Debug;
 use std::rc::Rc;
 
@@ -20,6 +21,7 @@ use crate::symbol::symbol::*;
 pub struct Context {
     nodes: Vec<Node>,
     node_map: HashMap<Node, NodeId>,
+    simplified_nodes: HashSet<NodeId>,
     terminals: Vec<Rc<Terminal>>,
     terminal_map: HashMap<NString, TerminalId>,
 }
@@ -57,6 +59,9 @@ impl Context {
         } else {
             self.nodes.push(node.clone());
             self.node_map.insert(node.clone(), self.nodes.len() - 1);
+            if node.kind().is_terminal() {
+                self.simplified_nodes.insert(self.nodes.len() - 1);
+            }
             self.nodes.len() - 1
         }
     }
@@ -70,6 +75,23 @@ impl Context {
             let id = self.terminals.len() - 1;
             self.terminal_map.insert(ident, id);
             id
+        }
+    }
+
+    pub fn is_simplified(&self, i: NodeId) -> bool {
+        self.simplified_nodes.contains(&i)
+    }
+
+    pub fn simplify_node(&mut self, i: NodeId) {
+        assert!(i < self.nodes.len());
+        if !self.is_simplified(i) {
+            let is_simplified = self.sub_nodes(i).iter().fold(
+                true,
+                |acc, arg| acc && self.is_simplified(*arg)
+            );
+            if is_simplified {
+                self.simplified_nodes.insert(i);
+            }
         }
     }
 

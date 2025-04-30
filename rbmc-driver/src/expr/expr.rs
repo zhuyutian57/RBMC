@@ -28,6 +28,10 @@ impl Expr {
         self.ctx.borrow().ty(self.id)
     }
 
+    pub fn is_simplified(&self) -> bool {
+        self.ctx.borrow().is_simplified(self.id)
+    }
+
     pub fn is_terminal(&self) -> bool {
         self.ctx.borrow().is_terminal(self.id)
     }

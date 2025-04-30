@@ -51,7 +51,7 @@ impl<'cfg> Symex<'cfg> {
         if lhs.ty().is_zero_sized_type() || rhs.is_type() {
             return;
         }
-        
+
         // Build VC system
         self.vc_system.borrow_mut().assign(lhs, rhs, self.exec_state.cur_span());
     }
