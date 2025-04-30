@@ -75,20 +75,17 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
 
         let mut ret = None;
 
-        if objects.iter()
-            .fold(false, |acc, (x, _)| acc | x.is_null_object()) {
+        if objects.iter().fold(false, |acc, (x, _)| acc | x.is_null_object()) {
             self.dereference_null(pt.clone(), guard.clone(), mode);
         }
 
-        if objects.iter()
-            .fold(false, |acc, (x, _)| acc | x.is_unknown()) {
+        if objects.iter().fold(false, |acc, (x, _)| acc | x.is_unknown()) {
             self.dereference_invalid_ptr(pt.clone(), mode, guard.clone());
         }
 
         for (object, offset) in
-            objects
-                .into_iter()
-                .filter(|(x, _)| !x.is_null_object() && !x.is_unknown()) {
+            objects.into_iter().filter(|(x, _)| !x.is_null_object() && !x.is_unknown())
+        {
             // Note that all pointer is constructed from a root object.
             // The root object here is used to retrieve place states.
             let root_object = object.extract_root_object();
@@ -136,7 +133,9 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     /// TODO: Add bound check. The projection may fail is the pointer is casted by raw pointer.
     fn project_field(&mut self, object: Expr, field: usize, ty: Type) -> Expr {
         assert!(object.ty().is_struct() || object.ty().is_tuple() || object.is_as_variant());
-        if object.is_invalid_object() { return self._ctx.invalid_object(ty); }
+        if object.is_invalid_object() {
+            return self._ctx.invalid_object(ty);
+        }
         self.build_with_const_offset(object, BigInt::from(field), ty)
     }
 
@@ -147,8 +146,10 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         let ty = object.ty();
         assert!(ty.is_array() || ty.is_slice());
         let elem_ty = ty.elem_type();
-        
-        if object.is_invalid_object() { return self._ctx.invalid_object(elem_ty); }
+
+        if object.is_invalid_object() {
+            return self._ctx.invalid_object(elem_ty);
+        }
 
         if index.is_constant() {
             let offset = index.extract_constant().to_integer();

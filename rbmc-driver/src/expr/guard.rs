@@ -113,15 +113,18 @@ impl BitOrAssign<&Guard> for Guard {
             self.add(self._ctx.or(g1, g2));
         } else {
             // Common
-            let common = self._expr_set
+            let common = self
+                ._expr_set
                 .intersection(&rhs._expr_set)
                 .map(|x| x.clone())
                 .collect::<HashSet<_>>();
-            let g1 = self._expr_set
+            let g1 = self
+                ._expr_set
                 .difference(&common)
                 .map(|x| x.clone())
                 .fold(self._ctx._true(), |acc, x| self._ctx.and(acc, x));
-            let g2 = rhs._expr_set
+            let g2 = rhs
+                ._expr_set
                 .difference(&common)
                 .map(|x| x.clone())
                 .fold(self._ctx._true(), |acc, x| self._ctx.and(acc, x));

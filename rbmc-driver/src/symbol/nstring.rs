@@ -11,11 +11,7 @@ struct StringManager {
 
 impl StringManager {
     fn new() -> Self {
-        let strings = vec![
-            "".to_string(),
-            "alloc".to_string(),
-            "symex-guard".to_string()
-            ];
+        let strings = vec!["".to_string(), "alloc".to_string(), "symex-guard".to_string()];
         let mut map = HashMap::new();
         map.insert("".to_string(), 0);
         map.insert("alloc".to_string(), 1);

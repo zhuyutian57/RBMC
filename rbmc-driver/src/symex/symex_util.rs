@@ -87,7 +87,7 @@ impl<'cfg> Symex<'cfg> {
             };
 
             let mut lhs = self.exec_state.ns.lookup_symbol(var);
-            
+
             // Rename to l1_lhs
             self.exec_state.rename(&mut lhs, Level::Level1);
             self.exec_state.assignment(lhs.clone(), rhs.clone());
@@ -304,10 +304,9 @@ impl<'cfg> Symex<'cfg> {
 
         if expr.is_valid() || expr.is_invalid() {
             let object = expr.extract_object();
-            let base = self.ctx
-                .pointer_base(
-                    self.ctx.address_of(object.clone(), object.extract_address_type())
-                );
+            let base = self
+                .ctx
+                .pointer_base(self.ctx.address_of(object.clone(), object.extract_address_type()));
             let alloc_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
             let alloced = self.ctx.index(alloc_array, base, Type::bool_type());
             *expr = if expr.is_invalid() { self.ctx.not(alloced) } else { alloced };
@@ -321,7 +320,9 @@ impl<'cfg> Symex<'cfg> {
     }
 
     pub(super) fn assume(&self, mut cond: Expr) {
-        if cond.is_true() { return; }
+        if cond.is_true() {
+            return;
+        }
         cond.simplify();
         self.vc_system.borrow_mut().assume(cond);
     }

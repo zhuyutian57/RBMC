@@ -447,9 +447,7 @@ impl Expr {
     }
 
     pub fn replace_sub_exprs(&mut self, sub_exprs: Vec<Expr>) {
-        if self.is_terminal()
-            || self.is_unknown()
-            || self.is_invalid_object() {
+        if self.is_terminal() || self.is_unknown() || self.is_invalid_object() {
             return;
         }
 

@@ -40,16 +40,16 @@ impl<'cfg> Symex<'cfg> {
         if discr_expr.ty().is_integer() {
             let mut discr = self.ctx.eq(
                 discr_expr.clone(),
-                self.ctx.constant_integer(BigInt::from(i), discr_expr.ty())
+                self.ctx.constant_integer(BigInt::from(i), discr_expr.ty()),
             );
             self.rename(&mut discr);
             discr.simplify();
-            if discr.is_constant() || discr.is_symbol() { return discr; }
+            if discr.is_constant() || discr.is_symbol() {
+                return discr;
+            }
 
-            let l0_guard_ident =
-                self.exec_state.l0_symbol(NString::SYMEX_GUARD, Type::bool_type());
-            let mut guard_ident =
-                self.exec_state.new_symbol(&l0_guard_ident, Level::Level1);
+            let l0_guard_ident = self.exec_state.l0_symbol(NString::SYMEX_GUARD, Type::bool_type());
+            let mut guard_ident = self.exec_state.new_symbol(&l0_guard_ident, Level::Level1);
             self.assign(guard_ident.clone(), discr, self.ctx._true().into());
             guard_ident
         } else if discr_expr.ty().is_bool() {
@@ -94,7 +94,7 @@ impl<'cfg> Symex<'cfg> {
     //     self.runtime.1.assert_expr(expr.clone());
     //     res1 = self.runtime.1.check();
     //     self.runtime.1.pop();
-        
+
     //     let res2;
     //     self.runtime.1.push();
     //     self.runtime.1.assert_expr(self.ctx.not(expr.clone()));

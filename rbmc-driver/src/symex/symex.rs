@@ -28,13 +28,8 @@ impl<'cfg> Symex<'cfg> {
         let mut exec_state = ExecutionState::new(config, ctx.clone());
         exec_state.setup();
 
-        let mut symex = Symex {
-            config,
-            program: &config.program,
-            ctx: ctx.clone(),
-            exec_state,
-            vc_system
-        };
+        let mut symex =
+            Symex { config, program: &config.program, ctx: ctx.clone(), exec_state, vc_system };
         symex.init();
         symex
     }
@@ -82,8 +77,9 @@ impl<'cfg> Symex<'cfg> {
             if self.merge_states(pc) {
                 // Couting loop pc
                 self.unwind(pc);
-                if self.config.cli.enable_display_state_bb() ||
-                    self.config.program.is_local_function(self.top().function.name()) {
+                if self.config.cli.enable_display_state_bb()
+                    || self.config.program.is_local_function(self.top().function.name())
+                {
                     println!(
                         "Enter {:?} - bb{pc}\n{:?}",
                         self.top().function.name(),
@@ -111,15 +107,17 @@ impl<'cfg> Symex<'cfg> {
         for (i, statement) in bb.statements.iter().enumerate() {
             self.exec_state.update_span(statement.span);
             self.symex_statement(statement);
-            if self.config.cli.enable_display_state_statement() &&
-                self.config.program.is_local_function(self.top().function.name()) {
+            if self.config.cli.enable_display_state_statement()
+                && self.config.program.is_local_function(self.top().function.name())
+            {
                 println!("After symex {i}\n{:?}", self.top_mut().cur_state);
             }
         }
         self.exec_state.update_span(bb.terminator.span);
         self.symex_terminator(&bb.terminator);
-        if self.config.cli.enable_display_state_terminator() &&
-            self.config.program.is_local_function(self.top().function.name()) {
+        if self.config.cli.enable_display_state_terminator()
+            && self.config.program.is_local_function(self.top().function.name())
+        {
             println!("After symex terminator\n{:?}", self.top_mut().cur_state);
         }
     }
@@ -131,7 +129,6 @@ impl<'cfg> Symex<'cfg> {
             StatementKind::StorageDead(local) => self.symex_storagedead(*local),
             _ => {}
         }
-        
     }
 
     fn symex_storagelive(&mut self, local: Local) {

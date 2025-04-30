@@ -47,7 +47,7 @@ impl<'cfg> Symex<'cfg> {
 
         // New l2 symbol
         lhs = self.exec_state.new_symbol(&lhs, Level::Level2);
-        
+
         if lhs.ty().is_zero_sized_type() || rhs.is_type() {
             return;
         }
@@ -57,7 +57,9 @@ impl<'cfg> Symex<'cfg> {
     }
 
     fn assign_rec(&mut self, lhs: Expr, rhs: Expr, guard: Guard) {
-        if lhs.is_invalid_object() { return; }
+        if lhs.is_invalid_object() {
+            return;
+        }
 
         if lhs.is_symbol() {
             self.assign_symbol(lhs, rhs, guard);

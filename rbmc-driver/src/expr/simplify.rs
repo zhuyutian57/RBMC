@@ -57,7 +57,7 @@ impl Expr {
         }
 
         self.ctx.borrow_mut().simplify_node(self.id);
-        
+
         self.id != old_id
     }
 
@@ -114,17 +114,16 @@ impl Expr {
 
     fn simplifid_args(&self) -> (bool, Vec<Expr>) {
         let mut args = self.sub_exprs();
-        let changed = args.iter_mut().fold(
-            false,
-            |acc, arg| acc | arg.simplify()
-        );
+        let changed = args.iter_mut().fold(false, |acc, arg| acc | arg.simplify());
         (changed, args)
     }
 
     fn simplify_aggregate(&mut self) {
         let (changed, args) = self.simplifid_args();
         let is_const = args.iter().fold(true, |acc, field| acc && field.is_constant());
-        if !changed && !is_const { return; }
+        if !changed && !is_const {
+            return;
+        }
         if self.ty().is_adt() && is_const {
             let fields = args.iter().map(|x| x.extract_constant()).collect::<Vec<_>>();
             *self = self.ctx.constant_adt(fields, self.ty());
@@ -135,11 +134,10 @@ impl Expr {
 
     fn simplify_binary(&mut self) {
         match self.extract_bin_op() {
-            BinOp::Add | BinOp::Sub
-            | BinOp::Mul | BinOp::Div => self.simplify_arith(),
-            BinOp::Eq | BinOp::Ne 
-            | BinOp::Ge | BinOp::Gt 
-            | BinOp::Le | BinOp::Lt => self.simplify_cmp(),
+            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => self.simplify_arith(),
+            BinOp::Eq | BinOp::Ne | BinOp::Ge | BinOp::Gt | BinOp::Le | BinOp::Lt => {
+                self.simplify_cmp()
+            }
             BinOp::And | BinOp::Or | BinOp::Implies => self.simplify_logic(),
             BinOp::Offset => self.simplify_offset(),
         };

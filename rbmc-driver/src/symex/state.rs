@@ -129,7 +129,7 @@ impl State {
             // Merge value set
             self.value_set.union(&rhs.value_set);
         }
-        
+
         self.guard |= &rhs.guard;
     }
 

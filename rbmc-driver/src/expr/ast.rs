@@ -292,7 +292,9 @@ impl Node {
         match &self.kind {
             NodeKind::AddressOf(p) => vec![*p],
             NodeKind::Aggregate(nodes) => nodes.clone(),
-            NodeKind::Binary(_, l, r) | NodeKind::Cast(l, r) | NodeKind::SameObject(l, r) => vec![*l, *r],
+            NodeKind::Binary(_, l, r) | NodeKind::Cast(l, r) | NodeKind::SameObject(l, r) => {
+                vec![*l, *r]
+            }
             NodeKind::Unary(_, o) | NodeKind::Object(o) => vec![*o],
             NodeKind::Slice(o, s, l) => vec![*o, *s, *l],
             NodeKind::Ite(c, tv, fv) => vec![*c, *tv, *fv],

@@ -85,10 +85,8 @@ impl Context {
     pub fn simplify_node(&mut self, i: NodeId) {
         assert!(i < self.nodes.len());
         if !self.is_simplified(i) {
-            let is_simplified = self.sub_nodes(i).iter().fold(
-                true,
-                |acc, arg| acc && self.is_simplified(*arg)
-            );
+            let is_simplified =
+                self.sub_nodes(i).iter().fold(true, |acc, arg| acc && self.is_simplified(*arg));
             if is_simplified {
                 self.simplified_nodes.insert(i);
             }
@@ -703,7 +701,7 @@ impl ExprBuilder for ExprCtx {
                 || expr.ty().is_slice()
                 || expr.ty().is_tuple()
                 || expr.ty().is_enum())
-            && i.ty().is_integer()
+                && i.ty().is_integer()
         );
         let object = if !expr.unwrap_predicates().is_object() { self.object(expr) } else { expr };
         let kind = NodeKind::Index(object.id, i.id);
