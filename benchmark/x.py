@@ -11,7 +11,7 @@ loop_bound = {
   "lockfree-3-0": 12,
   "lockfree-3-1": 7,
   "lockfree-3-2": 7,
-  "lockfree-3-3": 7,
+  "lockfree-3-3": 11,
   "test-0232-1": 1,
   "test-0232-2": 10,
   "test-0232-3": 3,
