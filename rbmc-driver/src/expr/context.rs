@@ -661,7 +661,7 @@ impl ExprBuilder for ExprCtx {
     }
 
     fn same_object(&self, lhs: Expr, rhs: Expr) -> Expr {
-        assert!(lhs.ty().is_any_ptr() && rhs.ty().is_any_ptr());
+        assert!(lhs.ty().is_primitive_ptr() && rhs.ty().is_primitive_ptr());
         let kind = NodeKind::SameObject(lhs.id, rhs.id);
         let ty = Type::bool_type();
         let new_node = Node::new(kind, ty);
@@ -695,7 +695,7 @@ impl ExprBuilder for ExprCtx {
     }
 
     fn pointer(&self, address: Expr, meta: Option<Expr>, ty: Type) -> Expr {
-        assert!(address.ty().is_any_ptr());
+        assert!(address.ty().is_primitive_ptr());
         if ty.is_slice_ptr() {
             assert!(meta != None);
         }
@@ -710,7 +710,7 @@ impl ExprBuilder for ExprCtx {
     }
 
     fn pointer_base(&self, expr: Expr) -> Expr {
-        assert!(expr.ty().is_any_ptr());
+        assert!(expr.ty().is_primitive_ptr());
         let kind = NodeKind::PointerBase(expr.id);
         let new_node = Node::new(kind, Type::usize_type());
         let id = self.borrow_mut().add_node(new_node);
@@ -718,7 +718,7 @@ impl ExprBuilder for ExprCtx {
     }
 
     fn pointer_offset(&self, expr: Expr) -> Expr {
-        assert!(expr.ty().is_any_ptr());
+        assert!(expr.ty().is_primitive_ptr());
         let kind = NodeKind::PointerOffset(expr.id);
         let ty = Type::usize_type();
         let new_node = Node::new(kind, ty);

@@ -35,7 +35,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             return self.mk_int_sort();
         }
 
-        if ty.is_any_ptr() {
+        if ty.is_primitive_ptr() {
             return self.mk_pointer_sort();
         }
 
@@ -308,7 +308,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
         if ty.is_integer() {
             return self.mk_int_symbol(name);
         }
-        if ty.is_any_ptr() {
+        if ty.is_primitive_ptr() {
             let sort = self.convert_sort(ty);
             return self.mk_tuple_symbol(name, &sort);
         }
@@ -369,7 +369,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             return self.convert_ast(expr.clone());
         }
 
-        if expr.ty().is_any_ptr() {
+        if expr.ty().is_primitive_ptr() {
             return self.convert_cast_from_ptr(expr, target_ty);
         }
 
@@ -377,8 +377,8 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     }
 
     fn convert_cast_from_ptr(&mut self, pt: Expr, target_ty: Type) -> Ast {
-        if pt.ty().is_any_ptr() {
-            if target_ty.is_any_ptr() {
+        if pt.ty().is_primitive_ptr() {
+            if target_ty.is_primitive_ptr() {
                 return self.convert_ast(pt);
             }
 

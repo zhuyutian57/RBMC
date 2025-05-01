@@ -107,9 +107,6 @@ fn build_libs() {
         "--message-format",
         "json-render-diagnostics",
     ];
-    if is_install() {
-        args.push("--release");
-    }
     let mut cmd = Command::new("cargo")
         .env("RUSTFLAGS", rustc_args.join(" "))
         .arg("build")

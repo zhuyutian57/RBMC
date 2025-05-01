@@ -150,7 +150,7 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     fn convert_null(&self, ty: Type) -> z3::ast::Dynamic<'ctx> {
         let null_pt =
             self.mk_pointer(&self.mk_smt_int(BigInt::ZERO), &self.mk_smt_int(BigInt::ZERO), None);
-        assert!(ty.is_any_ptr());
+        assert!(ty.is_primitive_ptr());
         null_pt
     }
 

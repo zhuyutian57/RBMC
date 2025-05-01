@@ -209,7 +209,7 @@ impl Type {
     }
 
     pub fn is_slice_ptr(&self) -> bool {
-        self.is_any_ptr() && self.pointee_ty().is_slice()
+        self.is_primitive_ptr() && self.pointee_ty().is_slice()
     }
 
     pub fn is_nonnull(&self) -> bool {
@@ -228,7 +228,7 @@ impl Type {
         self.name() == "Vec"
     }
 
-    pub fn is_any_ptr(&self) -> bool {
+    pub fn is_primitive_ptr(&self) -> bool {
         self.is_ptr() || self.is_ref()
     }
 
@@ -263,20 +263,8 @@ impl Type {
         self.is_unit() || self.is_empty_struct()
     }
 
-    /// Coercion in rust.
-    // pub fn is_coercion_to(&self, ty: Type) -> bool {
-    //     // TODO: add mores
-    //     if *self == ty {
-    //         true
-    //     } else if self.is_array() && ty.is_slice() {
-    //         return self.elem_type().is_coercion_to(ty.elem_type());
-    //     } else {
-    //         false
-    //     }
-    // }
-
     pub fn pointee_ty(&self) -> Self {
-        assert!(self.is_any_ptr());
+        assert!(self.is_primitive_ptr() || self.is_box());
         match self.0.kind() {
             TyKind::RigidTy(r) => match r {
                 RigidTy::Adt(_, args) => {
@@ -505,7 +493,7 @@ impl Type {
             return elem_size * len;
         }
 
-        if self.is_any_ptr() {
+        if self.is_primitive_ptr() {
             return size_of::<usize>();
         }
 
@@ -564,7 +552,7 @@ impl Type {
             return self.elem_type().align();
         }
 
-        if self.is_any_ptr() {
+        if self.is_primitive_ptr() {
             return align_of::<usize>();
         }
 

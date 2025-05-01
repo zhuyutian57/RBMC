@@ -217,7 +217,7 @@ impl Expr {
                     _ => todo!("Impossible"),
                 }
             } else {
-                assert!(lhs.ty().is_any_ptr());
+                assert!(lhs.ty().is_primitive_ptr());
                 true
             };
             *self = self.ctx.constant_bool(res);

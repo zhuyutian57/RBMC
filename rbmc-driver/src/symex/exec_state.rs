@@ -354,7 +354,7 @@ impl<'cfg> ExecutionState<'cfg> {
         }
 
         assert!(lhs.is_symbol());
-        if !lhs.ty().is_any_ptr() {
+        if !lhs.ty().is_primitive_ptr() {
             return;
         }
         self.assignment_value_set(lhs, rhs);

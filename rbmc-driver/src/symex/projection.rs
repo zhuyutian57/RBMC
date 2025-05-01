@@ -68,7 +68,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     /// Dereferencing raw pointer/reference/box pointer.
     /// Return the objects it points to.
     pub(super) fn project_deref(&mut self, pt: Expr, mode: Mode, guard: Guard, ty: Type) -> Expr {
-        assert!(pt.ty().is_any_ptr());
+        assert!(pt.ty().is_primitive_ptr());
 
         let mut objects = ObjectSet::new();
         self._callback_symex.top().cur_state.get_value_set(pt.clone(), &mut objects);
@@ -280,7 +280,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     }
 
     fn dereference_null(&mut self, pt: Expr, guard: Guard, mode: Mode) {
-        assert!(pt.ty().is_any_ptr());
+        assert!(pt.ty().is_primitive_ptr());
         let null = self._ctx.null(pt.ty());
         let msg = match mode {
             Mode::Read => "dereference failure: null pointer dereference".into(),
@@ -324,7 +324,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     ) {
         let object_ty = object.ty();
         // Offset check
-        let tmp_object = if object_ty.is_primitive() || object_ty.is_any_ptr() {
+        let tmp_object = if object_ty.is_primitive() || object_ty.is_primitive_ptr() {
             object.clone()
         } else {
             self._ctx.index(

@@ -55,7 +55,7 @@ impl State {
     }
 
     pub fn dealloc_objects(&mut self, pt: Expr) {
-        assert!(pt.ty().is_any_ptr());
+        assert!(pt.ty().is_primitive_ptr());
         let mut objects = HashSet::new();
         self.get_value_set(pt.clone(), &mut objects);
         let n = objects.len();
@@ -73,13 +73,13 @@ impl State {
     }
 
     pub fn remove_pointer(&mut self, pt: Expr) {
-        assert!(pt.ty().is_any_ptr());
+        assert!(pt.ty().is_primitive_ptr());
         let ident = NString::from(format!("{pt:?}"));
         self.value_set.remove(ident);
     }
 
     pub fn assign(&mut self, expr: Expr, values: ObjectSet) {
-        assert!(expr.ty().is_any_ptr());
+        assert!(expr.ty().is_primitive_ptr());
         self.assign_rec(expr, NString::EMPTY, values);
     }
 
@@ -102,7 +102,7 @@ impl State {
             return;
         }
 
-        assert!(expr.ty().is_any_ptr());
+        assert!(expr.ty().is_primitive_ptr());
 
         if expr.is_index() {
             let object = expr.extract_object();
@@ -134,7 +134,7 @@ impl State {
     }
 
     pub fn get_value_set(&self, expr: Expr, values: &mut ObjectSet) {
-        assert!(expr.ty().is_any_ptr());
+        assert!(expr.ty().is_primitive_ptr());
         self.get_value_set_rec(expr.clone(), NString::EMPTY, values);
         if values.is_empty() {
             // The pointer points to nothing
