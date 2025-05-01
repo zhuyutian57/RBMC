@@ -1,6 +1,3 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use crate::expr::expr::Expr;
 
 use super::context::SolverCtx;

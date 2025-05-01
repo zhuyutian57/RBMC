@@ -5,7 +5,6 @@ use crate::program::program::bigint_to_usize;
 use super::context::*;
 use super::expr::*;
 use super::op::*;
-use super::ty::Type;
 
 impl Expr {
     pub fn simplify(&mut self) -> bool {

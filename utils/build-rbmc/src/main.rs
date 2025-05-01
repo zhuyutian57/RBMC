@@ -75,18 +75,35 @@ fn build_bin() {
 
 fn build_libs() {
     let output_dir = build_root().join("lib");
-    let rustc_args =
-        ["-Copt-level=1", "-Zalways-encode-mir", "-Zmir-enable-passes=+ReorderBasicBlocks"];
+    // let rustc_args =
+    //     ["-Copt-level=1", "-Zalways-encode-mir", "-Zmir-enable-passes=+ReorderBasicBlocks"];
+    let rustc_args = [
+        "-C",
+        "opt-level=1",
+        "-C",
+        "panic=abort",
+        "-Z",
+        "always-encode-mir",
+        "-Z",
+        "mir-enable-passes=+ReorderBasicBlocks",
+    ];
     let mut args = vec![
         "-p",
         "rbmc",
         "-Z",
-        "build-std=std",
+        "build-std=std,panic_abort",
         "-Z",
         "unstable-options",
         // The artifact `library` is copied into `target/rbmc/lib`
         "--artifact-dir",
         output_dir.to_str().unwrap(),
+        "--profile",
+        "dev",
+        // Close debug assertions
+        "--config",
+        "profile.dev.debug-assertions=false",
+        "--config",
+        "profile.dev.panic=\"abort\"",
         "--message-format",
         "json-render-diagnostics",
     ];

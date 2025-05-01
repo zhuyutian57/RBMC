@@ -253,13 +253,6 @@ impl<'cfg> ExecutionState<'cfg> {
             return self.is_constant_value(expr.extract_enum());
         }
 
-        if expr.is_vec() {
-            let inner_pt = expr.extract_inner_pointer();
-            let len = expr.extract_vec_len();
-            // TODO: handle cap
-            return self.is_constant_value(inner_pt) && self.is_constant_value(len);
-        }
-
         false
     }
 

@@ -35,12 +35,8 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             return self.mk_int_sort();
         }
 
-        if ty.is_primitive_ptr() {
+        if ty.is_any_ptr() {
             return self.mk_pointer_sort();
-        }
-
-        if ty.is_vec() {
-            return self.mk_vec_sort();
         }
 
         if ty.is_array() {
@@ -200,23 +196,6 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
             a = Some(self.convert_pointer_meta(&args[0]));
         }
 
-        if expr.is_vec() {
-            a = Some(self.convert_vec(&args[0], &args[1], &args[2]));
-        }
-
-        if expr.is_vec_len() {
-            a = Some(self.convert_vec_len(&args[0]));
-        }
-
-        if expr.is_vec_cap() {
-            a = Some(self.convert_vec_cap(&args[0]));
-        }
-
-        if expr.is_inner_pointer() {
-            let ty = expr.extract_inner_pointer().ty();
-            a = Some(self.convert_inner_pointer(&args[0], ty));
-        }
-
         if expr.is_variant() {
             let ty = expr.ty();
             let idx = expr.extract_variant_idx();
@@ -308,11 +287,6 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     fn convert_pointer_base(&self, pt: &Ast) -> Ast;
     fn convert_pointer_offset(&self, pt: &Ast) -> Ast;
     fn convert_pointer_meta(&self, pt: &Ast) -> Ast;
-    fn convert_box(&self, _box: &Ast) -> Ast;
-    fn convert_vec(&self, _vec: &Ast, len: &Ast, cap: &Ast) -> Ast;
-    fn convert_vec_len(&self, _vec: &Ast) -> Ast;
-    fn convert_vec_cap(&self, _vec: &Ast) -> Ast;
-    fn convert_inner_pointer(&self, pt: &Ast, ty: Type) -> Ast;
 
     fn convert_array(&mut self, elem: &Vec<Ast>, ty: Type) -> Ast {
         let mut array = self.mk_fresh("array".into(), ty);
@@ -403,15 +377,8 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     }
 
     fn convert_cast_from_ptr(&mut self, pt: Expr, target_ty: Type) -> Ast {
-        if pt.ty().is_smart_ptr() {
-            if target_ty.is_primitive_ptr() {
-                let inner_ptr = pt.ctx.inner_pointer(pt.clone());
-                return self.convert_ast(inner_ptr);
-            }
-        }
-
-        if pt.ty().is_primitive_ptr() {
-            if target_ty.is_primitive_ptr() {
+        if pt.ty().is_any_ptr() {
+            if target_ty.is_any_ptr() {
                 return self.convert_ast(pt);
             }
 
@@ -488,7 +455,6 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
     fn mk_int_sort(&self) -> Sort;
     fn mk_array_sort(&mut self, domain: &Sort, range: &Sort) -> Sort;
     fn mk_pointer_sort(&self) -> Sort;
-    fn mk_vec_sort(&self) -> Sort;
 
     // constant
     fn mk_smt_bool(&self, b: bool) -> Ast;

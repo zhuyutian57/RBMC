@@ -76,10 +76,6 @@ impl NString {
         string.starts_with(sub_str)
     }
 
-    pub fn find(&self, s: NString) -> Option<usize> {
-        self.to_string().find(s.as_str())
-    }
-
     pub fn sub_str(&self, l: usize, r: usize) -> NString {
         let str = self.as_str();
         assert!(l < r && r <= str.len());

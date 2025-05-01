@@ -53,7 +53,6 @@ pub trait MemSpace<Sort, Ast> {
     fn set_pointer_logic(&mut self);
 
     fn pointer_sort(&self) -> Sort;
-    fn vec_sort(&self) -> Sort;
 
     fn create_object_space(&mut self, object: &Expr) -> Ast;
     fn init_pointer_space(&mut self, object: &Expr);
@@ -62,10 +61,4 @@ pub trait MemSpace<Sort, Ast> {
     fn mk_pointer_base(&self, pt: &Ast) -> Ast;
     fn mk_pointer_offset(&self, pt: &Ast) -> Ast;
     fn mk_pointer_meta(&self, pt: &Ast) -> Ast;
-    fn mk_box(&self, inner_pt: &Ast) -> Ast;
-    fn mk_box_ptr(&self, _box: &Ast) -> Ast;
-    fn mk_vec(&self, inner_pt: &Ast, len: &Ast, cap: &Ast) -> Ast;
-    fn mk_vec_ptr(&self, _vec: &Ast) -> Ast;
-    fn mk_vec_len(&self, _vec: &Ast) -> Ast;
-    fn mk_vec_cap(&self, _vec: &Ast) -> Ast;
 }

@@ -8,7 +8,6 @@ use crate::expr::expr::*;
 use crate::expr::guard::*;
 use crate::expr::ty::*;
 use crate::program::program::bigint_to_u64;
-use crate::symbol::nstring::NString;
 use crate::symbol::symbol::*;
 
 type BinOp = crate::expr::op::BinOp;

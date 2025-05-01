@@ -142,8 +142,8 @@ impl<'cfg> Symex<'cfg> {
 
         // Display state after returning function
         let function_name = self.top().function.name();
-        if self.config.enable_display_state_terminator() &&
-            self.config.enable_display_state_in_function(function_name)
+        if self.config.enable_display_state_terminator()
+            && self.config.enable_display_state_in_function(function_name)
         {
             println!(
                 "Symex {function_name:?} bb{} terminator\n{:?}",

@@ -150,13 +150,8 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     fn convert_null(&self, ty: Type) -> z3::ast::Dynamic<'ctx> {
         let null_pt =
             self.mk_pointer(&self.mk_smt_int(BigInt::ZERO), &self.mk_smt_int(BigInt::ZERO), None);
-        if ty.is_primitive_ptr() {
-            null_pt
-        } else if ty.is_box() {
-            self.mk_box(&null_pt)
-        } else {
-            panic!("Not support null({ty:?})")
-        }
+        assert!(ty.is_any_ptr());
+        null_pt
     }
 
     fn convert_pointer(
@@ -181,36 +176,6 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
     fn convert_pointer_meta(&self, pt: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
         self.mk_pointer_meta(pt)
-    }
-
-    fn convert_box(&self, _box: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
-        self.mk_box(_box)
-    }
-
-    fn convert_vec(
-        &self,
-        _vec: &z3::ast::Dynamic<'ctx>,
-        len: &z3::ast::Dynamic<'ctx>,
-        cap: &z3::ast::Dynamic<'ctx>,
-    ) -> z3::ast::Dynamic<'ctx> {
-        self.mk_vec(_vec, len, cap)
-    }
-
-    fn convert_vec_len(&self, _vec: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
-        self.mk_vec_len(_vec)
-    }
-
-    fn convert_vec_cap(&self, _vec: &z3::ast::Dynamic<'ctx>) -> z3::ast::Dynamic<'ctx> {
-        self.mk_vec_cap(_vec)
-    }
-
-    fn convert_inner_pointer(
-        &self,
-        pt: &z3::ast::Dynamic<'ctx>,
-        ty: Type,
-    ) -> z3::ast::Dynamic<'ctx> {
-        assert!(ty.is_box() || ty.is_vec());
-        if ty.is_box() { self.mk_box_ptr(pt) } else { self.mk_vec_ptr(pt) }
     }
 
     fn convert_struct(
@@ -325,10 +290,6 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
     fn mk_pointer_sort(&self) -> z3::Sort<'ctx> {
         self.pointer_sort()
-    }
-
-    fn mk_vec_sort(&self) -> z3::Sort<'ctx> {
-        self.vec_sort()
     }
 
     fn mk_smt_bool(&self, b: bool) -> z3::ast::Dynamic<'ctx> {

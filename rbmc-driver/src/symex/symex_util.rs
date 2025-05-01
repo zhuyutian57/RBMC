@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use num_bigint::BigInt;
 use stable_mir::CrateDef;
 use stable_mir::mir::Operand;
@@ -35,7 +33,7 @@ impl<'cfg> Symex<'cfg> {
         self.top_mut().cur_state.guard.make_false();
 
         if let Some(states) = state_vec.as_mut() {
-            for mut state in states {
+            for state in states {
                 if state.guard.is_false() {
                     continue;
                 }

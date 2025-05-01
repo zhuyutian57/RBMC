@@ -176,7 +176,7 @@ impl<'cfg> Bmc<'cfg> {
             }
         }
 
-        let mut assert = assertions.into_iter().fold(ctx._false(), |acc, b| ctx.or(acc, b));
+        let assert = assertions.into_iter().fold(ctx._false(), |acc, b| ctx.or(acc, b));
 
         self.runtime_solver.assert_expr(assert);
     }

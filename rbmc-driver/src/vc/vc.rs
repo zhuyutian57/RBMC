@@ -85,10 +85,6 @@ impl VCSystem {
         VCSystem { _ctx, vcs: Vec::new(), asserts_map: HashMap::new() }
     }
 
-    pub fn size(&self) -> usize {
-        self.vcs.len()
-    }
-
     pub fn num_asserts(&self) -> usize {
         self.asserts_map.len()
     }

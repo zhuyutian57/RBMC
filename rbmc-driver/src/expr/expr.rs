@@ -136,19 +136,6 @@ impl Expr {
         self.ctx.borrow().is_pointer_meta(self.id)
     }
 
-    pub fn is_vec(&self) -> bool {
-        self.ctx.borrow().is_vec(self.id)
-    }
-    pub fn is_vec_len(&self) -> bool {
-        self.ctx.borrow().is_vec_len(self.id)
-    }
-    pub fn is_vec_cap(&self) -> bool {
-        self.ctx.borrow().is_vec_cap(self.id)
-    }
-    pub fn is_inner_pointer(&self) -> bool {
-        self.ctx.borrow().is_inner_pointer(self.id)
-    }
-
     pub fn is_variant(&self) -> bool {
         self.ctx.borrow().is_variant(self.id)
     }
@@ -324,26 +311,12 @@ impl Expr {
         self.extract_sub_expr(1)
     }
 
-    pub fn extract_vec_len(&self) -> Expr {
-        assert!(self.is_vec());
-        self.extract_sub_expr(1)
-    }
-
-    pub fn extract_vec_cap(&self) -> Expr {
-        assert!(self.is_vec());
-        self.extract_sub_expr(2)
-    }
-
     pub fn extract_inner_pointer(&self) -> Expr {
         assert!(
             self.is_pointer()
                 || self.is_pointer_base()
                 || self.is_pointer_offset()
                 || self.is_pointer_meta()
-                || self.is_vec()
-                || self.is_vec_len()
-                || self.is_vec_cap()
-                || self.is_inner_pointer()
         );
         self.extract_sub_expr(0)
     }
@@ -577,32 +550,6 @@ impl Expr {
             return;
         }
 
-        if self.is_vec() {
-            let pt = sub_exprs[0].clone();
-            let len = sub_exprs[1].clone();
-            let cap = sub_exprs[2].clone();
-            *self = self.ctx._vec(pt, len, cap, self.ty());
-            return;
-        }
-
-        if self.is_vec_len() {
-            let pt = sub_exprs[0].clone();
-            *self = self.ctx.vec_len(pt);
-            return;
-        }
-
-        if self.is_vec_cap() {
-            let pt = sub_exprs[0].clone();
-            *self = self.ctx.vec_cap(pt);
-            return;
-        }
-
-        if self.is_inner_pointer() {
-            let pt = sub_exprs[0].clone();
-            *self = self.ctx.inner_pointer(pt);
-            return;
-        }
-
         if self.is_variant() {
             if sub_exprs.len() == 2 {
                 let idx = sub_exprs[0].clone();
@@ -773,28 +720,6 @@ impl Debug for Expr {
                 return write!(f, "PtrMeta({pt:?})");
             }
 
-            if self.is_vec() {
-                let pt = &sub_exprs[0];
-                let len = &sub_exprs[1];
-                let cap = &sub_exprs[2];
-                return write!(f, "Vec({pt:?}, {len:?}, {cap:?})");
-            }
-
-            if self.is_vec_len() {
-                let pt = &sub_exprs[0];
-                return write!(f, "VecLen({pt:?})");
-            }
-
-            if self.is_vec_cap() {
-                let pt = &sub_exprs[0];
-                return write!(f, "VecCap({pt:?})");
-            }
-
-            if self.is_inner_pointer() {
-                let pt = &sub_exprs[0];
-                return write!(f, "iptr({pt:?})");
-            }
-
             if self.is_variant() {
                 return write!(f, "Variant({:?}, {:?})", sub_exprs[0], sub_exprs[1]);
             }
@@ -896,10 +821,6 @@ pub trait ExprBuilder {
     fn unique_raw(&self, unique: Expr) -> Expr;
     fn _box(&self, pt: Expr) -> Expr;
     fn box_raw(&self, _box: Expr) -> Expr;
-    fn _vec(&self, pt: Expr, len: Expr, cap: Expr, ty: Type) -> Expr;
-    fn vec_len(&self, pt: Expr) -> Expr;
-    fn vec_cap(&self, pt: Expr) -> Expr;
-    fn inner_pointer(&self, pt: Expr) -> Expr;
 
     fn variant(&self, idx: Expr, data: Expr, ty: Type) -> Expr;
     fn as_variant(&self, x: Expr, idx: Expr) -> Expr;

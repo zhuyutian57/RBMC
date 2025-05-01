@@ -111,11 +111,6 @@ impl Context {
         matches!(self.extract_terminal(i), Ok(t) if t.is_constant())
     }
 
-    pub fn is_constant_bool(&self, i: NodeId) -> bool {
-        assert!(i < self.nodes.len());
-        matches!(self.extract_constant(i), Ok(t) if t.is_bool())
-    }
-
     pub fn is_constant_integer(&self, i: NodeId) -> bool {
         assert!(i < self.nodes.len());
         matches!(self.extract_constant(i), Ok(t) if t.is_integer())
@@ -224,26 +219,6 @@ impl Context {
     pub fn is_pointer_meta(&self, i: NodeId) -> bool {
         assert!(i < self.nodes.len());
         self.nodes[i].kind().is_pointer_meta()
-    }
-
-    pub fn is_vec(&self, i: NodeId) -> bool {
-        assert!(i < self.nodes.len());
-        self.nodes[i].kind().is_vec()
-    }
-
-    pub fn is_vec_len(&self, i: NodeId) -> bool {
-        assert!(i < self.nodes.len());
-        self.nodes[i].kind().is_vec_len()
-    }
-
-    pub fn is_vec_cap(&self, i: NodeId) -> bool {
-        assert!(i < self.nodes.len());
-        self.nodes[i].kind().is_vec_cap()
-    }
-
-    pub fn is_inner_pointer(&self, i: NodeId) -> bool {
-        assert!(i < self.nodes.len());
-        self.nodes[i].kind().is_inner_pointer()
     }
 
     pub fn is_variant(&self, i: NodeId) -> bool {
@@ -720,7 +695,7 @@ impl ExprBuilder for ExprCtx {
     }
 
     fn pointer(&self, address: Expr, meta: Option<Expr>, ty: Type) -> Expr {
-        assert!(address.ty().is_primitive_ptr());
+        assert!(address.ty().is_any_ptr());
         if ty.is_slice_ptr() {
             assert!(meta != None);
         }
@@ -813,42 +788,6 @@ impl ExprBuilder for ExprCtx {
         let ty = _box.ty().struct_def().1[0].1;
         let unique = self.index(_box, i.clone(), ty);
         self.unique_raw(unique)
-    }
-
-    fn _vec(&self, pt: Expr, len: Expr, cap: Expr, ty: Type) -> Expr {
-        assert!(pt.ty().is_ptr());
-        assert!(pt.ty().pointee_ty() == ty.pointee_ty());
-        let kind = NodeKind::Vec(pt.id, len.id, cap.id);
-        let new_node = Node::new(kind, ty);
-        let id = self.borrow_mut().add_node(new_node);
-        Expr { ctx: self.clone(), id }
-    }
-
-    fn vec_len(&self, pt: Expr) -> Expr {
-        assert!(pt.ty().is_vec());
-        let kind = NodeKind::VecLen(pt.id);
-        let ty = Type::usize_type();
-        let new_node = Node::new(kind, ty);
-        let id = self.borrow_mut().add_node(new_node);
-        Expr { ctx: self.clone(), id }
-    }
-
-    fn vec_cap(&self, pt: Expr) -> Expr {
-        assert!(pt.ty().is_vec());
-        let kind = NodeKind::VecCap(pt.id);
-        let ty = Type::usize_type();
-        let new_node = Node::new(kind, ty);
-        let id = self.borrow_mut().add_node(new_node);
-        Expr { ctx: self.clone(), id }
-    }
-
-    fn inner_pointer(&self, pt: Expr) -> Expr {
-        assert!(pt.ty().is_smart_ptr());
-        let kind = NodeKind::InnerPointer(pt.id);
-        let ty = pt.ty().inner_pointer_type();
-        let new_node = Node::new(kind, ty);
-        let id = self.borrow_mut().add_node(new_node);
-        Expr { ctx: self.clone(), id }
     }
 
     fn variant(&self, idx: Expr, data: Expr, ty: Type) -> Expr {

@@ -5,18 +5,8 @@ use super::symex::*;
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
 use crate::program::function::Pc;
-use crate::solvers::solver::*;
 use crate::symbol::nstring::NString;
 use crate::symbol::symbol::Level;
-use crate::vc::vc::*;
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum PathFeasibility {
-    PATHTrue,
-    PATHFalse,
-    PATHUnkown,
-    PATHImpissible,
-}
 
 impl<'cfg> Symex<'cfg> {
     pub(super) fn symex_goto(&mut self, target: &BasicBlockIdx) {
@@ -49,7 +39,7 @@ impl<'cfg> Symex<'cfg> {
             }
 
             let l0_guard_ident = self.exec_state.l0_symbol(NString::SYMEX_GUARD, Type::bool_type());
-            let mut guard_ident = self.exec_state.new_symbol(&l0_guard_ident, Level::Level1);
+            let guard_ident = self.exec_state.new_symbol(&l0_guard_ident, Level::Level1);
             self.assign(guard_ident.clone(), discr, self.ctx._true().into());
             guard_ident
         } else if discr_expr.ty().is_bool() {

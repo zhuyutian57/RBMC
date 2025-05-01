@@ -9,7 +9,6 @@ use crate::expr::context::*;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::program::program::*;
-use crate::solvers::solver::Solver;
 use crate::symbol::nstring::*;
 use crate::symbol::symbol::*;
 use crate::vc::vc::*;
@@ -79,12 +78,10 @@ impl<'cfg> Symex<'cfg> {
                 self.unwind(pc);
 
                 let function_name = self.top().function.name();
-                if self.config.enable_display_state() &&
-                    self.config.enable_display_state_in_function(function_name) {
-                    println!(
-                        "Enter {function_name:?} - bb{pc}\n{:?}",
-                        self.top().cur_state
-                    );
+                if self.config.enable_display_state()
+                    && self.config.enable_display_state_in_function(function_name)
+                {
+                    println!("Enter {function_name:?} - bb{pc}\n{:?}", self.top().cur_state);
                 }
 
                 self.symex_basicblock(pc);
@@ -110,8 +107,8 @@ impl<'cfg> Symex<'cfg> {
             self.exec_state.update_span(statement.span);
             self.symex_statement(statement);
 
-            if self.config.enable_display_state_statement() &&
-                self.config.enable_display_state_in_function(function_name)
+            if self.config.enable_display_state_statement()
+                && self.config.enable_display_state_in_function(function_name)
             {
                 println!(
                     "Symex {function_name:?} bb{pc} statement {i}\n{:?}",
@@ -122,13 +119,11 @@ impl<'cfg> Symex<'cfg> {
         self.exec_state.update_span(bb.terminator.span);
         let is_unwind = self.symex_terminator(&bb.terminator);
 
-        if !is_unwind && self.config.enable_display_state_terminator() &&
-            self.config.enable_display_state_in_function(function_name)
+        if !is_unwind
+            && self.config.enable_display_state_terminator()
+            && self.config.enable_display_state_in_function(function_name)
         {
-            println!(
-                "Symex {function_name:?} bb{pc} terminator\n{:?}",
-                self.top().cur_state
-            );
+            println!("Symex {function_name:?} bb{pc} terminator\n{:?}", self.top().cur_state);
         }
     }
 

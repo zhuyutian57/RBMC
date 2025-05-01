@@ -67,10 +67,6 @@ impl Guard {
         }
     }
 
-    pub fn guard(&self, conseq: Expr) -> Expr {
-        self._ctx.implies(self.to_expr(), conseq)
-    }
-
     pub fn to_expr(&self) -> Expr {
         let mut res =
             self._expr_set.iter().fold(self._ctx._true(), |acc, x| self._ctx.and(acc, x.clone()));

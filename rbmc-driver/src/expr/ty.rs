@@ -117,11 +117,6 @@ impl Type {
         Ty::new_box(inner_type.0).into()
     }
 
-    pub fn inner_pointer_type(&self) -> Self {
-        assert!(self.is_smart_ptr());
-        Type::ptr_type(self.pointee_ty(), Mutability::Not)
-    }
-
     pub fn tuple_type(sub_types: Vec<Type>) -> Self {
         let stypes = sub_types.iter().map(|x| x.0).collect::<Vec<_>>();
         Ty::new_tuple(&stypes).into()
@@ -214,7 +209,7 @@ impl Type {
     }
 
     pub fn is_slice_ptr(&self) -> bool {
-        self.is_primitive_ptr() && self.pointee_ty().is_slice()
+        self.is_any_ptr() && self.pointee_ty().is_slice()
     }
 
     pub fn is_nonnull(&self) -> bool {
@@ -233,16 +228,8 @@ impl Type {
         self.name() == "Vec"
     }
 
-    pub fn is_primitive_ptr(&self) -> bool {
-        self.is_ptr() || self.is_ref()
-    }
-
-    pub fn is_smart_ptr(&self) -> bool {
-        self.is_box() || self.is_vec()
-    }
-
     pub fn is_any_ptr(&self) -> bool {
-        self.is_primitive_ptr() || self.is_smart_ptr()
+        self.is_ptr() || self.is_ref()
     }
 
     pub fn is_rbmc_nondet(&self) -> bool {
@@ -518,7 +505,7 @@ impl Type {
             return elem_size * len;
         }
 
-        if self.is_primitive_ptr() {
+        if self.is_any_ptr() {
             return size_of::<usize>();
         }
 
@@ -577,7 +564,7 @@ impl Type {
             return self.elem_type().align();
         }
 
-        if self.is_primitive_ptr() {
+        if self.is_any_ptr() {
             return align_of::<usize>();
         }
 

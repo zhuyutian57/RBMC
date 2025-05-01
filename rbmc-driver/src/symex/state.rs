@@ -266,12 +266,6 @@ impl State {
             return;
         }
 
-        if expr.is_vec() || expr.is_inner_pointer() {
-            let inner_pt = expr.extract_inner_pointer();
-            self.get_value_set_rec(inner_pt, suffix, values);
-            return;
-        }
-
         if expr.is_move() {
             self.get_value_set_rec(expr.extract_object(), suffix, values);
             return;

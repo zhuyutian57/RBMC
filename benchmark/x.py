@@ -39,7 +39,7 @@ def run_on_single_file(cmd, smt_strategy):
     out = RBMC_OUTPUT
     log_file = out + f"{crate}-{smt_strategy}.log"
   else:
-    out = KANI_OUTPUT if cmd[0] == "kani" else ESBMC_OUTPUT
+    out = KANI_OUTPUT if "kani" in cmd[0] else ESBMC_OUTPUT
     log_file = out + f"{crate}.log"
   extra_args += [">", log_file, "2>&1"]
   final_cmd = cmd + extra_args
@@ -71,11 +71,13 @@ def kani(file):
   os.environ["RUSTFLAGS"] = "-Awarnings -Copt-level=1"
 
   cmd = [
-    "kani",
+    "../../kani/target/kani/bin/kani",
     tmp_file,
     "--no-default-checks",
-    "--memory-safety-checks",
     "--no-unwinding-checks",
+    "--no-overflow-checks",
+    "--no-assertion-reach-checks",
+    "--memory-safety-checks",
     "-Z",
     "unstable-options",
     "--cbmc-args",

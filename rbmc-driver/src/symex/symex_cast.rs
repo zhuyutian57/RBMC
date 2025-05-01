@@ -71,7 +71,7 @@ impl<'cfg> Symex<'cfg> {
             let object = self.ctx.object(expr);
             let i = self.ctx.constant_usize(0);
             self.ctx.index(object, i, target_ty)
-        } else if expr.ty().is_integer() && target_ty.is_primitive_ptr() {
+        } else if expr.ty().is_integer() && target_ty.is_any_ptr() {
             let mut num = expr;
             self.rename(&mut num);
             assert!(num.is_constant() && num.extract_constant().to_integer() == BigInt::ZERO);

@@ -115,15 +115,6 @@ pub(super) enum NodeKind {
     PointerOffset(NodeId),
     /// `PointerMeta(pt)` retrieve meta data from a pointer expr.
     PointerMeta(NodeId),
-    /// `Vec(*[T], len, cap)` encodes Vec, three-field tuple,
-    /// array pointer, length and capacity
-    Vec(NodeId, NodeId, NodeId),
-    /// `VecLen(vec)` retrieves the length of a `Vec`
-    VecLen(NodeId),
-    /// `VecCap(vec)` retrieves the capacity of a `Vec`
-    VecCap(NodeId),
-    /// Retrieving inner pointer of smart pointer, including `Box`, `Vec`, and son on.
-    InnerPointer(NodeId),
 
     // enum
     /// `Variant(i, x)`: variant `i` with data `x`.
@@ -215,22 +206,6 @@ impl NodeKind {
         matches!(self, NodeKind::PointerMeta(..))
     }
 
-    pub fn is_vec(&self) -> bool {
-        matches!(self, NodeKind::Vec(..))
-    }
-
-    pub fn is_vec_len(&self) -> bool {
-        matches!(self, NodeKind::VecLen(..))
-    }
-
-    pub fn is_vec_cap(&self) -> bool {
-        matches!(self, NodeKind::VecCap(..))
-    }
-
-    pub fn is_inner_pointer(&self) -> bool {
-        matches!(self, NodeKind::InnerPointer(..))
-    }
-
     pub fn is_variant(&self) -> bool {
         matches!(self, NodeKind::Variant(..))
     }
@@ -301,13 +276,9 @@ impl Node {
             NodeKind::Index(o, i) => vec![*o, *i],
             NodeKind::Store(o, i, v) => vec![*o, *i, *v],
             NodeKind::Pointer(a, m) => vec![*a, *m],
-            NodeKind::PointerBase(p)
-            | NodeKind::PointerOffset(p)
-            | NodeKind::PointerMeta(p)
-            | NodeKind::VecLen(p)
-            | NodeKind::VecCap(p)
-            | NodeKind::InnerPointer(p) => vec![*p],
-            NodeKind::Vec(p, l, c) => vec![*p, *l, *c],
+            NodeKind::PointerBase(p) | NodeKind::PointerOffset(p) | NodeKind::PointerMeta(p) => {
+                vec![*p]
+            }
             NodeKind::Variant(i, x) => vec![*i, *x],
             NodeKind::AsVariant(x, i) | NodeKind::MatchVariant(x, i) => vec![*x, *i],
             NodeKind::Move(o) | NodeKind::Valid(o) | NodeKind::Invalid(o) => vec![*o],
