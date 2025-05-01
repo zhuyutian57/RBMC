@@ -6,6 +6,7 @@ use super::cli::*;
 use crate::expr::context::*;
 use crate::program::program::*;
 use crate::solvers::context::SolverCtx;
+use crate::symbol::nstring::NString;
 
 pub struct Config {
     pub(crate) cli: Cli,
@@ -30,5 +31,28 @@ impl Config {
         let solver_config = SolverCtx::new(&cli);
 
         Config { cli, machine_info, program, expr_ctx, solver_config }
+    }
+
+    pub fn enable_display_function(&self, name: NString) -> bool {
+        (self.cli.show_program || self.cli.program_only)  &&
+            (self.program.is_local_function(name) || self.cli.show_std_function)
+    }
+
+    pub fn enable_display_state(&self) -> bool {
+        self.cli.show_state != DisplayState::None
+    }
+
+    pub fn enable_display_state_statement(&self) -> bool {
+        self.cli.show_state == DisplayState::Statement
+            || self.cli.show_state == DisplayState::All
+    }
+
+    pub fn enable_display_state_terminator(&self) -> bool {
+        self.cli.show_state == DisplayState::Terminator
+            || self.cli.show_state == DisplayState::All
+    }
+
+    pub fn enable_display_state_in_function(&self, name: NString) -> bool {
+        self.program.is_local_function(name) || self.cli.show_std_state
     }
 }

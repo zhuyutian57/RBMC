@@ -6,13 +6,6 @@ pub const RBMC_CRATE: &str = "RBMC_CRATE";
 pub const RBMC_FLAGS: &str = "RBMC_FLAGS";
 
 #[derive(clap::ValueEnum, Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub enum ProgramInfo {
-    #[default]
-    Local,
-    All,
-}
-
-#[derive(clap::ValueEnum, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum DisplayState {
     #[default]
     None,
@@ -52,17 +45,18 @@ pub struct Cli {
     #[arg(long, default_value_t = false)]
     pub program_only: bool,
 
-    /// Set program info for display.
-    /// `Local` for displaying functions in current crate and
-    /// `All` for displaying all reachable non-builtin functions.
-    #[clap(value_enum)]
-    #[arg(long, default_value_t = ProgramInfo::Local)]
-    pub program_info: ProgramInfo,
+    /// Display functions in std.
+    #[arg(long, default_value_t = false)]
+    pub show_std_function: bool,
 
     /// Show state
     #[clap(value_enum)]
     #[arg(long, default_value_t = DisplayState::None)]
-    pub show_states: DisplayState,
+    pub show_state: DisplayState,
+
+    /// Display states during symex in std functions
+    #[arg(long, default_value_t = false)]
+    pub show_std_state: bool,
 
     /// Show VCC
     #[arg(long, default_value_t = false)]
@@ -139,17 +133,5 @@ impl Cli {
             let n = self.file.len();
             self.file.sub_str(0, n - 3)
         }
-    }
-
-    pub fn enable_display_state_bb(&self) -> bool {
-        self.show_states == DisplayState::BB || self.show_states == DisplayState::All
-    }
-
-    pub fn enable_display_state_statement(&self) -> bool {
-        self.show_states == DisplayState::Statement || self.show_states == DisplayState::All
-    }
-
-    pub fn enable_display_state_terminator(&self) -> bool {
-        self.show_states == DisplayState::Terminator || self.show_states == DisplayState::All
     }
 }

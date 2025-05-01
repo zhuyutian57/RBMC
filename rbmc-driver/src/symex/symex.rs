@@ -77,15 +77,17 @@ impl<'cfg> Symex<'cfg> {
             if self.merge_states(pc) {
                 // Couting loop pc
                 self.unwind(pc);
-                if self.config.cli.enable_display_state_bb() {
+
+                let function_name = self.top().function.name();
+                if self.config.enable_display_state() &&
+                    self.config.enable_display_state_in_function(function_name) {
                     println!(
-                        "Enter {:?} - bb{pc}\n{:?}",
-                        self.top().function.name(),
+                        "Enter {function_name:?} - bb{pc}\n{:?}",
                         self.top().cur_state
                     );
                 }
-                let bb = self.top_mut().function.basicblock(pc);
-                self.symex_basicblock(bb);
+
+                self.symex_basicblock(pc);
             } else {
                 self.top_mut().inc_pc();
             }
@@ -101,22 +103,32 @@ impl<'cfg> Symex<'cfg> {
         self.exec_state.top_mut()
     }
 
-    fn symex_basicblock(&mut self, bb: &BasicBlock) {
+    fn symex_basicblock(&mut self, pc: BasicBlockIdx) {
+        let bb = self.top_mut().function.basicblock(pc);
+        let function_name = self.top().function.name();
         for (i, statement) in bb.statements.iter().enumerate() {
             self.exec_state.update_span(statement.span);
             self.symex_statement(statement);
-            if self.config.cli.enable_display_state_statement()
-                && self.config.program.is_local_function(self.top().function.name())
+
+            if self.config.enable_display_state_statement() &&
+                self.config.enable_display_state_in_function(function_name)
             {
-                println!("After symex {i}\n{:?}", self.top_mut().cur_state);
+                println!(
+                    "Symex {function_name:?} bb{pc} statement {i}\n{:?}",
+                    self.top().cur_state
+                );
             }
         }
         self.exec_state.update_span(bb.terminator.span);
-        self.symex_terminator(&bb.terminator);
-        if self.config.cli.enable_display_state_terminator()
-            && self.config.program.is_local_function(self.top().function.name())
+        let is_unwind = self.symex_terminator(&bb.terminator);
+
+        if !is_unwind && self.config.enable_display_state_terminator() &&
+            self.config.enable_display_state_in_function(function_name)
         {
-            println!("After symex terminator\n{:?}", self.top_mut().cur_state);
+            println!(
+                "Symex {function_name:?} bb{pc} terminator\n{:?}",
+                self.top().cur_state
+            );
         }
     }
 
@@ -146,7 +158,7 @@ impl<'cfg> Symex<'cfg> {
         self.top_mut().cur_state.remove_place(nplace);
     }
 
-    fn symex_terminator(&mut self, terminator: &Terminator) {
+    fn symex_terminator(&mut self, terminator: &Terminator) -> bool {
         let mut is_unwind = false;
         match &terminator.kind {
             TerminatorKind::Goto { target } => self.symex_goto(target),
@@ -166,5 +178,6 @@ impl<'cfg> Symex<'cfg> {
         if !is_unwind {
             self.top_mut().inc_pc();
         }
+        is_unwind
     }
 }

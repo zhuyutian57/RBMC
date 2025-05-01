@@ -25,7 +25,7 @@ impl<'cfg> Bmc<'cfg> {
 
     pub fn do_bmc(&mut self) {
         if self.config.cli.show_program || self.config.cli.program_only {
-            self.config.program.show(self.config.cli.program_info);
+            self.config.program.show(!self.config.cli.show_std_function);
             if self.config.cli.program_only {
                 return;
             }

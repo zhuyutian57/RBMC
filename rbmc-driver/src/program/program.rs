@@ -8,7 +8,7 @@ use stable_mir::target::*;
 use stable_mir::*;
 
 use super::function::*;
-use crate::config::cli::ProgramInfo;
+use crate::config::cli::*;
 use crate::expr::ty::Type;
 use crate::symbol::nstring::NString;
 
@@ -106,7 +106,7 @@ impl Program {
         self.functions.len()
     }
 
-    pub fn show(&self, info: ProgramInfo) {
+    pub fn show(&self, only_local: bool) {
         let target = MachineInfo::target();
         println!(
             "Crate:{:?}, Endian:{}, MachineSize:{}\n",
@@ -117,7 +117,7 @@ impl Program {
             },
             target.pointer_width.bytes()
         );
-        let n = if info == ProgramInfo::Local {
+        let n = if only_local {
             self.local_function_count
         } else {
             self.functions.len()

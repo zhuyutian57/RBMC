@@ -140,6 +140,18 @@ impl<'cfg> Symex<'cfg> {
             self.goto(*t, self.ctx._true());
         }
 
+        // Display state after returning function
+        let function_name = self.top().function.name();
+        if self.config.enable_display_state_terminator() &&
+            self.config.enable_display_state_in_function(function_name)
+        {
+            println!(
+                "Symex {function_name:?} bb{} terminator\n{:?}",
+                self.top().cur_pc().unwrap(),
+                self.top().cur_state
+            );
+        }
+
         self.top_mut().inc_pc();
     }
 }
