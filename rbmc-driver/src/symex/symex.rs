@@ -77,9 +77,7 @@ impl<'cfg> Symex<'cfg> {
             if self.merge_states(pc) {
                 // Couting loop pc
                 self.unwind(pc);
-                if self.config.cli.enable_display_state_bb()
-                    || self.config.program.is_local_function(self.top().function.name())
-                {
+                if self.config.cli.enable_display_state_bb() {
                     println!(
                         "Enter {:?} - bb{pc}\n{:?}",
                         self.top().function.name(),

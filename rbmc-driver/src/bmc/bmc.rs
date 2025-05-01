@@ -191,6 +191,8 @@ impl<'cfg> Bmc<'cfg> {
                 let assertion = self.vc_system.borrow().nth_assertion(n);
                 if self.runtime_solver.eval_bool(assertion.cond()) {
                     Bmc::bug_info(&assertion);
+                    // Only show the first violated property
+                    break;
                 }
             }
         }
