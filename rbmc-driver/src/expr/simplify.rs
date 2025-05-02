@@ -394,9 +394,9 @@ impl Expr {
                     *self = self.ctx.constant(fields[idx].clone(), self.ty());
                 }
             } else if inner_expr.is_variant() {
-                let data = inner_expr.extract_variant_data();
-                *self = self.ctx.index(data, i, self.ty());
-                self.simplify();
+                // Only access the data
+                assert!(idx == 0);
+                *self = inner_expr.extract_variant_data();
             }
         } else if inner_expr.is_store() {
             let mut update_index = inner_expr.extract_index();

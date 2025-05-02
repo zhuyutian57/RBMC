@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use stable_mir::abi::LayoutShape;
 use stable_mir::CrateDef;
 use stable_mir::mir::mono::Instance;
 use stable_mir::mir::*;
@@ -156,6 +157,10 @@ impl Type {
 
     pub fn is_enum(&self) -> bool {
         self.0.kind().is_enum()
+    }
+
+    pub fn is_option(&self) -> bool {
+        self.is_enum() && self.name() == "Option"
     }
 
     pub fn is_array(&self) -> bool {
@@ -414,15 +419,6 @@ impl Type {
         fdefs[i]
     }
 
-    /// Get the size of a field of a struct/tuple after padding
-    pub fn field_size(&self, field: usize) -> usize {
-        assert!(self.is_struct() || self.is_tuple());
-        let fty = self.field_type(field);
-        let size = fty.size();
-        let align = self.align();
-        (size / align + if size % align != 0 { 1 } else { 0 }) * align
-    }
-
     pub fn fn_def(&self) -> FunctionDef {
         assert!(self.is_fn());
         let kind = self.0.kind();
@@ -466,113 +462,26 @@ impl Type {
         }
     }
 
+    /// Size in bytes
     pub fn size(&self) -> usize {
-        if self.is_unit() {
-            return size_of::<()>();
-        }
+        self.0.layout().expect("No layout?").shape().size.bytes()
+    }
 
-        if self.is_bool() {
-            return size_of::<bool>();
-        }
-
-        if self.is_integer() {
-            return match self.0.kind().rigid().unwrap() {
-                RigidTy::Int(IntTy::I8) | RigidTy::Uint(UintTy::U8) => size_of::<u8>(),
-                RigidTy::Int(IntTy::I16) | RigidTy::Uint(UintTy::U16) => size_of::<u16>(),
-                RigidTy::Int(IntTy::I32) | RigidTy::Uint(UintTy::U32) => size_of::<u32>(),
-                RigidTy::Int(IntTy::I64) | RigidTy::Uint(UintTy::U64) => size_of::<u64>(),
-                RigidTy::Int(IntTy::I128) | RigidTy::Uint(UintTy::U128) => size_of::<u128>(),
-                RigidTy::Int(IntTy::Isize) | RigidTy::Uint(UintTy::Usize) => size_of::<usize>(),
-                _ => panic!("Impossible"),
-            };
-        }
-
-        if self.is_array() {
-            let len = self.array_len().unwrap() as usize;
-            let elem_size = self.elem_type().size();
-            return elem_size * len;
-        }
-
-        if self.is_primitive_ptr() {
-            return size_of::<usize>();
-        }
-
-        // Do not support repr(align(N))
-        if self.is_struct() || self.is_tuple() {
-            let n = self.fields();
-            let mut size = 0;
-            for i in 0..n {
-                let ty = self.field_type(i);
-                let _align = ty.align();
-                size = (size / _align + if size % _align != 0 { 1 } else { 0 }) * _align;
-                size += ty.size();
-            }
-            let align = self.align();
-            return (size / align + if size % align != 0 { 1 } else { 0 }) * align;
-        }
-
-        if self.is_enum() {
-            // Discriminant size
-            let discr_size = size_of::<isize>();
-            let mut data_size = 1;
-            for variant in self.enum_def().1 {
-                let variant_size = variant.1[0].1.size();
-                data_size = std::cmp::max(data_size, variant_size);
-            }
-            let size = discr_size + data_size;
-            let align = self.align();
-            return (size / align + if size % align != 0 { 1 } else { 0 }) * align;
-        }
-
-        todo!("{self:?}")
+    /// Get the size of a field of a struct/tuple after padding
+    pub fn field_size(&self, field: usize) -> usize {
+        assert!(self.is_struct() || self.is_tuple());
+        let fty = self.field_type(field);
+        let size = fty.size();
+        let align = self.align();
+        (size / align + if size % align != 0 { 1 } else { 0 }) * align
     }
 
     pub fn align(&self) -> usize {
-        if self.is_unit() {
-            return align_of::<()>();
-        }
+        (self.0.layout().expect("Not layout").shape().abi_align / 8) as usize
+    }
 
-        if self.is_bool() {
-            return align_of::<bool>();
-        }
-
-        if self.is_integer() {
-            return match self.0.kind().rigid().unwrap() {
-                RigidTy::Int(IntTy::I8) | RigidTy::Uint(UintTy::U8) => align_of::<u8>(),
-                RigidTy::Int(IntTy::I16) | RigidTy::Uint(UintTy::U16) => align_of::<u16>(),
-                RigidTy::Int(IntTy::I32) | RigidTy::Uint(UintTy::U32) => align_of::<u32>(),
-                RigidTy::Int(IntTy::I64) | RigidTy::Uint(UintTy::U64) => align_of::<u64>(),
-                RigidTy::Int(IntTy::I128) | RigidTy::Uint(UintTy::U128) => align_of::<u128>(),
-                RigidTy::Int(IntTy::Isize) | RigidTy::Uint(UintTy::Usize) => align_of::<usize>(),
-                _ => panic!("Impossible"),
-            };
-        }
-
-        if self.is_array() {
-            return self.elem_type().align();
-        }
-
-        if self.is_primitive_ptr() {
-            return align_of::<usize>();
-        }
-
-        // Do not support repr(align(N))
-        if self.is_struct() || self.is_tuple() {
-            return (0..self.fields())
-                .into_iter()
-                .fold(1, |acc, i| std::cmp::max(acc, self.field_type(i).align()));
-        }
-
-        if self.is_enum() {
-            // Discriminant align
-            let mut align = size_of::<isize>();
-            for variant in self.enum_def().1 {
-                align = std::cmp::max(align, variant.1[0].1.align());
-            }
-            return align;
-        }
-
-        todo!("{self:?}")
+    pub fn shape(&self) -> LayoutShape {
+        self.0.layout().expect("No layout?").shape()
     }
 
     /// Reindex struct/tuple fields by eliminating prefix zero-sized type.

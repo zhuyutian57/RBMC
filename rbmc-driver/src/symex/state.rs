@@ -283,6 +283,7 @@ impl State {
             || expr.is_aggregate()
             || expr.is_slice()
             || expr.is_store()
+            || expr.is_variant()
             || expr.is_as_variant()
         {
             object_set.insert((self.ctx.object(expr), None));

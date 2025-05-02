@@ -223,7 +223,11 @@ impl Expr {
             return self.extract_object().extract_root_object();
         }
 
-        panic!("Impossible")
+        if self.is_as_variant() {
+            return self.extract_enum().extract_root_object();
+        }
+
+        todo!("{self:?}")
     }
 
     pub fn extract_fields(&self) -> Vec<Expr> {

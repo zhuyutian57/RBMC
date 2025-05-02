@@ -13,6 +13,7 @@ use crate::expr::context::*;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::program::function::FunctionIdx;
+use crate::program::program::bigint_to_usize;
 use crate::symbol::nstring::*;
 use crate::symbol::symbol::*;
 use crate::symex::place_state::*;
@@ -323,6 +324,7 @@ impl<'cfg> ExecutionState<'cfg> {
     }
 
     fn assign_value_set(&mut self, lhs: Expr, rhs: Expr) {
+        println!("{lhs:?} {:?} = {rhs:?} {:?}", lhs.ty(), rhs.ty());
         if lhs.ty().is_struct() || lhs.ty().is_tuple() {
             // Update for each field
             let ty = lhs.ty();
@@ -352,8 +354,35 @@ impl<'cfg> ExecutionState<'cfg> {
             self.assign_value_set(new_lhs, new_rhs);
             return;
         }
-
+        
         assert!(lhs.is_symbol());
+
+        // TODO: need special operation in value set
+        if lhs.ty().is_enum() {
+            let (data, i) = if rhs.is_variant() {
+                (rhs.extract_variant_data(), rhs.extract_variant_idx())
+            } else if rhs.is_constant() {
+                let args = rhs.extract_constant().to_adt().0;
+                let i = bigint_to_usize(&args[0].to_integer());
+                let ty = lhs.ty().enum_variant_data_type(i);
+                if ty.is_zero_sized_type() {
+                    (self.ctx.constant_zst(ty), i)
+                } else {
+                    (self.ctx.constant(args[1].clone(), ty), i)
+                }
+            } else {
+                todo!("{rhs:?}")
+            };
+            if data.ty().is_zero_sized_type() { return; }
+            let ty = lhs.ty().enum_variant_data_type(i);
+            let zero = self.ctx.constant_usize(0);
+            let new_lhs = self.ctx.index(lhs, zero.clone(), ty);
+            let mut new_rhs = self.ctx.index(rhs, zero, ty);
+            new_rhs.simplify();
+            self.assign_value_set(new_lhs, new_rhs);
+            return;
+        }
+
         if !lhs.ty().is_primitive_ptr() {
             return;
         }

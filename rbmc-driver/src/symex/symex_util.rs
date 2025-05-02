@@ -1,4 +1,5 @@
 use num_bigint::BigInt;
+use stable_mir::abi::FieldsShape;
 use stable_mir::CrateDef;
 use stable_mir::mir::Operand;
 use stable_mir::mir::Place;
@@ -216,26 +217,34 @@ impl<'cfg> Symex<'cfg> {
             assert!(bytes.len() == ty.size());
             Constant::Integer(read_target_integer(&bytes))
         } else if ty.is_struct() || ty.is_tuple() {
-            let n = ty.fields();
-            let mut prefix_bytes = 0;
+            let shape = ty.shape();
+            let n = shape.fields.count();
             let mut fields = Vec::new();
-            for i in 0..n {
-                let size = ty.field_size(i);
-                let mut endian = self.config.machine_info.endian;
-                // Bug for MIR?
-                if ty.name() == "Range" {
-                    endian = Endian::Big;
-                }
-                let (l, r) = match endian {
-                    Endian::Big => (prefix_bytes, prefix_bytes + size),
-                    Endian::Little => {
-                        let r = allocation.len() - prefix_bytes;
-                        (r - size, r)
-                    }
+            if n == 1 {
+                fields.push(self.make_allocation_rec(allocation, ty.field_type(0)));
+            } else  {
+                let field_offsets = match &shape.fields {
+                    FieldsShape::Arbitrary { offsets }
+                        => offsets.iter().map(|x| x.bytes()).collect::<Vec<_>>(),
+                    _ => panic!("Impossible"),
                 };
-                let field = self.make_allocation_rec(&allocation[l..r], ty.field_type(i));
-                fields.push(field);
-                prefix_bytes += size;
+                let is_increasing = field_offsets[1] > field_offsets[0];
+                for i in 0..n {
+                    let (l, r) = if is_increasing {
+                        if i < n - 1 {
+                            (field_offsets[i], field_offsets[i + 1])
+                        } else {
+                            (field_offsets[i], allocation.len())
+                        }
+                    } else {
+                        if i > 0 {
+                            (field_offsets[i], field_offsets[i - 1])
+                        } else {
+                            (field_offsets[i], allocation.len())
+                        }
+                    };
+                    fields.push(self.make_allocation_rec(&allocation[l..r], ty.field_type(i)));
+                }
             }
             Constant::Adt(fields, ty)
         } else if ty.is_enum() {

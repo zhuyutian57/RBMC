@@ -250,6 +250,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     fn bound_check(&mut self, object: Expr, offset: Expr, guard: Guard) -> Option<bool> {
         assert!(object.is_object());
         let ty = object.ty();
+        if ty.is_enum() { return None; }
         let s = if ty.is_array() {
             ty.array_len()
         } else if ty.is_struct() || ty.is_tuple() {
