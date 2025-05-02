@@ -378,16 +378,25 @@ impl Expr {
             if inner_expr.is_aggregate() {
                 *self = inner_expr.extract_fields()[idx].clone();
             } else if inner_expr.is_constant() {
+                let constant = inner_expr.extract_constant();
                 if inner_expr.ty().is_struct() || inner_expr.ty().is_tuple() {
-                    let (fields, _) = inner_expr.extract_constant().to_adt();
+                    let (fields, _) = constant.to_adt();
                     let ty = inner_expr.ty().field_type_exclude_zst(idx);
                     *self = self.ctx.constant(fields[idx].clone(), ty);
+                } else if inner_expr.ty().is_array() {
+                    let (value, ty) = constant.to_array();
+                    assert!(ty == self.ty());
+                    *self = self.ctx.constant(value, ty);
                 } else {
                     assert!(inner_expr.ty().is_enum());
-                    let data = &inner_expr.extract_constant().to_adt().0[1];
+                    let data = &constant.to_adt().0[1];
                     let (fields, _) = data.to_adt();
                     *self = self.ctx.constant(fields[idx].clone(), self.ty());
                 }
+            } else if inner_expr.is_variant() {
+                let data = inner_expr.extract_variant_data();
+                *self = self.ctx.index(data, i, self.ty());
+                self.simplify();
             }
         } else if inner_expr.is_store() {
             let mut update_index = inner_expr.extract_index();
@@ -426,6 +435,11 @@ impl Expr {
         let meta = args[1].clone();
         if address.is_null() {
             *self = address;
+        } else if address.is_pointer() && !self.ty().is_slice_ptr() {
+            // A cast from pointer to pointer. The meta is useless
+            let inner_address = address.extract_inner_pointer();
+            *self = self.ctx.pointer(inner_address, None, self.ty());
+            self.simplify();
         } else if changed {
             *self = self.ctx.pointer(address, Some(meta), self.ty());
         }
@@ -500,19 +514,20 @@ impl Expr {
             assert!(j == idx);
             let data = _enum.extract_variant_data();
             if data.is_constant() {
-                *self = self
-                    .ctx
-                    .constant_adt(vec![i.extract_constant(), data.extract_constant()], self.ty());
-                return;
+                *self = self.ctx.constant_adt(
+                    vec![i.extract_constant(),
+                    data.extract_constant()],
+                    self.ty()
+                );
+            } else {
+                *self = _enum.clone();
             }
         } else if _enum.is_constant() {
             let b = _enum.extract_constant().to_adt().0[0].to_integer();
             let i = bigint_to_usize(&b);
             assert!(i == j);
             *self = _enum.clone();
-            return;
-        }
-        if changed {
+        } else if changed {
             *self = self.ctx.as_variant(_enum, i);
         }
     }

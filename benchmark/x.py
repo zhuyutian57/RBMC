@@ -126,8 +126,12 @@ def run_expriment(dir, tool):
 def format_res(results):
   for crate in sorted(results):
     res = [crate] + results[crate]
-    res[3] = "/".join(res[3])
-    print("{:<20} {:<10} {:<10} {:<10} {:.5f}s".format(*res))
+    if len(res[3]) == 0: res[3] = "-"
+    else: res[3] = "/".join(res[3])
+    if len(res) == 5 :
+      print("{:<20} {:<10} {:<7} {:<7} {:.5f}s".format(*res))
+    else:
+      print("{:<20} {:<10} {:<7} {:<7} {:.5f}s  {:.5f}s".format(*res))
 
 def analysis_rbmc_result():
   assert(os.path.exists(RBMC_OUTPUT))
@@ -135,7 +139,7 @@ def analysis_rbmc_result():
   results = {}
   for logfile in os.listdir(f"{RBMC_OUTPUT}"):
     if logfile.endswith("-forward.log"):
-      res = [0, 0, set(), 0.0]
+      res = [0, 0, set(), 0.0, 0.0]
       with open(os.path.join(RBMC_OUTPUT, logfile)) as log:
         for line in log.readlines():
           if line.startswith("Generating"):
@@ -153,6 +157,8 @@ def analysis_rbmc_result():
             res[2].add("IF")
           if "memory leak" in line:
             res[2].add("ML")
+          if line.startswith("Verification time"):
+            res[4] = float(line.split(" ")[2].strip("\n").strip('s'))
       crate = logfile.replace("-forward.log", ".rs")
       results[crate] = res
   format_res(results)

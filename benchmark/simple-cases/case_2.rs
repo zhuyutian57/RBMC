@@ -1,13 +1,23 @@
+use std::ptr;
+
+unsafe fn run(data: *const u8) -> bool {
+    if data.is_null() { false }
+    else { *data == 0 }
+}
+
+fn sign(data: Option<&[u8]>) -> bool {
+    let p = match data {
+        Some(d) => Box::new(d).as_ptr(),
+        None => ptr::null_mut(),
+    };
+    unsafe {
+        run(p)
+    }
+}
 
 fn main() {
-    let mut v1 = Vec::new();
-    v1.push(1);
-    v1.push(12);
-    let x = v1[0] == v1[1];
-    if !x { v1.pop(); }
-    let y = v1.pop();
-    let z = match y {
-        Some(i) => i,
-        None => 0,
-    };
+    let data = [0u8; 2];
+    sign(Some(&data));
 }
+
+// safe

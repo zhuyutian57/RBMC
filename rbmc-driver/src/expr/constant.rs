@@ -58,6 +58,13 @@ impl Constant {
         }
     }
 
+    pub fn to_array(&self) -> (Constant, Type) {
+        match self {
+            Constant::Array(c, t) => ((**c).clone(), *t),
+            _ => panic!("Not constant array"),
+        }
+    }
+
     pub fn to_adt(&self) -> (Vec<Constant>, Type) {
         match self {
             Constant::Adt(fields, ty) => (fields.clone(), *ty),
