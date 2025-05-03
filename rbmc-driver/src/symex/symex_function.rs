@@ -18,7 +18,7 @@ impl<'cfg> Symex<'cfg> {
         args: &Vec<Operand>,
         dest: &Place,
         target: &Option<BasicBlockIdx>,
-    ) -> bool {
+    ) -> Option<usize> {
         let instance = self.top_mut().function.operand_type(func).function_instance();
         let ty = Type::from(instance.ty());
 
@@ -31,19 +31,16 @@ impl<'cfg> Symex<'cfg> {
         } else {
             // Unwinding function
             self.symex_function(instance, args_exprs, Some(dest.clone()), target);
-            return true;
         }
 
-        let is_unwind = !ty.is_rbmc_nondet() && !ty.is_rust_builtin_function();
-
-        if !is_unwind {
+        if ty.is_rbmc_nondet() || ty.is_rust_builtin_function() {
             match target {
-                Some(t) => self.goto(*t, self.ctx._true()),
-                _ => {}
-            };
+                Some(t) => Some(*t),
+                _ => None,
+            }
+        } else {
+            Some(0)
         }
-
-        is_unwind
     }
 
     fn symex_nondet(&mut self, dest: &Place) {
@@ -85,12 +82,12 @@ impl<'cfg> Symex<'cfg> {
                 self.assign(lhs, rhs, self.ctx._true().into());
             }
         }
-        self.goto(0, self.ctx._true());
     }
 
     pub(super) fn symex_return(&mut self) {
         let n = self.top_mut().function.size();
-        self.goto(n, self.ctx._true());
+        let state = self.exec_state.cur_state.clone();
+        self.cache_unexplored_state(n, state);
     }
 
     pub(super) fn symex_end_function(&mut self) {
@@ -102,7 +99,6 @@ impl<'cfg> Symex<'cfg> {
         }
 
         let frame = self.exec_state.pop_frame();
-        self.top_mut().cur_state = frame.cur_state.clone();
 
         // Assign return value
         if !frame.function.local_type(0).is_unit() {
@@ -124,15 +120,18 @@ impl<'cfg> Symex<'cfg> {
             }
         }
 
-        // clear namspace
+        // Clear namspace.
         self.exec_state.ns.clear_symbols_with_prefix(frame.frame_ident());
 
-        // clear renaming
+        // Clear renaming.
         self.exec_state.renaming.borrow_mut().cleanr_locals(frame.frame_ident());
 
+        // Clear place state set and value set.
+        self.exec_state.cur_state.remove_stack_places(frame.frame_ident());
+
+        // Recover pc.
         if let Some(t) = &frame.target {
-            self.top_mut().cur_state.remove_stack_places(frame.frame_ident());
-            self.goto(*t, self.ctx._true());
+            self.top_mut().pc = *t;
         }
 
         // Display state after returning function
@@ -142,11 +141,9 @@ impl<'cfg> Symex<'cfg> {
         {
             println!(
                 "Symex {function_name:?} bb{} terminator\n{:?}",
-                self.top().cur_pc().unwrap(),
-                self.top().cur_state
+                self.top().pc,
+                self.exec_state.cur_state
             );
         }
-
-        self.top_mut().inc_pc();
     }
 }

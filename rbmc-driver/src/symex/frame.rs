@@ -20,12 +20,11 @@ pub struct Frame<'func> {
     pub(super) dest: Option<Place>,
     pub(super) target: Option<BasicBlockIdx>,
     /// Current Computing
-    pc: Pc,
+    pub(super) pc: Pc,
     /// Record l1 number of each local and its liveness
     pub(super) local_states: Vec<(usize, bool)>, 
     pub(super) loop_stack: Vec<(Pc, usize)>,
-    pub(super) cur_state: State,
-    state_map: HashMap<Pc, Vec<State>>,
+    pub(super) unexplored_states: HashMap<Pc, Vec<State>>,
 }
 
 impl<'func> Frame<'func> {
@@ -45,8 +44,7 @@ impl<'func> Frame<'func> {
             pc: 0,
             local_states: vec![(0, false); function.locals().len()],
             loop_stack: Vec::new(),
-            cur_state: State::new(config.expr_ctx.clone()),
-            state_map: HashMap::new(),
+            unexplored_states: HashMap::new(),
         }
     }
 
@@ -58,7 +56,7 @@ impl<'func> Frame<'func> {
         if let Some(&(l, _)) = self.loop_stack.last() {
             let mut mi = self.function.size();
             for pc in self.function.get_loop(l) {
-                if self.state_map.contains_key(pc) {
+                if self.unexplored_states.contains_key(pc) {
                     mi = std::cmp::min(mi, *pc);
                 }
             }
@@ -68,11 +66,11 @@ impl<'func> Frame<'func> {
             }
         }
 
-        if self.state_map.is_empty() {
+        if self.unexplored_states.is_empty() {
             panic!("We stuck in a loop, please increase the loop bound");
         }
 
-        self.pc = *self.state_map.keys().min().unwrap();
+        self.pc = *self.unexplored_states.keys().min().unwrap();
     }
 
     pub fn get_local_place_state(&self, symbol: Symbol) -> PlaceState {
@@ -104,11 +102,11 @@ impl<'func> Frame<'func> {
     }
 
     pub fn add_state(&mut self, pc: Pc, state: State) {
-        self.state_map.entry(pc).or_default().push(state);
+        self.unexplored_states.entry(pc).or_default().push(state);
     }
 
     pub fn states_from(&mut self, pc: Pc) -> Option<Vec<State>> {
-        self.state_map.remove(&pc)
+        self.unexplored_states.remove(&pc)
     }
 
     pub fn frame_ident(&self) -> NString {

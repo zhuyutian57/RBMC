@@ -55,7 +55,7 @@ impl<'cfg> Symex<'cfg> {
 
         // Update place states for objects.
         let mut objects = ObjectSet::new();
-        self.top().cur_state.get_value_set(pt.clone(), &mut objects);
+        self.exec_state.cur_state.get_value_set(pt.clone(), &mut objects);
         // To make it precisly, if box pointer's value is precisly, make
         // the object's place state to be `Own`
         if objects.len() == 1 {
@@ -73,7 +73,7 @@ impl<'cfg> Symex<'cfg> {
                 }
                 // Only update the place in heap. Moreover, only update root object.
                 let nplace = NPlace(symbol.l1_name());
-                self.top_mut().cur_state.update_place_state(nplace, PlaceState::Own);
+                self.exec_state.cur_state.update_place_state(nplace, PlaceState::Own);
             }
         }
     }
@@ -83,7 +83,7 @@ impl<'cfg> Symex<'cfg> {
 
         // Update place states for objects.
         let mut objects = ObjectSet::new();
-        self.top().cur_state.get_value_set(ret, &mut objects);
+        self.exec_state.cur_state.get_value_set(ret, &mut objects);
         // All object should be updated
         for (object, offset) in objects {
             if offset != None || object.is_null_object() || object.is_unknown() {
@@ -96,9 +96,9 @@ impl<'cfg> Symex<'cfg> {
             }
             // Only update the place in heap.
             let nplace = NPlace(symbol.l1_name());
-            let mut new_place_state = self.top().cur_state.get_place_state(nplace);
+            let mut new_place_state = self.exec_state.cur_state.get_place_state(nplace);
             new_place_state.meet(PlaceState::Alive);
-            self.top_mut().cur_state.update_place_state(nplace, new_place_state);
+            self.exec_state.cur_state.update_place_state(nplace, new_place_state);
         }
     }
 }

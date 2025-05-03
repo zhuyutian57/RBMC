@@ -1,6 +1,7 @@
 use num_bigint::BigInt;
 use stable_mir::mir::*;
 
+use super::state::State;
 use super::symex::*;
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
@@ -9,21 +10,35 @@ use crate::symbol::nstring::NString;
 use crate::symbol::symbol::{Ident, Level};
 
 impl<'cfg> Symex<'cfg> {
-    pub(super) fn symex_goto(&mut self, target: &BasicBlockIdx) {
-        self.goto(*target, self.ctx._true());
-    }
-
-    pub(super) fn symex_switchint(&mut self, discr: &Operand, targets: &SwitchTargets) {
+    pub(super) fn symex_switchint(
+        &mut self,
+        discr: &Operand,
+        targets: &SwitchTargets
+    ) -> usize {
         let discr_expr = self.make_operand(discr).unwrap_predicates();
         let mut otherwise_guard = self.ctx._true();
-        for (i, bb) in targets.branches() {
-            // branches
-            let branch_guard = self.make_branch_guard(discr_expr.clone(), i);
-            self.goto(bb, branch_guard.clone());
+        let mut branches = Vec::new();
+        for (i, pc) in targets.branches() {
+            let mut branch_guard = self.make_branch_guard(discr_expr.clone(), i);
+            self.rename(&mut branch_guard);
+            branches.push((pc, branch_guard.clone()));
             otherwise_guard = self.ctx.and(otherwise_guard, self.ctx.not(branch_guard));
         }
         // otherwise
-        self.goto(targets.otherwise(), otherwise_guard);
+        branches.push((targets.otherwise(), otherwise_guard));
+        
+        // Goto the first branch and cache states of other branches.
+        for (i, (goto_pc, goto_guard)) in branches.iter().enumerate() {
+            if i == 0 { continue; }
+            let mut state = self.exec_state.cur_state.clone();
+            state.guard.add(goto_guard.clone());
+            self.cache_unexplored_state(*goto_pc, state);
+        }
+
+        let (goto_pc, goto_guard) = (branches[0].0, branches[0].1.clone());
+        self.exec_state.cur_state.guard.add(goto_guard);
+
+        goto_pc
     }
 
     fn make_branch_guard(&mut self, discr_expr: Expr, i: u128) -> Expr {
@@ -51,17 +66,10 @@ impl<'cfg> Symex<'cfg> {
     }
 
     /// Register state in state_map
-    pub fn goto(&mut self, pc: Pc, mut branch_guard: Expr) {
-        self.replace_predicates(&mut branch_guard);
-        self.rename(&mut branch_guard);
-        branch_guard.simplify();
-
-        let mut state = self.top().cur_state.clone();
-        state.guard.add(branch_guard);
+    pub fn cache_unexplored_state(&mut self, pc: Pc, mut state: State) {
         if state.guard.is_false() {
             return;
         }
-
         state.renaming = Some(self.exec_state.renaming.clone());
         self.top_mut().add_state(pc, state);
     }

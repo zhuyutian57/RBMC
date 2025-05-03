@@ -25,13 +25,14 @@ impl<'cfg> Symex<'cfg> {
 
         // If pc is the entry of a loop and reaches loop bound, do not unwind the loop
         if self.top().function.is_loop_bb(pc) && self.top().loop_bound_exceed() {
+            self.exec_state.cur_state.guard.make_false();
             return false;
         }
 
-        // We have put all states that reach current pc in the
-        // queue. Thus, we first construct an empty state.
-        // That is, make `gurad` of current state be `false`.
-        self.top_mut().cur_state.guard.make_false();
+        // We have registered all states in queue. Make it false.
+        if pc == self.top().function.size() {
+            self.exec_state.cur_state.guard.make_false();
+        }
 
         if let Some(states) = state_vec.as_mut() {
             for state in states {
@@ -42,11 +43,11 @@ impl<'cfg> Symex<'cfg> {
                 // SSA assigment
                 self.phi_function(state);
 
-                self.top_mut().cur_state.merge(state);
+                self.exec_state.cur_state.merge(state);
             }
         }
 
-        !self.top_mut().cur_state.guard.is_false()
+        !self.exec_state.cur_state.guard.is_false()
     }
 
     fn phi_function(&mut self, nstate: &mut State) {
@@ -54,7 +55,7 @@ impl<'cfg> Symex<'cfg> {
             return;
         }
 
-        let new_guard = nstate.guard.clone() - self.top().cur_state.guard.clone();
+        let new_guard = nstate.guard.clone() - self.exec_state.cur_state.guard.clone();
 
         let mut nrenaming = nstate.renaming.as_ref().unwrap().borrow_mut();
         for ident in nrenaming.variables() {
@@ -79,7 +80,7 @@ impl<'cfg> Symex<'cfg> {
             // Other assignment
             nrenaming.l2_rename(&mut new_rhs, true);
 
-            let rhs = if self.top().cur_state.guard.is_false() {
+            let rhs = if self.exec_state.cur_state.guard.is_false() {
                 new_rhs
             } else {
                 self.ctx.ite(new_guard.to_expr(), new_rhs, cur_rhs)
@@ -125,9 +126,9 @@ impl<'cfg> Symex<'cfg> {
         if let Some(&(l, _)) = self.top().cur_loop() {
             if !self.top().function.get_loop(l).contains(&pc) {
                 self.top_mut().loop_stack.pop();
-                let guard = self.top().cur_state.guard.to_expr();
+                let guard = self.exec_state.cur_state.guard.to_expr();
                 self.assume(guard);
-                self.top_mut().cur_state.guard.make_true();
+                self.exec_state.cur_state.guard.make_true();
             }
         }
     }
@@ -342,7 +343,7 @@ impl<'cfg> Symex<'cfg> {
         self.rename(&mut error);
         error.simplify();
         // The guard of current state is path condition.
-        let mut guard = self.exec_state.cur_state().guard.clone();
+        let mut guard = self.exec_state.cur_state.guard.clone();
         guard.add(error);
         if guard.is_false() {
             return;

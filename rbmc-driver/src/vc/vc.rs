@@ -149,9 +149,6 @@ impl VCSystem {
             if self.vcs[m].is_sliced {
                 continue;
             }
-            if !self.vcs[m].msg().contains("memory leak".into()) {
-                continue;
-            }
             let span = self.vcs[m].span.expect("Span must exist");
             println!(
                 "\nAssertion {i}: {}:{}:{}",

@@ -11,6 +11,6 @@ fn main() {
   loop {
     head = append(head);
     i += 1;
-    if i == 5 { break; }
+    if i == 10 { break; }
   }
 }

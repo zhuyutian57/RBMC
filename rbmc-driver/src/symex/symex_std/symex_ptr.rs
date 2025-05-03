@@ -64,7 +64,7 @@ impl<'cfg> Symex<'cfg> {
         let pt = args[0].clone();
         // Use value_set to optimize
         let mut objects = ObjectSet::new();
-        self.top().cur_state.get_value_set(pt.clone(), &mut objects);
+        self.exec_state.cur_state.get_value_set(pt.clone(), &mut objects);
         let rhs = if objects.iter().fold(true, |acc, x| acc & !x.0.is_null_object()) {
             // Do not points to NULL object
             self.ctx._false()

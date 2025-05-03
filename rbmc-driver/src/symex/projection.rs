@@ -71,7 +71,10 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         assert!(pt.ty().is_primitive_ptr());
 
         let mut objects = ObjectSet::new();
-        self._callback_symex.top().cur_state.get_value_set(pt.clone(), &mut objects);
+        self._callback_symex
+            .exec_state
+            .cur_state
+            .get_value_set(pt.clone(), &mut objects);
 
         let mut ret = None;
 

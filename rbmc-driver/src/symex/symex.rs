@@ -55,8 +55,6 @@ impl<'cfg> Symex<'cfg> {
         let alloc_array = self.exec_state.ns.lookup_object(ident);
         let const_array = self.ctx.constant_array(self.ctx.constant_bool(false), None);
         self.assign(alloc_array, const_array, self.ctx._true().into());
-        // Register the initial state
-        self.goto(0, self.ctx._true());
     }
 
     pub fn run(&mut self) {
@@ -77,12 +75,12 @@ impl<'cfg> Symex<'cfg> {
                 if self.config.enable_display_state()
                     && self.config.enable_display_state_in_function(function_name)
                 {
-                    println!("Enter {function_name:?} - bb{pc}\n{:?}", self.top().cur_state);
+                    println!("Enter {function_name:?} - bb{pc}\n{:?}", self.exec_state.cur_state);
                 }
 
                 self.symex_basicblock(pc);
             } else {
-                self.top_mut().inc_pc();
+                self.exec_state.reset_to_unexplored_pc();
             }
         }
         self.symex_end_function();
@@ -108,7 +106,7 @@ impl<'cfg> Symex<'cfg> {
             {
                 println!(
                     "Symex {function_name:?} bb{pc} statement {i}\n{:?}",
-                    self.top().cur_state
+                    self.exec_state.cur_state
                 );
             }
         }
@@ -119,7 +117,7 @@ impl<'cfg> Symex<'cfg> {
             && self.config.enable_display_state_terminator()
             && self.config.enable_display_state_in_function(function_name)
         {
-            println!("Symex {function_name:?} bb{pc} terminator\n{:?}", self.top().cur_state);
+            println!("Symex {function_name:?} bb{pc} terminator\n{:?}", self.exec_state.cur_state);
         }
     }
 
@@ -143,29 +141,40 @@ impl<'cfg> Symex<'cfg> {
         self.top_mut().local_states[local].1 = false;
         let l1_local = self.exec_state.current_local(local, Level::Level1);
         let ident = l1_local.extract_symbol().l1_name();
-        self.top_mut().cur_state.remove_pointer_with_prefix(ident);
+        self.exec_state.cur_state.remove_pointer_with_prefix(ident);
     }
 
     fn symex_terminator(&mut self, terminator: &Terminator) -> bool {
-        let mut is_unwind = false;
-        match &terminator.kind {
-            TerminatorKind::Goto { target } => self.symex_goto(target),
-            TerminatorKind::SwitchInt { discr, targets } => self.symex_switchint(discr, targets),
+        let goto_pc = match &terminator.kind {
+            TerminatorKind::Goto { target } => Some(*target),
+            TerminatorKind::SwitchInt { discr, targets }
+                => Some(self.symex_switchint(discr, targets)),
             TerminatorKind::Drop { place, target, .. } => {
-                is_unwind = self.symex_drop(place, target);
+                self.symex_drop(place, target);
+                Some(0)
             }
             TerminatorKind::Call { func, args, destination, target, .. } => {
-                is_unwind = self.symex_call(func, args, destination, target);
+                self.symex_call(func, args, destination, target)
             }
-            TerminatorKind::Return => self.symex_return(),
+            TerminatorKind::Return => {
+                self.symex_return();
+                None
+            }
             TerminatorKind::Assert { cond, expected, msg, target, .. } => {
-                self.symex_assert(cond, expected, msg, target)
+                self.symex_assert(cond, expected, msg, target);
+                Some(*target)
             }
-            _ => {}
+            _ => todo!(),
         };
-        if !is_unwind {
-            self.top_mut().inc_pc();
+        match goto_pc {
+            Some(pc) => {
+                self.top_mut().pc = pc;
+                false
+            }
+            _ =>  {
+                self.exec_state.reset_to_unexplored_pc();
+                true
+            }
         }
-        is_unwind
     }
 }

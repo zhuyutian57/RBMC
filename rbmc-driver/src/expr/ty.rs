@@ -48,11 +48,11 @@ const STD_BUILTIN_FUNCTIONS: &[&str] = &[
     "std::ptr::mut_ptr::<impl *mut T>::offset",
     "std::ptr::mut_ptr::<impl *mut T>::is_null",
     // Slice
-    "slice_index_order_fail",
-    "slice_start_index_len_fail",
-    "slice_end_index_len_fail",
+    "core::slice::index::slice_index_order_fail",
+    "core::slice::index::slice_start_index_len_fail",
+    "core::slice::index::slice_end_index_len_fail",
     // Panic
-    "panic_nounwind",
+    "core::panicking:panic_nounwind",
 ];
 
 /// To leverage the place state, some functions' semantic must be execed after unwinding.

@@ -28,6 +28,8 @@ pub struct ExecutionState<'cfg> {
     pub(super) ns: Namespace,
     /// The number of frames we have created. Used for variable renaming.
     n: usize,
+    /// Current state
+    pub(super) cur_state: State,
     frames: Vec<Frame<'cfg>>,
     frame_map: HashMap<usize, usize>,
     pub(super) objects: Vec<Expr>,
@@ -38,10 +40,11 @@ impl<'cfg> ExecutionState<'cfg> {
     pub fn new(config: &'cfg Config, ctx: ExprCtx) -> Self {
         ExecutionState {
             config: config,
-            ctx,
+            ctx: ctx.clone(),
             span: None,
             ns: Namespace::default(),
             n: 0,
+            cur_state: State::new(ctx),
             frames: Vec::new(),
             frame_map: HashMap::new(),
             objects: Vec::new(),
@@ -76,20 +79,33 @@ impl<'cfg> ExecutionState<'cfg> {
         }
     }
 
-    pub fn cur_state(&self) -> &State {
-        &self.top().cur_state
-    }
-
-    pub fn cur_state_mut(&mut self) -> &mut State {
-        &mut self.top_mut().cur_state
-    }
-
     pub fn top(&self) -> &Frame<'cfg> {
         self.frames.last().expect("Empty frame stack")
     }
 
     pub fn top_mut(&mut self) -> &mut Frame<'cfg> {
         self.frames.last_mut().expect("Empty frame stack")
+    }
+
+    pub fn reset_to_unexplored_pc(&mut self) {
+        if let Some(&(l, _)) = self.top_mut().loop_stack.last() {
+            let mut mi = self.top().function.size();
+            for pc in self.top().function.get_loop(l) {
+                if self.top().unexplored_states.contains_key(pc) {
+                    mi = std::cmp::min(mi, *pc);
+                }
+            }
+            if mi != self.top().function.size() {
+                self.top_mut().pc = mi;
+                return;
+            }
+        }
+
+        if self.top().unexplored_states.is_empty() {
+            panic!("We stuck in a loop, please increase the loop bound");
+        }
+
+        self.top_mut().pc = *self.top().unexplored_states.keys().min().unwrap();
     }
 
     pub fn push_frame(
@@ -101,9 +117,6 @@ impl<'cfg> ExecutionState<'cfg> {
         self.n += 1;
         let mut frame =
             Frame::new(self.n, self.config, self.config.program.function(i), dest, target);
-        if !self.frames.is_empty() {
-            frame.cur_state = self.cur_state().clone();
-        }
         self.frames.push(frame);
         self.frame_map.insert(self.n, self.frames.len() - 1);
         // init namspace
@@ -289,7 +302,7 @@ impl<'cfg> ExecutionState<'cfg> {
         while r - l > 1 {
             let m = (l + r) / 2;
             let id = self.frames[m].id;
-            if i < m {
+            if i < id {
                 r = m;
             } else {
                 l = m;
@@ -310,11 +323,17 @@ impl<'cfg> ExecutionState<'cfg> {
         } else if symbol.is_stack_symbol() {
             let frame = self.ith_frame(symbol.frame_id());
             match frame {
-                Some(x) => x.get_local_place_state(symbol),
+                Some(x) => {
+                    if x.id == symbol.frame_id() {
+                        x.get_local_place_state(symbol)
+                    } else {
+                        PlaceState::Dead
+                    }
+                }
                 _ => PlaceState::Dead,
             }
         } else {
-            self.top().cur_state.get_place_state(NPlace(symbol.l1_name()))
+            self.cur_state.get_place_state(NPlace(symbol.l1_name()))
         }
     }
 
@@ -325,7 +344,7 @@ impl<'cfg> ExecutionState<'cfg> {
             let symbol = l1_place.extract_symbol();
             assert!(symbol.is_heap_symbol());
             let nplace = NPlace(symbol.l1_name());
-            self.cur_state_mut().update_place_state(nplace, state);
+            self.cur_state.update_place_state(nplace, state);
             return;
         }
 
@@ -396,7 +415,7 @@ impl<'cfg> ExecutionState<'cfg> {
         if lhs.ty().is_enum() {
             // Remove all possible fields firstly.
             let prefix = NString::from(format!("{lhs:?}.0"));
-            self.top_mut().cur_state.remove_pointer_with_prefix(prefix);
+            self.cur_state.remove_pointer_with_prefix(prefix);
             // Do assignment
             if rhs.is_variant() || rhs.is_constant() {
                 let (data, i) = if rhs.is_variant() {
@@ -459,7 +478,7 @@ impl<'cfg> ExecutionState<'cfg> {
         // lhs is already in level1
         self.rename(&mut l1_rhs, Level::Level1);
         let mut objects = ObjectSet::new();
-        self.cur_state().get_value_set(l1_rhs.clone(), &mut objects);
-        self.cur_state_mut().assign(l1_lhs, objects);
+        self.cur_state.get_value_set(l1_rhs.clone(), &mut objects);
+        self.cur_state.assign(l1_lhs, objects);
     }
 }

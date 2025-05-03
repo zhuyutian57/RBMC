@@ -54,8 +54,8 @@ impl<'cfg> Symex<'cfg> {
         // Generate assertions
         self.make_deref(pt.clone(), Mode::Dealloc, self.ctx._true().into(), ty);
 
-        self.top_mut().cur_state.dealloc_objects(pt.clone());
-        self.top_mut().cur_state.remove_pointer(pt.clone());
+        self.exec_state.cur_state.dealloc_objects(pt.clone());
+        self.exec_state.cur_state.remove_pointer(pt.clone());
 
         let ident = Ident::Global(NString::ALLOC_SYM);
         let alloc_array = self.exec_state.ns.lookup_object(ident);

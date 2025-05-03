@@ -114,7 +114,7 @@ impl<'cfg> Bmc<'cfg> {
     fn check_once(&mut self) -> PResult {
         println!("Begin checking all assertions at once");
         if self.config.cli.show_vcc {
-            print!("Verifying condition:");
+            println!("Verifying condition:");
         }
         if !self.config.cli.no_slice {
             let mut slicer = Slicer::default();
