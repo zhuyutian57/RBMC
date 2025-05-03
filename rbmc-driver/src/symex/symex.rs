@@ -145,6 +145,9 @@ impl<'cfg> Symex<'cfg> {
 
     fn symex_storagedead(&mut self, local: Local) {
         self.top_mut().local_states[local].1 = false;
+        let l1_local = self.exec_state.current_local(local, Level::Level1);
+        let ident = l1_local.extract_symbol().l1_name();
+        self.top_mut().cur_state.remove_pointer_with_prefix(ident);
     }
 
     fn symex_terminator(&mut self, terminator: &Terminator) -> bool {
