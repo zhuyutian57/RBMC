@@ -63,7 +63,11 @@ impl State {
             if object.is_unknown() || object.is_null_object() {
                 continue;
             }
-            let nplace = NPlace::from(object);
+            let inner_expr = object.extract_inner_expr();
+            if !inner_expr.is_symbol() { continue; }
+            let symbol = inner_expr.extract_symbol();
+            if symbol.is_stack_symbol() { continue; }
+            let nplace = NPlace(symbol.l1_name());
             let mut new_state = PlaceState::Dead;
             if n > 1 {
                 new_state.meet(self.get_place_state(nplace));

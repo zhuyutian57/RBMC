@@ -105,6 +105,10 @@ impl<'cfg> ExecutionState<'cfg> {
         for i in 0..self.top().function.locals().len() {
             self.l0_local(i);
         }
+        for &local in self.top().function.locals_alive() {
+            self.current_local(local, Level::Level1);
+            self.top_mut().local_states[local] = (1, true);
+        }
     }
 
     pub fn pop_frame(&mut self) -> Frame<'cfg> {
@@ -282,10 +286,17 @@ impl<'cfg> ExecutionState<'cfg> {
 
         assert!(place.is_symbol());
         let symbol = place.extract_symbol();
-        let l1_name = symbol.l1_name();
-        let nplace = NPlace(l1_name);
-        let state = self.top().cur_state.get_place_state(nplace);
-        state
+        if symbol.is_stack_symbol() {
+            let ident = symbol.ident();
+            for frame in self.frames.iter().rev() {
+                if ident.starts_with(frame.function_id()) {
+                    return frame.get_local_place_state(symbol);
+                }
+            }
+            PlaceState::Dead
+        } else {
+            self.top().cur_state.get_place_state(NPlace(symbol.l1_name()))
+        }
     }
 
     pub fn update_place_state(&mut self, place: Expr, state: PlaceState) {
@@ -393,7 +404,6 @@ impl<'cfg> ExecutionState<'cfg> {
                     );
                     new_rhs.simplify();
                     self.assign_value_set(new_lhs, new_rhs);
-                    
                 }
             } else {
                 for i in 0..lhs.ty().enum_variants() {

@@ -66,12 +66,6 @@ impl Debug for NPlace {
     }
 }
 
-impl From<Expr> for NPlace {
-    fn from(value: Expr) -> Self {
-        NPlace(NString::from(format!("{value:?}")))
-    }
-}
-
 pub type PlaceStateMap = HashMap<NPlace, PlaceState>;
 
 #[derive(Clone, Default)]

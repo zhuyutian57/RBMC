@@ -76,6 +76,12 @@ impl NString {
         string.starts_with(sub_str)
     }
 
+    pub fn split(&self, str: NString) -> Vec<NString> {
+        let string = string_m().get_string(self.0);
+        let _str = string_m().get_string(str.0);
+        string.split(_str).map(|s| s.into()).collect::<Vec<NString>>()
+    }
+
     pub fn sub_str(&self, l: usize, r: usize) -> NString {
         let str = self.as_str();
         assert!(l < r && r <= str.len());

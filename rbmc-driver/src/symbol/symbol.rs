@@ -1,5 +1,7 @@
 use std::{fmt::Debug, hash::Hash};
 
+use stable_mir::mir::Local;
+
 use super::nstring::NString;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -45,6 +47,15 @@ impl Symbol {
 
     pub fn ident(&self) -> NString {
         self.ident
+    }
+
+    pub fn local(&self) -> Option<Local> {
+        let colon = self.ident.split("::".into());
+        if let Some(i) = colon.last() {
+            Some(i.to_string().parse::<usize>().unwrap())
+        } else {
+            None
+        }
     }
 
     pub fn is_heap_symbol(&self) -> bool {

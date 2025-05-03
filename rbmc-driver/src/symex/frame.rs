@@ -2,10 +2,12 @@ use std::collections::*;
 
 use stable_mir::mir::*;
 
+use super::place_state::PlaceState;
 use super::state::*;
 use crate::config::config::Config;
 use crate::program::function::*;
-use crate::symbol::nstring::*;
+use crate::symbol::{nstring::*, symbol};
+use crate::symbol::symbol::Symbol;
 
 /// Each frame representing an execution of a function.
 /// The id is used for naming variable. It is the unique
@@ -19,6 +21,8 @@ pub struct Frame<'func> {
     pub(super) target: Option<BasicBlockIdx>,
     /// Current Computing
     pc: Pc,
+    /// Record l1 number of each local and its liveness
+    pub(super) local_states: Vec<(usize, bool)>, 
     pub(super) loop_stack: Vec<(Pc, usize)>,
     pub(super) cur_state: State,
     state_map: HashMap<Pc, Vec<State>>,
@@ -39,6 +43,7 @@ impl<'func> Frame<'func> {
             dest,
             target,
             pc: 0,
+            local_states: vec![(0, false); function.locals().len()],
             loop_stack: Vec::new(),
             cur_state: State::new(config.expr_ctx.clone()),
             state_map: HashMap::new(),
@@ -68,6 +73,14 @@ impl<'func> Frame<'func> {
         }
 
         self.pc = *self.state_map.keys().min().unwrap();
+    }
+
+    pub fn get_local_place_state(&self, symbol: Symbol) -> PlaceState {
+        assert!(symbol.is_stack_symbol());
+        let local = symbol.local().expect("Not local?");
+        let l1_num = symbol.l1_num();
+        let &(c, s) = &self.local_states[local];
+        if  c== l1_num && s { PlaceState::Own } else { PlaceState::Dead }
     }
 
     pub fn new_loop(&mut self, pc: Pc) {

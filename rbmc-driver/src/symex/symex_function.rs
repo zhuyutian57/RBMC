@@ -75,12 +75,6 @@ impl<'cfg> Symex<'cfg> {
     ) {
         let i = self.program.function_id(instance.trimmed_name().into());
         self.exec_state.push_frame(i, dest, *target);
-        // Set alive local place state
-        for local in self.top().function.locals_alive() {
-            let l1_local = self.exec_state.current_local(*local, Level::Level1);
-            let nplace = NPlace(l1_local.extract_symbol().l1_name());
-            self.top_mut().cur_state.update_place_state(nplace, PlaceState::Own);
-        }
         // Set arguements
         let parameters = self.top_mut().function.args();
         if !parameters.is_empty() {

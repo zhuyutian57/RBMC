@@ -139,16 +139,12 @@ impl<'cfg> Symex<'cfg> {
     fn symex_storagelive(&mut self, local: Local) {
         // Set a new l1 local variable
         let l1_local = self.exec_state.new_local(local, Level::Level1);
-        let nplace = NPlace(l1_local.extract_symbol().l1_name());
-        self.top_mut().cur_state.update_place_state(nplace, PlaceState::Own);
+        let l1_num = l1_local.extract_symbol().l1_num();
+        self.top_mut().local_states[local] = (l1_num, true);
     }
 
     fn symex_storagedead(&mut self, local: Local) {
-        let l1_local = self.exec_state.current_local(local, Level::Level1);
-        self.top_mut().cur_state.remove_pointer_with_prefix(l1_local.extract_symbol().name());
-        let nplace = NPlace(l1_local.extract_symbol().l1_name());
-        // Just remove to safe memory
-        self.top_mut().cur_state.remove_place(nplace);
+        self.top_mut().local_states[local].1 = false;
     }
 
     fn symex_terminator(&mut self, terminator: &Terminator) -> bool {
