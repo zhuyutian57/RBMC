@@ -299,7 +299,8 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
         // Check the pointer is invalid
         let pointer_base = self._ctx.pointer_base(pt.clone());
         let not_null = self._ctx.ne(pt.clone(), self._ctx.null(pt.ty()));
-        let alloc_array = self._callback_symex.exec_state.ns.lookup_object(NString::ALLOC_SYM);
+        let ident = Ident::Global(NString::ALLOC_SYM);
+        let alloc_array = self._callback_symex.exec_state.ns.lookup_object(ident);
         let mut not_alloced =
             self._ctx.not(self._ctx.index(alloc_array, pointer_base, Type::bool_type()));
         self._callback_symex.rename(&mut not_alloced);

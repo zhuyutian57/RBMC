@@ -11,16 +11,16 @@ use crate::symbol::symbol::*;
 /// constant_map: constant for l2 symbol
 #[derive(Debug, Default, Clone)]
 pub struct Renaming {
-    l1_renaming: HashMap<NString, usize>,
-    l2_renaming: HashMap<NString, usize>,
+    l1_renaming: HashMap<Ident, usize>,
+    l2_renaming: HashMap<(Ident, usize), usize>,
     constant_map: HashMap<Symbol, Expr>,
 }
 
 impl Renaming {
-    fn l1_num(&mut self, ident: NString, inc: bool) -> usize {
+    fn l1_num(&mut self, key: Ident, inc: bool) -> usize {
         *self
             .l1_renaming
-            .entry(ident)
+            .entry(key)
             .and_modify(|x| {
                 if inc {
                     *x += 1;
@@ -29,10 +29,10 @@ impl Renaming {
             .or_insert(1)
     }
 
-    fn l2_num(&mut self, ident: NString, inc: bool) -> usize {
+    fn l2_num(&mut self, key: (Ident, usize), inc: bool) -> usize {
         *self
             .l2_renaming
-            .entry(ident)
+            .entry(key)
             .and_modify(|x| {
                 if inc {
                     *x += 1;
@@ -41,45 +41,45 @@ impl Renaming {
             .or_insert(1)
     }
 
-    pub fn variables(&self) -> Vec<NString> {
+    pub fn variables(&self) -> Vec<Ident> {
         self.l1_renaming.keys().map(|x| *x).collect::<Vec<_>>()
     }
 
-    pub fn l2_count(&self, ident: NString) -> usize {
-        match self.l2_renaming.get(&ident) {
+    pub fn l2_count(&self, key: (Ident, usize)) -> usize {
+        match self.l2_renaming.get(&key) {
             Some(n) => *n,
             None => 0,
         }
     }
 
-    pub fn current_l1_symbol(&mut self, ident: NString) -> Symbol {
+    pub fn current_l1_symbol(&mut self, ident: Ident) -> Symbol {
         let l1_num = self.l1_num(ident, false);
         Symbol::new(ident, l1_num, 0, Level::Level1)
     }
 
     /// `l1_num = 0` means use the latest l1 number
-    pub fn current_l2_symbol(&mut self, ident: NString, mut l1_num: usize) -> Symbol {
+    pub fn current_l2_symbol(&mut self, ident: Ident, mut l1_num: usize) -> Symbol {
         assert!(l1_num <= self.l1_num(ident, false));
         if l1_num == 0 {
             l1_num = self.l1_num(ident, false);
         }
-        let l1_ident = ident + "::" + l1_num.to_string();
+        let l1_ident = (ident, l1_num);
         let l2_num = self.l2_num(l1_ident, false);
         Symbol::new(ident, l1_num, l2_num, Level::Level2)
     }
 
-    pub fn new_l1_symbol(&mut self, ident: NString) -> Symbol {
+    pub fn new_l1_symbol(&mut self, ident: Ident) -> Symbol {
         let l1_num = self.l1_num(ident, true);
         Symbol::new(ident, l1_num, 0, Level::Level1)
     }
 
     /// `l1_num = 0` means use the latest l1 number
-    pub fn new_l2_symbol(&mut self, ident: NString, mut l1_num: usize) -> Symbol {
+    pub fn new_l2_symbol(&mut self, ident: Ident, mut l1_num: usize) -> Symbol {
         assert!(l1_num <= self.l1_num(ident, false));
         if l1_num == 0 {
             l1_num = self.l1_num(ident, false);
         }
-        let l1_ident = ident + "::" + l1_num.to_string();
+        let l1_ident = (ident, l1_num);
         let l2_num = self.l2_num(l1_ident, true);
         Symbol::new(ident, l1_num, l2_num, Level::Level2)
     }
@@ -155,9 +155,15 @@ impl Renaming {
         expr.replace_sub_exprs(sub_exprs);
     }
 
-    pub(super) fn cleanr_locals(&mut self, function_id: NString) {
-        self.l1_renaming.retain(|x, _| !x.contains(function_id));
-        self.l2_renaming.retain(|x, _| !x.contains(function_id));
-        self.constant_map.retain(|x, _| x.ident() != function_id);
+    pub(super) fn cleanr_locals(&mut self, frame_ident: NString) {
+        self.l1_renaming.retain(
+            |x, _|
+            !x.to_nstring().starts_with(frame_ident)
+        );
+        self.l2_renaming.retain(
+            |x, _|
+            !x.0.to_nstring().starts_with(frame_ident)
+        );
+        self.constant_map.retain(|x, _| !x.name().starts_with(frame_ident));
     }
 }

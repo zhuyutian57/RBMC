@@ -7,13 +7,13 @@ use super::state::*;
 use crate::config::config::Config;
 use crate::program::function::*;
 use crate::symbol::{nstring::*, symbol};
-use crate::symbol::symbol::Symbol;
+use crate::symbol::symbol::{Ident, Symbol};
 
 /// Each frame representing an execution of a function.
 /// The id is used for naming variable. It is the unique
 /// identifier for each frame.
 pub struct Frame<'func> {
-    id: usize,
+    pub(super) id: usize,
     config: &'func Config,
     pub(super) function: &'func Function,
     /// Previous info. Used for recovering
@@ -77,7 +77,7 @@ impl<'func> Frame<'func> {
 
     pub fn get_local_place_state(&self, symbol: Symbol) -> PlaceState {
         assert!(symbol.is_stack_symbol());
-        let local = symbol.local().expect("Not local?");
+        let local = symbol.local();
         let l1_num = symbol.l1_num();
         let &(c, s) = &self.local_states[local];
         if  c== l1_num && s { PlaceState::Own } else { PlaceState::Dead }
@@ -111,11 +111,11 @@ impl<'func> Frame<'func> {
         self.state_map.remove(&pc)
     }
 
-    pub fn function_id(&self) -> NString {
+    pub fn frame_ident(&self) -> NString {
         self.function.name() + "_" + self.id.to_string()
     }
 
-    pub fn local_ident(&self, local: Local) -> NString {
-        self.function_id() + "::" + local.to_string()
+    pub fn local_ident(&self, local: Local) -> Ident {
+        Ident::Stack(self.function.name(), self.id, local)
     }
 }

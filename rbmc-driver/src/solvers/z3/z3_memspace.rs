@@ -66,7 +66,7 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         let space_base = NString::from(object.extract_symbol().ident()) + "_base";
         let base = self.mk_int_symbol(space_base);
         let size = if ty.is_array() && ty.size() == 0 {
-            let sym = object.extract_symbol().ident() + "_size";
+            let sym = object.extract_symbol().ident().to_nstring() + "_size";
             self.mk_int_symbol(sym)
         } else {
             self.mk_smt_int(BigInt::from(ty.size()))

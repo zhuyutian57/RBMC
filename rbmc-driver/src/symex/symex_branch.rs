@@ -6,7 +6,7 @@ use crate::expr::expr::*;
 use crate::expr::ty::Type;
 use crate::program::function::Pc;
 use crate::symbol::nstring::NString;
-use crate::symbol::symbol::Level;
+use crate::symbol::symbol::{Ident, Level};
 
 impl<'cfg> Symex<'cfg> {
     pub(super) fn symex_goto(&mut self, target: &BasicBlockIdx) {
@@ -38,7 +38,8 @@ impl<'cfg> Symex<'cfg> {
                 return discr;
             }
 
-            let l0_guard_ident = self.exec_state.l0_symbol(NString::SYMEX_GUARD, Type::bool_type());
+            let ident = Ident::Global(NString::SYMEX_GUARD);
+            let l0_guard_ident = self.exec_state.l0_symbol(ident, Type::bool_type());
             let guard_ident = self.exec_state.new_symbol(&l0_guard_ident, Level::Level1);
             self.assign(guard_ident.clone(), discr, self.ctx._true().into());
             guard_ident

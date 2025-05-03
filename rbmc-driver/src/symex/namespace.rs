@@ -3,18 +3,19 @@ use std::collections::HashMap;
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
 use crate::symbol::nstring::NString;
+use crate::symbol::symbol::Ident;
 
 /// Use for record `l0` symbol, `l0` global objects and counting
 /// the number of non-deterministic variable for each type.
 #[derive(Debug, Default)]
 pub(crate) struct Namespace {
     _nondet_counting: HashMap<Type, usize>,
-    objects: HashMap<NString, Expr>,
-    symbols: HashMap<NString, Expr>,
+    objects: HashMap<Ident, Expr>,
+    symbols: HashMap<Ident, Expr>,
 }
 
 impl Namespace {
-    pub fn containts_symbol(&mut self, ident: NString) -> bool {
+    pub fn containts_symbol(&mut self, ident: Ident) -> bool {
         self.symbols.contains_key(&ident)
     }
 
@@ -36,19 +37,22 @@ impl Namespace {
         self.symbols.insert(symbol.ident(), expr);
     }
 
-    pub fn clear_local_symbols(&mut self, function_id: NString) {
-        self.symbols.retain(|x, _| !x.contains(function_id));
+    pub fn clear_symbols_with_prefix(&mut self, prefix: NString) {
+        self.symbols.retain(
+            |x, _|
+            !NString::from(format!("{x:?}")).starts_with(prefix)
+        );
     }
 
     pub fn lookup_nondet_count(&mut self, ty: Type) -> usize {
         self._nondet_counting.entry(ty).and_modify(|x| *x += 1).or_insert(1).clone()
     }
 
-    pub fn lookup_symbol(&self, ident: NString) -> Expr {
+    pub fn lookup_symbol(&self, ident: Ident) -> Expr {
         self.symbols.get(&ident).expect("Not exists").clone()
     }
 
-    pub fn lookup_object(&self, ident: NString) -> Expr {
+    pub fn lookup_object(&self, ident: Ident) -> Expr {
         self.objects.get(&ident).expect("Not exists").clone()
     }
 }

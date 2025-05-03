@@ -57,7 +57,7 @@ impl ValueSet {
     }
 
     pub fn remove_stack_places(&mut self, function_id: NString) {
-        self._points_to_map.retain(|k, _| !k.contains(function_id));
+        self._points_to_map.retain(|k, _| !k.starts_with(function_id));
     }
 }
 

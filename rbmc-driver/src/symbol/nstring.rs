@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::{Add, AddAssign};
 
+use super::symbol::Ident;
+
 /// Used to manage String. Reduce allocation for String
 struct StringManager {
     strings: Vec<String>,
@@ -170,6 +172,19 @@ impl From<&str> for NString {
         NString::from(value.to_string())
     }
 }
+
+impl From<Ident> for NString {
+    fn from(value: Ident) -> Self {
+        value.to_nstring()
+    }
+}
+
+impl From<&Ident> for NString {
+    fn from(value: &Ident) -> Self {
+        value.to_nstring()
+    }
+}
+
 
 impl ToString for NString {
     fn to_string(&self) -> String {

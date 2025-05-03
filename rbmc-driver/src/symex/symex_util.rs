@@ -57,9 +57,9 @@ impl<'cfg> Symex<'cfg> {
         let new_guard = nstate.guard.clone() - self.top().cur_state.guard.clone();
 
         let mut nrenaming = nstate.renaming.as_ref().unwrap().borrow_mut();
-        for var in nrenaming.variables() {
-            let l1_ident = nrenaming.current_l1_symbol(var).l1_name();
-
+        for ident in nrenaming.variables() {
+            let symbol = nrenaming.current_l1_symbol(ident);
+            let l1_ident = (symbol.ident(), symbol.l1_num());
             let cur_l2_num = self.exec_state.renaming.borrow().l2_count(l1_ident);
             let n_l2_num = nrenaming.l2_count(l1_ident);
 
@@ -67,8 +67,8 @@ impl<'cfg> Symex<'cfg> {
                 continue;
             }
 
-            let mut cur_rhs = self.exec_state.ns.lookup_symbol(var);
-            let mut new_rhs = self.exec_state.ns.lookup_symbol(var);
+            let mut cur_rhs = self.exec_state.ns.lookup_symbol(ident);
+            let mut new_rhs = self.exec_state.ns.lookup_symbol(ident);
 
             // Get l1 number
             nrenaming.l1_rename(&mut cur_rhs);
@@ -85,7 +85,7 @@ impl<'cfg> Symex<'cfg> {
                 self.ctx.ite(new_guard.to_expr(), new_rhs, cur_rhs)
             };
 
-            let mut lhs = self.exec_state.ns.lookup_symbol(var);
+            let mut lhs = self.exec_state.ns.lookup_symbol(ident);
 
             // Rename to l1_lhs
             self.exec_state.rename(&mut lhs, Level::Level1);
@@ -142,7 +142,8 @@ impl<'cfg> Symex<'cfg> {
             }
 
             let msg = NString::from(format!("memory leak: {object:?} is not dealloced"));
-            let alloac_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
+            let ident = Ident::Global(NString::ALLOC_SYM);
+            let alloac_array = self.exec_state.ns.lookup_object(ident);
             let address_of = self.ctx.address_of(object.clone(), object.extract_address_type());
             let base = self.ctx.pointer_base(address_of);
             let is_leak = self.ctx.index(alloac_array, base, Type::bool_type());
@@ -271,7 +272,7 @@ impl<'cfg> Symex<'cfg> {
             GlobalAlloc::Static(def) => {
                 // Since accessing global variables through pointers,
                 // return its address.
-                let ident = def.trimmed_name().into();
+                let ident = Ident::Global(def.trimmed_name().into());
                 let object = self.exec_state.ns.lookup_object(ident);
                 self.ctx.address_of(object.clone(), ty)
             }
@@ -314,7 +315,8 @@ impl<'cfg> Symex<'cfg> {
             let base = self
                 .ctx
                 .pointer_base(self.ctx.address_of(object.clone(), object.extract_address_type()));
-            let alloc_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
+            let ident = Ident::Global(NString::ALLOC_SYM);
+            let alloc_array = self.exec_state.ns.lookup_object(ident);
             let alloced = self.ctx.index(alloc_array, base, Type::bool_type());
             *expr = if expr.is_invalid() { self.ctx.not(alloced) } else { alloced };
             return;

@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 
 use stable_mir::mir::*;
 use stable_mir::ty::Span;
@@ -28,6 +29,7 @@ pub struct ExecutionState<'cfg> {
     /// The number of frames we have created. Used for variable renaming.
     n: usize,
     frames: Vec<Frame<'cfg>>,
+    frame_map: HashMap<usize, usize>,
     pub(super) objects: Vec<Expr>,
     pub(super) renaming: RefCell<Renaming>,
 }
@@ -41,6 +43,7 @@ impl<'cfg> ExecutionState<'cfg> {
             ns: Namespace::default(),
             n: 0,
             frames: Vec::new(),
+            frame_map: HashMap::new(),
             objects: Vec::new(),
             renaming: RefCell::new(Renaming::default()),
         }
@@ -49,7 +52,8 @@ impl<'cfg> ExecutionState<'cfg> {
     pub fn setup(&mut self) {
         // create global variable
         let ty = Type::infinite_array_type(Type::bool_type());
-        let alloc_array_symbol = self.l0_symbol(NString::ALLOC_SYM, ty);
+        let ident = Ident::Global(NString::ALLOC_SYM);
+        let alloc_array_symbol = self.l0_symbol(ident, ty);
         let alloc_array = self.ctx.object(alloc_array_symbol);
         self.ns.insert_object(alloc_array);
         // Initialized stack
@@ -101,6 +105,7 @@ impl<'cfg> ExecutionState<'cfg> {
             frame.cur_state = self.cur_state().clone();
         }
         self.frames.push(frame);
+        self.frame_map.insert(self.n, self.frames.len() - 1);
         // init namspace
         for i in 0..self.top().function.locals().len() {
             self.l0_local(i);
@@ -118,7 +123,7 @@ impl<'cfg> ExecutionState<'cfg> {
 
     pub fn new_object(&mut self, ty: Type) -> Expr {
         let name = NString::from("heap_object_") + self.objects.len().to_string();
-        let symbol = Symbol::from(name);
+        let symbol = Symbol::from(Ident::Heap(name));
         let sym_expr = self.ctx.mk_symbol(symbol, ty);
         // Record the ident
         self.ns.insert_symbol(sym_expr.clone());
@@ -128,7 +133,7 @@ impl<'cfg> ExecutionState<'cfg> {
         object
     }
 
-    pub fn l0_symbol(&mut self, ident: NString, ty: Type) -> Expr {
+    pub fn l0_symbol(&mut self, ident: Ident, ty: Type) -> Expr {
         if self.ns.containts_symbol(ident) {
             self.ns.lookup_symbol(ident)
         } else {
@@ -279,6 +284,20 @@ impl<'cfg> ExecutionState<'cfg> {
         false
     }
 
+    fn ith_frame(&self, i: usize) -> Option<&Frame<'cfg>> {
+        let (mut l, mut r) = (0, self.frames.len());
+        while r - l > 1 {
+            let m = (l + r) / 2;
+            let id = self.frames[m].id;
+            if i < m {
+                r = m;
+            } else {
+                l = m;
+            }
+        }
+        if l == r { None } else { Some(&self.frames[l]) }
+    }
+
     pub fn get_place_state(&self, place: &Expr) -> PlaceState {
         if place.is_object() {
             return self.get_place_state(&place.extract_inner_expr());
@@ -286,14 +305,14 @@ impl<'cfg> ExecutionState<'cfg> {
 
         assert!(place.is_symbol());
         let symbol = place.extract_symbol();
-        if symbol.is_stack_symbol() {
-            let ident = symbol.ident();
-            for frame in self.frames.iter().rev() {
-                if ident.starts_with(frame.function_id()) {
-                    return frame.get_local_place_state(symbol);
-                }
+        if symbol.is_global_symbol() {
+            PlaceState::Own
+        } else if symbol.is_stack_symbol() {
+            let frame = self.ith_frame(symbol.frame_id());
+            match frame {
+                Some(x) => x.get_local_place_state(symbol),
+                _ => PlaceState::Dead,
             }
-            PlaceState::Dead
         } else {
             self.top().cur_state.get_place_state(NPlace(symbol.l1_name()))
         }
@@ -304,7 +323,7 @@ impl<'cfg> ExecutionState<'cfg> {
             let mut l1_place = place;
             self.rename(&mut l1_place, Level::Level1);
             let symbol = l1_place.extract_symbol();
-            assert!(symbol.ident().contains("heap_object".into()));
+            assert!(symbol.is_heap_symbol());
             let nplace = NPlace(symbol.l1_name());
             self.cur_state_mut().update_place_state(nplace, state);
             return;
@@ -358,7 +377,9 @@ impl<'cfg> ExecutionState<'cfg> {
         if lhs.is_index() {
             // Identifier form: `<l1_name>.<field_id/field_name>`
             assert!(lhs.extract_index().is_constant());
-            let name = Symbol::from(NString::from(format!("{lhs:?}")));
+            // Use global as a wrapper.
+            let ident = Ident::Global(NString::from(format!("{lhs:?}")));
+            let name = Symbol::from(ident);
             let new_lhs = self.ctx.mk_symbol(name, lhs.ty());
             let mut new_rhs = rhs.clone();
             new_rhs.simplify();
@@ -393,10 +414,10 @@ impl<'cfg> ExecutionState<'cfg> {
                 if data.ty().is_zero_sized_type() { return; }
                 let rhs_object = self.ctx.object(data.clone());
                 for j in 0..data.ty().fields() {
-                    let name = NString::from(format!("{lhs:?}.0[{i}-{j}]"));
+                    let ident = Ident::Global(NString::from(format!("{lhs:?}.0[{i}-{j}]")));
                     let fty = data.ty().field_type(j);
                     if fty.is_zero_sized_type() { continue; }
-                    let new_lhs = self.ctx.mk_symbol(name.into(), fty);
+                    let new_lhs = self.ctx.mk_symbol(ident.into(), fty);
                     let mut new_rhs = self.ctx.index(
                         rhs_object.clone(),
                         self.ctx.constant_usize(j),
@@ -411,10 +432,10 @@ impl<'cfg> ExecutionState<'cfg> {
                     if data_ty.is_zero_sized_type() { continue; }
                     let rhs_object = self.ctx.object(rhs.clone());
                     for j in 0..data_ty.fields() {
-                        let name = NString::from(format!("{lhs:?}.0[{i}-{j}]"));
+                        let ident = Ident::Global(NString::from(format!("{lhs:?}.0[{i}-{j}]")));
                         let fty = data_ty.field_type(j);
                         if fty.is_zero_sized_type() { continue; }
-                        let new_lhs = self.ctx.mk_symbol(name.into(), fty);
+                        let new_lhs = self.ctx.mk_symbol(ident.into(), fty);
                         let mut new_rhs = self.ctx.index(
                             rhs_object.clone(),
                             self.ctx.constant_usize(j),

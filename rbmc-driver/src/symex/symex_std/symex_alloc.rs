@@ -5,6 +5,7 @@ use super::super::symex::*;
 use crate::expr::expr::*;
 use crate::expr::ty::*;
 use crate::symbol::nstring::*;
+use crate::symbol::symbol::Ident;
 use crate::symex::place_state::PlaceState;
 use crate::symex::projection::Mode;
 
@@ -56,7 +57,8 @@ impl<'cfg> Symex<'cfg> {
         self.top_mut().cur_state.dealloc_objects(pt.clone());
         self.top_mut().cur_state.remove_pointer(pt.clone());
 
-        let alloc_array = self.exec_state.ns.lookup_object(NString::ALLOC_SYM);
+        let ident = Ident::Global(NString::ALLOC_SYM);
+        let alloc_array = self.exec_state.ns.lookup_object(ident);
         let base = self.ctx.pointer_base(pt);
         let index = self.ctx.index(alloc_array, base, Type::bool_type());
         self.assign(index, self.ctx._false(), self.ctx._true().into());

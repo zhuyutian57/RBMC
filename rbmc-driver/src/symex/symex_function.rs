@@ -7,6 +7,7 @@ use super::symex::*;
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
 use crate::symbol::nstring::NString;
+use crate::symbol::symbol::Ident;
 use crate::symbol::symbol::Level;
 use crate::symbol::symbol::Symbol;
 
@@ -48,8 +49,8 @@ impl<'cfg> Symex<'cfg> {
     fn symex_nondet(&mut self, dest: &Place) {
         let lhs = self.make_project(dest);
         let n = self.exec_state.ns.lookup_nondet_count(lhs.ty());
-        let name = NString::from(format!("nondet_{:?}_{n}", lhs.ty()));
-        let symbol = Symbol::from(name);
+        let ident = Ident::Global(NString::from(format!("nondet_{:?}_{n}", lhs.ty())));
+        let symbol = Symbol::from(ident);
         let nondet = self.ctx.mk_symbol(symbol, lhs.ty());
         self.assign(lhs, nondet, self.ctx._true().into());
     }
@@ -124,13 +125,13 @@ impl<'cfg> Symex<'cfg> {
         }
 
         // clear namspace
-        self.exec_state.ns.clear_local_symbols(frame.function_id());
+        self.exec_state.ns.clear_symbols_with_prefix(frame.frame_ident());
 
         // clear renaming
-        self.exec_state.renaming.borrow_mut().cleanr_locals(frame.function_id());
+        self.exec_state.renaming.borrow_mut().cleanr_locals(frame.frame_ident());
 
         if let Some(t) = &frame.target {
-            self.top_mut().cur_state.remove_stack_places(frame.function_id());
+            self.top_mut().cur_state.remove_stack_places(frame.frame_ident());
             self.goto(*t, self.ctx._true());
         }
 
