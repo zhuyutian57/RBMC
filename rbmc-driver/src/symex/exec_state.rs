@@ -324,7 +324,8 @@ impl<'cfg> ExecutionState<'cfg> {
     }
 
     fn assign_value_set(&mut self, lhs: Expr, rhs: Expr) {
-        println!("{lhs:?} {:?} = {rhs:?} {:?}", lhs.ty(), rhs.ty());
+        if !lhs.ty().contains_ptr_field() { return; }
+
         if lhs.ty().is_struct() || lhs.ty().is_tuple() {
             // Update for each field
             let ty = lhs.ty();
@@ -346,8 +347,7 @@ impl<'cfg> ExecutionState<'cfg> {
         if lhs.is_index() {
             // Identifier form: `<l1_name>.<field_id/field_name>`
             assert!(lhs.extract_index().is_constant());
-            let l1_lhs = lhs.clone();
-            let name = Symbol::from(NString::from(format!("{l1_lhs:?}")));
+            let name = Symbol::from(NString::from(format!("{lhs:?}")));
             let new_lhs = self.ctx.mk_symbol(name, lhs.ty());
             let mut new_rhs = rhs.clone();
             new_rhs.simplify();
@@ -357,35 +357,68 @@ impl<'cfg> ExecutionState<'cfg> {
         
         assert!(lhs.is_symbol());
 
-        // TODO: need special operation in value set
+        // For enum, we flat all fields of all variants in value set.
+        // For example, `enum Node { A, B(i32), C(u8, u8) }` has three fields.
+        // A variable `x` of type `Node` has three fields of form `x.0[<variant_idx>-<field>]`,
+        // in value set, e.g. `x.0[1-0]`, `x.0[2-0]` and `x.0[2-1]`, where `0` denote the data field.
         if lhs.ty().is_enum() {
-            let (data, i) = if rhs.is_variant() {
-                (rhs.extract_variant_data(), rhs.extract_variant_idx())
-            } else if rhs.is_constant() {
-                let args = rhs.extract_constant().to_adt().0;
-                let i = bigint_to_usize(&args[0].to_integer());
-                let ty = lhs.ty().enum_variant_data_type(i);
-                if ty.is_zero_sized_type() {
-                    (self.ctx.constant_zst(ty), i)
+            // Remove all possible fields firstly.
+            let prefix = NString::from(format!("{lhs:?}.0"));
+            self.top_mut().cur_state.remove_pointer_with_prefix(prefix);
+            // Do assignment
+            if rhs.is_variant() || rhs.is_constant() {
+                let (data, i) = if rhs.is_variant() {
+                    (rhs.extract_variant_data(), rhs.extract_variant_idx())
                 } else {
-                    (self.ctx.constant(args[1].clone(), ty), i)
+                    let args = rhs.extract_constant().to_adt().0;
+                    let i = bigint_to_usize(&args[0].to_integer());
+                    let ty = lhs.ty().enum_variant_data_type(i);
+                    if ty.is_zero_sized_type() {
+                        (self.ctx.constant_zst(ty), i)
+                    } else {
+                        (self.ctx.constant(args[1].clone(), ty), i)
+                    }
+                };
+                if data.ty().is_zero_sized_type() { return; }
+                let rhs_object = self.ctx.object(data.clone());
+                for j in 0..data.ty().fields() {
+                    let name = NString::from(format!("{lhs:?}.0[{i}-{j}]"));
+                    let fty = data.ty().field_type(j);
+                    if fty.is_zero_sized_type() { continue; }
+                    let new_lhs = self.ctx.mk_symbol(name.into(), fty);
+                    let mut new_rhs = self.ctx.index(
+                        rhs_object.clone(),
+                        self.ctx.constant_usize(j),
+                        fty
+                    );
+                    new_rhs.simplify();
+                    self.assign_value_set(new_lhs, new_rhs);
+                    
                 }
             } else {
-                todo!("{rhs:?}")
-            };
-            if data.ty().is_zero_sized_type() { return; }
-            let ty = lhs.ty().enum_variant_data_type(i);
-            let zero = self.ctx.constant_usize(0);
-            let new_lhs = self.ctx.index(lhs, zero.clone(), ty);
-            let mut new_rhs = self.ctx.index(rhs, zero, ty);
-            new_rhs.simplify();
-            self.assign_value_set(new_lhs, new_rhs);
+                for i in 0..lhs.ty().enum_variants() {
+                    let data_ty = lhs.ty().enum_variant_data_type(i);
+                    if data_ty.is_zero_sized_type() { continue; }
+                    let rhs_object = self.ctx.object(rhs.clone());
+                    for j in 0..data_ty.fields() {
+                        let name = NString::from(format!("{lhs:?}.0[{i}-{j}]"));
+                        let fty = data_ty.field_type(j);
+                        if fty.is_zero_sized_type() { continue; }
+                        let new_lhs = self.ctx.mk_symbol(name.into(), fty);
+                        let mut new_rhs = self.ctx.index(
+                            rhs_object.clone(),
+                            self.ctx.constant_usize(j),
+                            fty
+                        );
+                        new_rhs.simplify();
+                        self.assign_value_set(new_lhs, new_rhs);
+                    }
+                }
+            }
             return;
         }
 
-        if !lhs.ty().is_primitive_ptr() {
-            return;
-        }
+        assert!(lhs.ty().is_primitive_ptr());
         self.assignment_value_set(lhs, rhs);
     }
 

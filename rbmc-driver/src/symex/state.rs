@@ -78,6 +78,10 @@ impl State {
         self.value_set.remove(ident);
     }
 
+    pub fn remove_pointer_with_prefix(&mut self, prefix: NString) {
+        self.value_set.remove_with_prefix(prefix);
+    }
+
     pub fn assign(&mut self, expr: Expr, values: ObjectSet) {
         assert!(expr.ty().is_primitive_ptr());
         self.assign_rec(expr, NString::EMPTY, values);

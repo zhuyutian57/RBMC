@@ -268,6 +268,34 @@ impl Type {
         self.is_unit() || self.is_empty_struct()
     }
 
+    pub fn contains_ptr_field(&self) -> bool {
+        if self.is_bool() || self.is_integer() { return false; }
+
+        if self.is_primitive_ptr() || self.is_box() { return true; }
+
+        if self.is_array() || self.is_slice() { return self.elem_type().contains_ptr_field(); }
+
+        if self.is_struct() || self.is_tuple() {
+            for i in 0..self.fields() {
+                if self.field_type(i).contains_ptr_field() { return true; }
+            }
+            return false;
+        }
+
+        if self.is_enum() {
+            for i in 0..self.enum_variants() {
+                let data_ty = self.enum_variant_data_type(i);
+                if data_ty.is_zero_sized_type() { continue; }
+                for j in 0..data_ty.fields() {
+                    if data_ty.field_type(j).contains_ptr_field() { return true; }
+                }
+            }
+            return false;
+        }
+
+        todo!("{self:?}")
+    }
+
     pub fn pointee_ty(&self) -> Self {
         assert!(self.is_primitive_ptr() || self.is_box());
         match self.0.kind() {
@@ -341,6 +369,11 @@ impl Type {
             }
         }
         def
+    }
+
+    pub fn enum_variants(&self) -> usize {
+        assert!(self.is_enum());
+        self.enum_def().1.len()
     }
 
     pub fn enum_variant_data_type(&self, variant_idx: usize) -> Self {

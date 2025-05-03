@@ -40,6 +40,10 @@ impl ValueSet {
         self._points_to_map.remove(&pt);
     }
 
+    pub fn remove_with_prefix(&mut self, prefix: NString) {
+        self._points_to_map.retain(|key, _| !key.starts_with(prefix));
+    }
+
     pub fn pointers(&self) -> HashSet<NString> {
         self._points_to_map.keys().map(|x| *x).collect::<HashSet<NString>>()
     }

@@ -118,7 +118,6 @@ pub(super) enum NodeKind {
 
     // enum
     /// `Variant(i, x)`: variant `i` with data `x`.
-    /// The variant without data is a constant Adt
     Variant(NodeId, NodeId),
     /// `AsVariant(x, i)`: enum `x` as variant
     AsVariant(NodeId, NodeId),

@@ -396,7 +396,9 @@ impl Expr {
             } else if inner_expr.is_variant() {
                 // Only access the data
                 assert!(idx == 0);
-                *self = inner_expr.extract_variant_data();
+                let data = inner_expr.extract_variant_data();
+                *self = self.ctx.index(data, i, self.ty());
+                self.simplify();
             }
         } else if inner_expr.is_store() {
             let mut update_index = inner_expr.extract_index();
