@@ -21,18 +21,7 @@ use crate::symbol::symbol::*;
 
 impl<'cfg> Symex<'cfg> {
     pub(super) fn merge_states(&mut self, pc: Pc) -> bool {
-        let mut state_vec = self.top_mut().states_from(pc);
-
-        // If pc is the entry of a loop and reaches loop bound, do not unwind the loop
-        if self.top().function.is_loop_bb(pc) && self.top().loop_bound_exceed() {
-            self.exec_state.cur_state.guard.make_false();
-            return false;
-        }
-
-        // We have registered all states in queue. Make it false.
-        if pc == self.top().function.size() {
-            self.exec_state.cur_state.guard.make_false();
-        }
+        let mut state_vec = self.top_mut().unexplored_states_from(pc);
 
         if let Some(states) = state_vec.as_mut() {
             for state in states {
@@ -100,36 +89,20 @@ impl<'cfg> Symex<'cfg> {
         }
     }
 
-    /// Unwind loop if `pc` is the entry of a loop
-    pub(super) fn unwind(&mut self, pc: Pc) {
-        if self.top().function.is_loop_bb(pc) {
-            let mut is_new_loop = true;
-            if let Some(l) = self.top_mut().cur_loop_mut() {
-                if l.0 == pc {
-                    // Increase the loop unwinding
-                    l.1 += 1;
-                    is_new_loop = false
-                }
+    pub fn unwind(&mut self, pc: Pc) {
+        if self.top().function.is_loop_entry(pc) {
+            if self.top().loop_stack.is_empty() ||
+                self.top().loop_stack.last().unwrap().0 != pc {
+                // New loop
+                self.top_mut().loop_stack.push((pc, 1));
+            } else {
+                self.top_mut().loop_stack.last_mut().unwrap().1 += 1;
             }
-            if is_new_loop {
-                self.top_mut().new_loop(pc)
-            }
-
             println!(
                 "Unwinding loop bb{pc} in {:?} for {} times",
                 self.top().function.name(),
-                self.top().cur_loop().unwrap().1
+                self.top().loop_stack.last().unwrap().1
             );
-            return;
-        }
-
-        if let Some(&(l, _)) = self.top().cur_loop() {
-            if !self.top().function.get_loop(l).contains(&pc) {
-                self.top_mut().loop_stack.pop();
-                let guard = self.exec_state.cur_state.guard.to_expr();
-                self.assume(guard);
-                self.exec_state.cur_state.guard.make_true();
-            }
         }
     }
 

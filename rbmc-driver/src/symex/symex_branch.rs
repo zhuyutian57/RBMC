@@ -10,11 +10,42 @@ use crate::symbol::nstring::NString;
 use crate::symbol::symbol::{Ident, Level};
 
 impl<'cfg> Symex<'cfg> {
+    pub(super) fn symex_goto(&mut self, target: usize) {
+        if self.top().pc < target {
+            if self.top().pc + 1 == target {
+                self.top_mut().pc += 1;
+            } else {
+                self.cache_unexplored_state(target, self.exec_state.cur_state.clone());
+                self.exec_state.cur_state.guard.make_false();
+            }
+        } else {
+            // A back-edge, update the loop unwinding number.
+            if self.get_unwind(target) {
+                // Loop bound exceed
+                self.top_mut().loop_stack.pop();
+                let mut cond = self.exec_state.cur_state.guard.to_expr();
+                cond = self.ctx.not(cond);
+                self.assume(cond);
+                self.exec_state.cur_state.guard.make_false();
+                self.exec_state.reset_to_unexplored_state();
+            } else {
+                // Keep unwinding
+                self.top_mut().pc = target;
+            }
+        }
+    }
+
+    fn get_unwind(&mut self, pc: Pc) -> bool {
+        let (l, count) = self.top().loop_stack.last().unwrap();
+        assert!(pc == *l);
+        self.config.cli.unwind != 0 && *count >= self.config.cli.unwind    
+    }
+
     pub(super) fn symex_switchint(
         &mut self,
         discr: &Operand,
         targets: &SwitchTargets
-    ) -> usize {
+    ) {
         let discr_expr = self.make_operand(discr).unwrap_predicates();
         let mut otherwise_guard = self.ctx._true();
         let mut branches = Vec::new();
@@ -22,23 +53,29 @@ impl<'cfg> Symex<'cfg> {
             let mut branch_guard = self.make_branch_guard(discr_expr.clone(), i);
             self.rename(&mut branch_guard);
             branches.push((pc, branch_guard.clone()));
-            otherwise_guard = self.ctx.and(otherwise_guard, self.ctx.not(branch_guard));
+            otherwise_guard = self.ctx.and(otherwise_guard, self.ctx.not(branch_guard.clone()));
         }
         // otherwise
         branches.push((targets.otherwise(), otherwise_guard));
-        
-        // Goto the first branch and cache states of other branches.
-        for (i, (goto_pc, goto_guard)) in branches.iter().enumerate() {
-            if i == 0 { continue; }
+
+        let mi_branch =
+            branches.iter().min_by_key(|&(x, _)| x).unwrap().clone();
+        for branch in branches {
+            if branch.0 == mi_branch.0 { continue; }
             let mut state = self.exec_state.cur_state.clone();
-            state.guard.add(goto_guard.clone());
-            self.cache_unexplored_state(*goto_pc, state);
+            state.guard.add(branch.1.clone());
+            self.cache_unexplored_state(branch.0, state);
         }
-
-        let (goto_pc, goto_guard) = (branches[0].0, branches[0].1.clone());
-        self.exec_state.cur_state.guard.add(goto_guard);
-
-        goto_pc
+        // Optimization. Stopp caching state if the minimal branch pc is the next pc.
+        if mi_branch.0 == self.top().pc + 1 {
+            self.top_mut().pc += 1;
+            self.exec_state.cur_state.guard.add(mi_branch.1.clone());
+        } else {
+            let mut state = self.exec_state.cur_state.clone();
+            state.guard.add(mi_branch.1.clone());
+            self.cache_unexplored_state(mi_branch.0, state);
+            self.exec_state.reset_to_unexplored_state();
+        }
     }
 
     fn make_branch_guard(&mut self, discr_expr: Expr, i: u128) -> Expr {
@@ -73,43 +110,4 @@ impl<'cfg> Symex<'cfg> {
         state.renaming = Some(self.exec_state.renaming.clone());
         self.top_mut().add_state(pc, state);
     }
-
-    // fn ask_rts(&mut self, expr: Expr) -> PathFeasibility {
-    //     // Push all formulas that is not in solver
-    //     let mut i = &mut self.runtime.0;
-    //     while *i < self.vc_system.borrow().size() {
-    //         match self.vc_system.borrow().nth(*i).kind {
-    //             VcKind::Assign(lhs, rhs)
-    //                 => self.runtime.1.assert_assign(lhs, rhs),
-    //                 _ => {},
-    //             VcKind::Assume(expr)
-    //                 => self.runtime.1.assert_expr(expr),
-    //         }
-    //         *i += 1;
-    //     }
-
-    //     let res1;
-    //     self.runtime.1.push();
-    //     self.runtime.1.assert_expr(expr.clone());
-    //     res1 = self.runtime.1.check();
-    //     self.runtime.1.pop();
-
-    //     let res2;
-    //     self.runtime.1.push();
-    //     self.runtime.1.assert_expr(self.ctx.not(expr.clone()));
-    //     res2 = self.runtime.1.check();
-    //     self.runtime.1.pop();
-
-    //     let res = if res1 == PResult::PSat && res1 == PResult::PSat {
-    //         PathFeasibility::PATHUnkown
-    //     } else if res1 == PResult::PSat && res2 == PResult::PUnsat {
-    //         PathFeasibility::PATHTrue
-    //     } else if res1 == PResult::PUnsat && res2 == PResult::PSat {
-    //         PathFeasibility::PATHFalse
-    //     } else {
-    //         PathFeasibility::PATHImpissible
-    //     };
-
-    //     res
-    // }
 }

@@ -13,8 +13,6 @@ use crate::symbol::nstring::NString;
 pub type FunctionIdx = usize;
 pub type Args = Vec<Local>;
 pub type Pc = BasicBlockIdx;
-pub type Loop = HashSet<Pc>;
-pub type LoopSet = HashMap<Pc, Loop>;
 
 /// A wrapper for functiom item in MIR
 pub struct Function {
@@ -24,13 +22,15 @@ pub struct Function {
     ty: Type,
     /// Record the locals without StorageLive
     _local_alive: HashSet<Local>,
-    _loops: LoopSet,
+    /// Record loop entries
+    _loop_entries: HashSet<Pc>,
 }
 
 impl Function {
     fn init(&mut self) {
-        self.init_locals_without_storagelive();
         self.reconstruct_body();
+        self.init_locals_without_storagelive();
+        self.init_loop_entries();
     }
 
     fn init_locals_without_storagelive(&mut self) {
@@ -46,6 +46,20 @@ impl Function {
             }
             if is_alive {
                 self._local_alive.insert(local);
+            }
+        }
+    }
+
+    fn init_loop_entries(&mut self) {
+        for i in 0..self.body.blocks.len() {
+            match &self.basicblock(i).terminator.kind {
+                TerminatorKind::Goto { target } => {
+                    if *target < i {
+                        // Back edge
+                        self._loop_entries.insert(*target);
+                    }
+                }
+                _ => {},
             }
         }
     }
@@ -232,13 +246,8 @@ impl Function {
         &self.body.blocks[i]
     }
 
-    pub fn is_loop_bb(&self, pc: Pc) -> bool {
-        self._loops.contains_key(&pc)
-    }
-
-    pub fn get_loop(&self, pc: Pc) -> &Loop {
-        assert!(self.is_loop_bb(pc));
-        self._loops.get(&pc).unwrap()
+    pub fn is_loop_entry(&self, pc: Pc) -> bool {
+        self._loop_entries.contains(&pc)
     }
 
     pub fn operand_type(&self, operand: &Operand) -> Type {
@@ -270,7 +279,7 @@ impl From<(NString, Body, Type)> for Function {
             body: value.1,
             ty: value.2,
             _local_alive: HashSet::new(),
-            _loops: HashMap::new(),
+            _loop_entries: HashSet::new(),
         };
         function.init();
         function

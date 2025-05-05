@@ -87,20 +87,7 @@ impl<'cfg> ExecutionState<'cfg> {
         self.frames.last_mut().expect("Empty frame stack")
     }
 
-    pub fn reset_to_unexplored_pc(&mut self) {
-        if let Some(&(l, _)) = self.top_mut().loop_stack.last() {
-            let mut mi = self.top().function.size();
-            for pc in self.top().function.get_loop(l) {
-                if self.top().unexplored_states.contains_key(pc) {
-                    mi = std::cmp::min(mi, *pc);
-                }
-            }
-            if mi != self.top().function.size() {
-                self.top_mut().pc = mi;
-                return;
-            }
-        }
-
+    pub fn reset_to_unexplored_state(&mut self) {
         if self.top().unexplored_states.is_empty() {
             panic!("We stuck in a loop, please increase the loop bound");
         }
@@ -116,7 +103,7 @@ impl<'cfg> ExecutionState<'cfg> {
     ) {
         self.n += 1;
         let mut frame =
-            Frame::new(self.n, self.config, self.config.program.function(i), dest, target);
+            Frame::new(self.n, self.config.program.function(i), dest, target);
         self.frames.push(frame);
         self.frame_map.insert(self.n, self.frames.len() - 1);
         // init namspace

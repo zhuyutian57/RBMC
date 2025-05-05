@@ -68,7 +68,7 @@ impl<'cfg> Symex<'cfg> {
         while let Some(pc) = self.top_mut().cur_pc() {
             // Merge states
             if self.merge_states(pc) {
-                // Couting loop pc
+
                 self.unwind(pc);
 
                 let function_name = self.top().function.name();
@@ -80,7 +80,7 @@ impl<'cfg> Symex<'cfg> {
 
                 self.symex_basicblock(pc);
             } else {
-                self.exec_state.reset_to_unexplored_pc();
+                self.exec_state.reset_to_unexplored_state();
             }
         }
         self.symex_end_function();
@@ -145,36 +145,19 @@ impl<'cfg> Symex<'cfg> {
     }
 
     fn symex_terminator(&mut self, terminator: &Terminator) -> bool {
-        let goto_pc = match &terminator.kind {
-            TerminatorKind::Goto { target } => Some(*target),
+        let mut is_unwind = false;
+        match &terminator.kind {
+            TerminatorKind::Goto { target } => self.symex_goto(*target),
             TerminatorKind::SwitchInt { discr, targets }
-                => Some(self.symex_switchint(discr, targets)),
-            TerminatorKind::Drop { place, target, .. } => {
-                self.symex_drop(place, target);
-                Some(0)
-            }
-            TerminatorKind::Call { func, args, destination, target, .. } => {
-                self.symex_call(func, args, destination, target)
-            }
-            TerminatorKind::Return => {
-                self.symex_return();
-                None
-            }
-            TerminatorKind::Assert { cond, expected, msg, target, .. } => {
-                self.symex_assert(cond, expected, msg, target);
-                Some(*target)
-            }
+                => self.symex_switchint(discr, targets),
+            TerminatorKind::Drop { place, target, .. }
+                => { self.symex_drop(place, target); is_unwind = true; }
+            TerminatorKind::Call { func, args, destination, target, .. }
+                => is_unwind = self.symex_call(func, args, destination, target),
+            TerminatorKind::Return => self.symex_return(),
+            TerminatorKind::Assert { cond, expected, msg, target, .. } => self.symex_assert(cond, expected, msg, target),
             _ => todo!(),
         };
-        match goto_pc {
-            Some(pc) => {
-                self.top_mut().pc = pc;
-                false
-            }
-            _ =>  {
-                self.exec_state.reset_to_unexplored_pc();
-                true
-            }
-        }
+        is_unwind
     }
 }

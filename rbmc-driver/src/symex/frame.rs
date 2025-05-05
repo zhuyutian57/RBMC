@@ -4,7 +4,6 @@ use stable_mir::mir::*;
 
 use super::place_state::PlaceState;
 use super::state::*;
-use crate::config::config::Config;
 use crate::program::function::*;
 use crate::symbol::{nstring::*, symbol};
 use crate::symbol::symbol::{Ident, Symbol};
@@ -14,7 +13,6 @@ use crate::symbol::symbol::{Ident, Symbol};
 /// identifier for each frame.
 pub struct Frame<'func> {
     pub(super) id: usize,
-    config: &'func Config,
     pub(super) function: &'func Function,
     /// Previous info. Used for recovering
     pub(super) dest: Option<Place>,
@@ -22,7 +20,7 @@ pub struct Frame<'func> {
     /// Current Computing
     pub(super) pc: Pc,
     /// Record l1 number of each local and its liveness
-    pub(super) local_states: Vec<(usize, bool)>, 
+    pub(super) local_states: Vec<(usize, bool)>,
     pub(super) loop_stack: Vec<(Pc, usize)>,
     pub(super) unexplored_states: HashMap<Pc, Vec<State>>,
 }
@@ -30,47 +28,24 @@ pub struct Frame<'func> {
 impl<'func> Frame<'func> {
     pub fn new(
         id: usize,
-        config: &'func Config,
         function: &'func Function,
         dest: Option<Place>,
         target: Option<BasicBlockIdx>,
     ) -> Self {
         Frame {
             id,
-            config,
             function,
             dest,
             target,
             pc: 0,
             local_states: vec![(0, false); function.locals().len()],
-            loop_stack: Vec::new(),
+            loop_stack: vec![],
             unexplored_states: HashMap::new(),
         }
     }
 
     pub fn cur_pc(&self) -> Option<Pc> {
         if self.pc < self.function.size() { Some(self.pc) } else { None }
-    }
-
-    pub fn inc_pc(&mut self) {
-        if let Some(&(l, _)) = self.loop_stack.last() {
-            let mut mi = self.function.size();
-            for pc in self.function.get_loop(l) {
-                if self.unexplored_states.contains_key(pc) {
-                    mi = std::cmp::min(mi, *pc);
-                }
-            }
-            if mi != self.function.size() {
-                self.pc = mi;
-                return;
-            }
-        }
-
-        if self.unexplored_states.is_empty() {
-            panic!("We stuck in a loop, please increase the loop bound");
-        }
-
-        self.pc = *self.unexplored_states.keys().min().unwrap();
     }
 
     pub fn get_local_place_state(&self, symbol: Symbol) -> PlaceState {
@@ -81,31 +56,11 @@ impl<'func> Frame<'func> {
         if  c== l1_num && s { PlaceState::Own } else { PlaceState::Dead }
     }
 
-    pub fn new_loop(&mut self, pc: Pc) {
-        assert!(self.function.is_loop_bb(pc));
-        self.loop_stack.push((pc, 1));
-    }
-
-    pub fn cur_loop(&self) -> Option<&(Pc, usize)> {
-        self.loop_stack.last()
-    }
-
-    pub fn cur_loop_mut(&mut self) -> Option<&mut (Pc, usize)> {
-        self.loop_stack.last_mut()
-    }
-
-    /// Check whether the current loop read loop bound
-    pub fn loop_bound_exceed(&self) -> bool {
-        self.config.cli.unwind != 0
-            && !self.loop_stack.is_empty()
-            && self.loop_stack.last().unwrap().1 >= self.config.cli.unwind
-    }
-
     pub fn add_state(&mut self, pc: Pc, state: State) {
         self.unexplored_states.entry(pc).or_default().push(state);
     }
 
-    pub fn states_from(&mut self, pc: Pc) -> Option<Vec<State>> {
+    pub fn unexplored_states_from(&mut self, pc: Pc) -> Option<Vec<State>> {
         self.unexplored_states.remove(&pc)
     }
 

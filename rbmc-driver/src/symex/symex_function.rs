@@ -18,29 +18,29 @@ impl<'cfg> Symex<'cfg> {
         args: &Vec<Operand>,
         dest: &Place,
         target: &Option<BasicBlockIdx>,
-    ) -> Option<usize> {
+    ) -> bool {
         let instance = self.top_mut().function.operand_type(func).function_instance();
         let ty = Type::from(instance.ty());
 
         let args_exprs = args.iter().map(|x| self.make_operand(x)).collect::<Vec<_>>();
 
-        if ty.is_rbmc_nondet() {
+        let is_rbmc_nondet = ty.is_rbmc_nondet();
+        let is_rust_builtin = ty.is_rust_builtin_function();
+
+        if is_rbmc_nondet {
             self.symex_nondet(dest);
-        } else if ty.is_rust_builtin_function() {
+        } else if is_rust_builtin {
             self.symex_rust_builtin_function(instance, args_exprs, dest);
         } else {
             // Unwinding function
             self.symex_function(instance, args_exprs, Some(dest.clone()), target);
         }
 
-        if ty.is_rbmc_nondet() || ty.is_rust_builtin_function() {
-            match target {
-                Some(t) => Some(*t),
-                _ => None,
-            }
-        } else {
-            Some(0)
+        if is_rbmc_nondet || is_rust_builtin {
+            self.top_mut().pc += 1;
         }
+        
+        !is_rbmc_nondet && !is_rust_builtin
     }
 
     fn symex_nondet(&mut self, dest: &Place) {
@@ -88,6 +88,7 @@ impl<'cfg> Symex<'cfg> {
         let n = self.top_mut().function.size();
         let state = self.exec_state.cur_state.clone();
         self.cache_unexplored_state(n, state);
+        self.exec_state.reset_to_unexplored_state();
     }
 
     pub(super) fn symex_end_function(&mut self) {
@@ -130,8 +131,8 @@ impl<'cfg> Symex<'cfg> {
         self.exec_state.cur_state.remove_stack_places(frame.frame_ident());
 
         // Recover pc.
-        if let Some(t) = &frame.target {
-            self.top_mut().pc = *t;
+        if let Some(t) = frame.target {
+            self.symex_goto(t);
         }
 
         // Display state after returning function

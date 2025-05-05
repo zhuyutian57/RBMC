@@ -24,5 +24,7 @@ impl<'cfg> Symex<'cfg> {
             cond = self.ctx.not(cond);
         }
         self.vc_system.borrow_mut().assert(msg, cond, self.exec_state.cur_span());
+
+        self.top_mut().pc += 1;
     }
 }
