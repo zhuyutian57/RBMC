@@ -41,18 +41,6 @@ impl State {
         self.place_states.update(nplace, state);
     }
 
-    pub fn remove_place(&mut self, nplace: NPlace) {
-        self.place_states.remove(nplace);
-    }
-
-    pub fn remove_stack_places(&mut self, function_id: NString) {
-        self.place_states.remove_stack_places(function_id);
-        self.value_set.remove_stack_places(function_id);
-        if let Some(renaming) = &mut self.renaming {
-            renaming.cleanr_locals(function_id);
-        }
-    }
-
     pub fn dealloc_objects(&mut self, pt: Expr) {
         assert!(pt.ty().is_primitive_ptr());
         let mut objects = HashSet::new();
@@ -77,53 +65,32 @@ impl State {
 
     pub fn remove_pointer(&mut self, pt: Expr) {
         assert!(pt.ty().is_primitive_ptr());
-        let ident = NString::from(format!("{pt:?}"));
-        self.value_set.remove(ident);
+        self.remove_pointer_by(NString::from(format!("{pt:?}")));
     }
 
+    pub fn remove_pointer_by(&mut self, str: NString) {
+        self.value_set.remove(str);
+    }
+
+    /// Only used for special case. Don't use it frequently. Since
+    /// this function will copy all keys(pointers) in value set and
+    /// iterate them. The preformance is `O(n)`.
     pub fn remove_pointer_with_prefix(&mut self, prefix: NString) {
-        self.value_set.remove_with_prefix(prefix);
-    }
-
-    pub fn assign(&mut self, expr: Expr, values: ObjectSet) {
-        assert!(expr.ty().is_primitive_ptr());
-        self.assign_rec(expr, NString::EMPTY, values);
-    }
-
-    fn assign_rec(&mut self, expr: Expr, suffix: NString, values: ObjectSet) {
-        if expr.is_symbol() {
-            let symbol = expr.extract_symbol();
-            let ident = symbol.name() + suffix;
-            if values.is_empty() {
-                // just clear
-                self.value_set.remove(ident);
-            } else {
-                self.value_set.insert(ident, values);
+        for pt in self.value_set.pointers() {
+            if pt.starts_with(prefix) {
+                self.value_set.remove(pt);
             }
-            return;
         }
+    }
 
-        if expr.is_object() {
-            let inner_expr = expr.extract_inner_expr();
-            self.assign_rec(inner_expr, suffix, values);
-            return;
+    pub fn assign(&mut self, pt: Expr, values: ObjectSet) {
+        assert!(pt.is_symbol() && pt.ty().is_primitive_ptr());
+        let ident = pt.extract_symbol().name();
+        if values.is_empty() {
+            self.value_set.remove(ident);
+        } else {
+            self.value_set.insert(ident, values);
         }
-
-        assert!(expr.ty().is_primitive_ptr());
-
-        if expr.is_index() {
-            let object = expr.extract_object();
-            let index_str = format!("{:?}", expr.extract_index());
-            let i = index_str.parse::<u128>().expect("Not integer index");
-            self.assign_rec(
-                object,
-                suffix + if expr.ty().is_array() { format!("[{i}]") } else { format!(".{i}") },
-                values,
-            );
-            return;
-        }
-
-        todo!("assign value set for {expr:?}");
     }
 
     pub fn merge(&mut self, rhs: &State) {

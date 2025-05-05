@@ -20,7 +20,6 @@ use crate::symbol::symbol::*;
 use crate::symex::place_state::*;
 
 /// Execution state representing the state of the current program.
-/// Multi-thread program is not supported yet.
 pub struct ExecutionState<'cfg> {
     config: &'cfg Config,
     ctx: ExprCtx,
@@ -467,6 +466,12 @@ impl<'cfg> ExecutionState<'cfg> {
         self.rename(&mut l1_rhs, Level::Level1);
         let mut objects = ObjectSet::new();
         self.cur_state.get_value_set(l1_rhs.clone(), &mut objects);
-        self.cur_state.assign(l1_lhs, objects);
+        self.cur_state.assign(l1_lhs.clone(), objects);
+
+        // Cache local pointers
+        let pt = l1_lhs.extract_symbol().name();
+        if pt.starts_with(self.top().frame_ident()) {
+            self.top_mut().local_pointers.insert(pt);
+        }
     }
 }

@@ -40,10 +40,6 @@ impl ValueSet {
         self._points_to_map.remove(&pt);
     }
 
-    pub fn remove_with_prefix(&mut self, prefix: NString) {
-        self._points_to_map.retain(|key, _| !key.starts_with(prefix));
-    }
-
     pub fn pointers(&self) -> HashSet<NString> {
         self._points_to_map.keys().map(|x| *x).collect::<HashSet<NString>>()
     }
@@ -54,10 +50,6 @@ impl ValueSet {
                 objects.insert(object.clone());
             }
         }
-    }
-
-    pub fn remove_stack_places(&mut self, function_id: NString) {
-        self._points_to_map.retain(|k, _| !k.starts_with(function_id));
     }
 }
 

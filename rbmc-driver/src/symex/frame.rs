@@ -20,9 +20,12 @@ pub struct Frame<'func> {
     pub(super) target: Option<BasicBlockIdx>,
     /// Current Computing
     pub(super) pc: Pc,
+    pub(super) loop_stack: Vec<(Pc, usize)>,
     /// Record l1 number of each local and its liveness
     pub(super) local_states: Vec<(usize, bool)>,
-    pub(super) loop_stack: Vec<(Pc, usize)>,
+    /// Optimization. Record local pointer. Used for eliminating in state 
+    /// when the frame is popped.
+    pub(super) local_pointers: HashSet<NString>,
     pub(super) unexplored_states: HashMap<Pc, Vec<State>>,
 }
 
@@ -39,8 +42,9 @@ impl<'func> Frame<'func> {
             dest,
             target,
             pc: 0,
-            local_states: vec![(0, false); function.locals().len()],
             loop_stack: vec![],
+            local_states: vec![(0, false); function.locals().len()],
+            local_pointers: HashSet::new(),
             unexplored_states: HashMap::new(),
         }
     }

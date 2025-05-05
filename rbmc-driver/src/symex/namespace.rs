@@ -37,11 +37,8 @@ impl Namespace {
         self.symbols.insert(symbol.ident(), expr);
     }
 
-    pub fn clear_symbols_with_prefix(&mut self, prefix: NString) {
-        self.symbols.retain(
-            |x, _|
-            !NString::from(format!("{x:?}")).starts_with(prefix)
-        );
+    pub fn remove_symbol(&mut self, symbol: Ident) {
+        self.symbols.remove(&symbol);
     }
 
     pub fn lookup_nondet_count(&mut self, ty: Type) -> usize {

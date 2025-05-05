@@ -86,10 +86,6 @@ impl PlaceStates {
         self._place_states_map.remove(&nplace);
     }
 
-    pub fn remove_stack_places(&mut self, function_id: NString) {
-        self._place_states_map.retain(|k, _| !k.0.starts_with(function_id));
-    }
-
     pub fn merge(&mut self, rhs: &PlaceStates) {
         for (&place, &state) in rhs._place_states_map.iter() {
             self._place_states_map

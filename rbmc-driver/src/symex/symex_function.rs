@@ -1,6 +1,7 @@
 use stable_mir::mir::mono::Instance;
 use stable_mir::mir::*;
 
+use super::frame::Frame;
 use super::place_state::NPlace;
 use super::place_state::PlaceState;
 use super::symex::*;
@@ -110,14 +111,7 @@ impl<'cfg> Symex<'cfg> {
             }
         }
 
-        // Clear namspace.
-        self.exec_state.ns.clear_symbols_with_prefix(frame.frame_ident());
-
-        // Clear renaming.
-        self.exec_state.renaming.cleanr_locals(frame.frame_ident());
-
-        // Clear place state set and value set.
-        self.exec_state.cur_state.remove_stack_places(frame.frame_ident());
+        self.clear_locals(&frame);
 
         // Recover pc.
         if let Some(t) = frame.target {
@@ -136,6 +130,27 @@ impl<'cfg> Symex<'cfg> {
                 self.top().pc,
                 self.exec_state.cur_state
             );
+        }
+    }
+
+    /// Remove symbols in `ns`, `renaming` and local pointers in value set.
+    fn clear_locals(&mut self, frame: &Frame) {
+        for local in 0..frame.function.locals().len() {
+            let ident = frame.local_ident(local);
+            // Clear name space
+            self.exec_state.ns.remove_symbol(ident);
+            // Clear renaming
+            if let Some(l1_count) =
+                self.exec_state.renaming.remove_l1_renaming_by_key(ident) {
+                for l1_num in 1..l1_count + 1 {
+                    self.exec_state.renaming.remove_l2_renaming_by_key((ident, l1_num));
+                }
+            }
+        }
+
+        // Clear place state set and value set.
+        for local_ptr in frame.local_pointers.iter() {
+            self.exec_state.cur_state.remove_pointer_by(*local_ptr);
         }
     }
 }

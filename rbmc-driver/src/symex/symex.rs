@@ -141,8 +141,14 @@ impl<'cfg> Symex<'cfg> {
     fn symex_storagedead(&mut self, local: Local) {
         self.top_mut().local_states[local].1 = false;
         let l1_local = self.exec_state.current_local(local, Level::Level1);
+        // Remove all pointers prefixed by this local
         let ident = l1_local.extract_symbol().l1_name();
-        self.exec_state.cur_state.remove_pointer_with_prefix(ident);
+        for local_pointer in self.top().local_pointers.clone() {
+            if local_pointer.starts_with(ident) {
+                self.exec_state.cur_state.remove_pointer_by(local_pointer);
+                self.top_mut().local_pointers.remove(&local_pointer);
+            }
+        }
     }
 
     fn symex_terminator(&mut self, terminator: &Terminator) -> bool {

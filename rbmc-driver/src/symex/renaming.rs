@@ -45,6 +45,13 @@ impl Renaming {
         self.l1_renaming.keys().map(|&x| x).collect::<Vec<_>>()
     }
 
+    pub fn l1_count(&self, key: Ident) -> usize {
+        match self.l1_renaming.get(&key) {
+            Some(n) => *n,
+            None => 0,
+        }
+    }
+
     pub fn l2_count(&self, key: (Ident, usize)) -> usize {
         match self.l2_renaming.get(&key) {
             Some(n) => *n,
@@ -155,15 +162,15 @@ impl Renaming {
         expr.replace_sub_exprs(sub_exprs);
     }
 
-    pub(super) fn cleanr_locals(&mut self, frame_ident: NString) {
-        self.l1_renaming.retain(
-            |x, _|
-            !x.to_nstring().starts_with(frame_ident)
-        );
-        self.l2_renaming.retain(
-            |x, _|
-            !x.0.to_nstring().starts_with(frame_ident)
-        );
-        self.constant_map.retain(|x, _| !x.name().starts_with(frame_ident));
+    pub(super) fn remove_l1_renaming_by_key(&mut self, key: Ident) -> Option<usize> {
+        self.l1_renaming.remove(&key)
+    }
+
+    pub(super) fn remove_l2_renaming_by_key(&mut self, key: (Ident, usize)) {
+        self.l2_renaming.remove(&key);
+    }
+
+    pub(super) fn remove_constant_map_by_key(&mut self, key: Symbol) {
+        self.constant_map.remove(&key);
     }
 }
