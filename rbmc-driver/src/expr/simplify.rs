@@ -516,11 +516,9 @@ impl Expr {
             assert!(j == idx);
             let data = _enum.extract_variant_data();
             if data.is_constant() {
-                *self = self.ctx.constant_adt(
-                    vec![i.extract_constant(),
-                    data.extract_constant()],
-                    self.ty()
-                );
+                *self = self
+                    .ctx
+                    .constant_adt(vec![i.extract_constant(), data.extract_constant()], self.ty());
             } else {
                 *self = _enum.clone();
             }

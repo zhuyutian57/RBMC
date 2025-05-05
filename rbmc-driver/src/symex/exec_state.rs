@@ -102,8 +102,7 @@ impl<'cfg> ExecutionState<'cfg> {
         target: Option<BasicBlockIdx>,
     ) {
         self.n += 1;
-        let mut frame =
-            Frame::new(self.n, self.config.program.function(i), dest, target);
+        let mut frame = Frame::new(self.n, self.config.program.function(i), dest, target);
         self.frames.push(frame);
         self.frame_map.insert(self.n, self.frames.len() - 1);
         // init namspace
@@ -360,7 +359,9 @@ impl<'cfg> ExecutionState<'cfg> {
     }
 
     fn assign_value_set(&mut self, lhs: Expr, rhs: Expr) {
-        if !lhs.ty().contains_ptr_field() { return; }
+        if !lhs.ty().contains_ptr_field() {
+            return;
+        }
 
         if lhs.ty().is_struct() || lhs.ty().is_tuple() {
             // Update for each field
@@ -392,7 +393,7 @@ impl<'cfg> ExecutionState<'cfg> {
             self.assign_value_set(new_lhs, new_rhs);
             return;
         }
-        
+
         assert!(lhs.is_symbol());
 
         // For enum, we flat all fields of all variants in value set.
@@ -417,36 +418,38 @@ impl<'cfg> ExecutionState<'cfg> {
                         (self.ctx.constant(args[1].clone(), ty), i)
                     }
                 };
-                if data.ty().is_zero_sized_type() { return; }
+                if data.ty().is_zero_sized_type() {
+                    return;
+                }
                 let rhs_object = self.ctx.object(data.clone());
                 for j in 0..data.ty().fields() {
                     let ident = Ident::Global(NString::from(format!("{lhs:?}.0[{i}-{j}]")));
                     let fty = data.ty().field_type(j);
-                    if fty.is_zero_sized_type() { continue; }
+                    if fty.is_zero_sized_type() {
+                        continue;
+                    }
                     let new_lhs = self.ctx.mk_symbol(ident.into(), fty);
-                    let mut new_rhs = self.ctx.index(
-                        rhs_object.clone(),
-                        self.ctx.constant_usize(j),
-                        fty
-                    );
+                    let mut new_rhs =
+                        self.ctx.index(rhs_object.clone(), self.ctx.constant_usize(j), fty);
                     new_rhs.simplify();
                     self.assign_value_set(new_lhs, new_rhs);
                 }
             } else {
                 for i in 0..lhs.ty().enum_variants() {
                     let data_ty = lhs.ty().enum_variant_data_type(i);
-                    if data_ty.is_zero_sized_type() { continue; }
+                    if data_ty.is_zero_sized_type() {
+                        continue;
+                    }
                     let rhs_object = self.ctx.object(rhs.clone());
                     for j in 0..data_ty.fields() {
                         let ident = Ident::Global(NString::from(format!("{lhs:?}.0[{i}-{j}]")));
                         let fty = data_ty.field_type(j);
-                        if fty.is_zero_sized_type() { continue; }
+                        if fty.is_zero_sized_type() {
+                            continue;
+                        }
                         let new_lhs = self.ctx.mk_symbol(ident.into(), fty);
-                        let mut new_rhs = self.ctx.index(
-                            rhs_object.clone(),
-                            self.ctx.constant_usize(j),
-                            fty
-                        );
+                        let mut new_rhs =
+                            self.ctx.index(rhs_object.clone(), self.ctx.constant_usize(j), fty);
                         new_rhs.simplify();
                         self.assign_value_set(new_lhs, new_rhs);
                     }

@@ -18,12 +18,11 @@ impl Ident {
     pub fn to_nstring(&self) -> NString {
         match self {
             Ident::Global(n) | Ident::Heap(n) => *n,
-            Ident::Stack(func, frame, local)
-                => format!("{func:?}_{frame}::{local}").into(),
+            Ident::Stack(func, frame, local) => format!("{func:?}_{frame}::{local}").into(),
         }
     }
 
-    pub fn function(&self) ->  NString {
+    pub fn function(&self) -> NString {
         match self {
             Ident::Stack(func, ..) => *func,
             _ => panic!("Not stack symbol"),
@@ -50,7 +49,6 @@ impl Debug for Ident {
         write!(f, "{:?}", self.to_nstring())
     }
 }
-
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Level {

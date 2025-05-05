@@ -23,7 +23,7 @@ pub struct Frame<'func> {
     pub(super) loop_stack: Vec<(Pc, usize)>,
     /// Record l1 number of each local and its liveness
     pub(super) local_states: Vec<(usize, bool)>,
-    /// Optimization. Record local pointer. Used for eliminating in state 
+    /// Optimization. Record local pointer. Used for eliminating in state
     /// when the frame is popped.
     pub(super) local_pointers: HashSet<NString>,
     pub(super) unexplored_states: HashMap<Pc, Vec<State>>,
@@ -54,7 +54,7 @@ impl<'func> Frame<'func> {
         let local = symbol.local();
         let l1_num = symbol.l1_num();
         let &(c, s) = &self.local_states[local];
-        if  c== l1_num && s { PlaceState::Own } else { PlaceState::Dead }
+        if c == l1_num && s { PlaceState::Own } else { PlaceState::Dead }
     }
 
     pub fn add_state(&mut self, pc: Pc, state: State) {

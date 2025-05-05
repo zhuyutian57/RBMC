@@ -59,7 +59,7 @@ impl Function {
                         self._loop_entries.insert(*target);
                     }
                 }
-                _ => {},
+                _ => {}
             }
         }
     }
@@ -67,25 +67,27 @@ impl Function {
     fn reconstruct_body(&mut self) {
         let mut n: usize = self.body.blocks.len();
         let mut bb_map = HashMap::<usize, usize>::new();
-        let ret_blocks = self.body.blocks
+        let ret_blocks = self
+            .body
+            .blocks
             .iter()
             .enumerate()
-            .filter(
-                |&(_, bb)| matches!(bb.terminator.kind, TerminatorKind::Return)
-            )
+            .filter(|&(_, bb)| matches!(bb.terminator.kind, TerminatorKind::Return))
             .map(|(i, _)| i)
             .collect::<Vec<_>>();
         for (i, &bb) in ret_blocks.iter().enumerate() {
             bb_map.insert(bb, n - 1 - i);
         }
-        if ret_blocks.len() > 1 { n += 1; }
+        if ret_blocks.len() > 1 {
+            n += 1;
+        }
 
-        let mut remaining_blocks = self.body.blocks
+        let mut remaining_blocks = self
+            .body
+            .blocks
             .iter()
             .enumerate()
-            .filter(
-                |&(_, bb)| !matches!(bb.terminator.kind, TerminatorKind::Return)
-            )
+            .filter(|&(_, bb)| !matches!(bb.terminator.kind, TerminatorKind::Return))
             .map(|(i, _)| i)
             .collect::<HashSet<_>>();
 
@@ -98,12 +100,14 @@ impl Function {
             assert!(new_bb == new_blocks.len());
             let mut new_block = self.body.blocks[bb].clone();
             match &mut new_block.terminator.kind {
-                TerminatorKind::Goto { target } |
-                TerminatorKind::Drop { target, .. } |
-                TerminatorKind::Assert { target, .. }
-                    => *target = *bb_map.get(target).unwrap(),
-                TerminatorKind::Call { target, .. }
-                    => if let Some(t) = target { *t = *bb_map.get(t).unwrap(); }
+                TerminatorKind::Goto { target }
+                | TerminatorKind::Drop { target, .. }
+                | TerminatorKind::Assert { target, .. } => *target = *bb_map.get(target).unwrap(),
+                TerminatorKind::Call { target, .. } => {
+                    if let Some(t) = target {
+                        *t = *bb_map.get(t).unwrap();
+                    }
+                }
                 TerminatorKind::SwitchInt { targets, .. } => {
                     let mut new_branches = Vec::new();
                     for (discr, successor) in targets.branches() {
@@ -113,10 +117,9 @@ impl Function {
                     let new_otherwise = *bb_map.get(&targets.otherwise()).unwrap();
                     *targets = SwitchTargets::new(new_branches, new_otherwise);
                 }
-                _ => {},
+                _ => {}
             }
-            if ret_blocks.len() > 1 &&
-                matches!(new_block.terminator.kind, TerminatorKind::Return) {
+            if ret_blocks.len() > 1 && matches!(new_block.terminator.kind, TerminatorKind::Return) {
                 new_block.terminator.kind = TerminatorKind::Goto { target: n - 1 };
             }
             new_blocks.push(new_block);
@@ -124,15 +127,10 @@ impl Function {
         // New return block
         if ret_blocks.len() > 1 {
             let ret_span = self.basicblock(ret_blocks[0]).terminator.span;
-            new_blocks.push(
-                BasicBlock {
-                    statements: vec![],
-                    terminator: Terminator {
-                        kind: TerminatorKind::Return,
-                        span: ret_span
-                    }
-                }
-            );
+            new_blocks.push(BasicBlock {
+                statements: vec![],
+                terminator: Terminator { kind: TerminatorKind::Return, span: ret_span },
+            });
         }
         self.body.blocks = new_blocks;
     }
@@ -142,19 +140,25 @@ impl Function {
         entry: BasicBlockIdx,
         prefix_nodes: usize,
         remaining_blocks: HashSet<BasicBlockIdx>,
-        bb_map: &mut HashMap<usize, usize>
+        bb_map: &mut HashMap<usize, usize>,
     ) {
-        if bb_map.contains_key(&entry) { return; }
+        if bb_map.contains_key(&entry) {
+            return;
+        }
         let mut back_edge_src = None;
         let mut predecessors: HashMap<usize, HashSet<usize>> = HashMap::new();
         for &i in remaining_blocks.iter() {
             for j in self.body.blocks[i].terminator.successors() {
-                if !remaining_blocks.contains(&j) { continue; }
+                if !remaining_blocks.contains(&j) {
+                    continue;
+                }
                 predecessors.entry(j).or_default();
                 predecessors.entry(j).and_modify(|x| {
                     x.insert(i);
                 });
-                if j == entry { back_edge_src = Some(i); }
+                if j == entry {
+                    back_edge_src = Some(i);
+                }
             }
         }
         // Compute the SCC from entry.
@@ -165,14 +169,18 @@ impl Function {
         if let Some(src) = back_edge_src {
             scc.insert(src);
             let mut work = VecDeque::new();
-            work.push_back(src);;
+            work.push_back(src);
             while !work.is_empty() {
                 let j = work.pop_front().unwrap();
-                if !suffix_remaining_blocks.contains(&j) { continue; }
+                if !suffix_remaining_blocks.contains(&j) {
+                    continue;
+                }
                 scc.insert(j);
                 suffix_remaining_blocks.remove(&j);
                 for &i in predecessors.get(&j).unwrap() {
-                    if !suffix_remaining_blocks.contains(&i) { continue; }
+                    if !suffix_remaining_blocks.contains(&i) {
+                        continue;
+                    }
                     work.push_back(i);
                 }
             }
@@ -182,7 +190,10 @@ impl Function {
             let suffix_entry = *suffix_remaining_blocks.iter().min().unwrap();
             let suffix_prefix_nodes = prefix_nodes + scc.len();
             self.reconstruct_blocks(
-                suffix_entry, suffix_prefix_nodes, suffix_remaining_blocks, bb_map
+                suffix_entry,
+                suffix_prefix_nodes,
+                suffix_remaining_blocks,
+                bb_map,
             );
         }
         // Reconstruct the current SCC.
@@ -198,9 +209,7 @@ impl Function {
         if !scc_remaining_blocks.is_empty() {
             let scc_entry = *scc_remaining_blocks.iter().min().unwrap();
             let scc_prefix_nodes = prefix_nodes + 1;
-            self.reconstruct_blocks(
-                scc_entry, scc_prefix_nodes, scc_remaining_blocks, bb_map
-            );
+            self.reconstruct_blocks(scc_entry, scc_prefix_nodes, scc_remaining_blocks, bb_map);
         }
     }
 

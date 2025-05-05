@@ -1,6 +1,6 @@
 use num_bigint::BigInt;
-use stable_mir::abi::FieldsShape;
 use stable_mir::CrateDef;
+use stable_mir::abi::FieldsShape;
 use stable_mir::mir::Operand;
 use stable_mir::mir::Place;
 use stable_mir::mir::alloc::GlobalAlloc;
@@ -91,8 +91,7 @@ impl<'cfg> Symex<'cfg> {
 
     pub fn unwind(&mut self, pc: Pc) {
         if self.top().function.is_loop_entry(pc) {
-            if self.top().loop_stack.is_empty() ||
-                self.top().loop_stack.last().unwrap().0 != pc {
+            if self.top().loop_stack.is_empty() || self.top().loop_stack.last().unwrap().0 != pc {
                 // New loop
                 self.top_mut().loop_stack.push((pc, 1));
             } else {
@@ -197,10 +196,11 @@ impl<'cfg> Symex<'cfg> {
             let mut fields = Vec::new();
             if n == 1 {
                 fields.push(self.make_allocation_rec(allocation, ty.field_type(0)));
-            } else  {
+            } else {
                 let field_offsets = match &shape.fields {
-                    FieldsShape::Arbitrary { offsets }
-                        => offsets.iter().map(|x| x.bytes()).collect::<Vec<_>>(),
+                    FieldsShape::Arbitrary { offsets } => {
+                        offsets.iter().map(|x| x.bytes()).collect::<Vec<_>>()
+                    }
                     _ => panic!("Impossible"),
                 };
                 let is_increasing = field_offsets[1] > field_offsets[0];

@@ -66,7 +66,6 @@ impl<'cfg> Symex<'cfg> {
             let pc = self.top().pc;
             // Merge states
             if self.merge_states(pc) {
-
                 self.unwind(pc);
 
                 let function_name = self.top().function.name();
@@ -155,14 +154,18 @@ impl<'cfg> Symex<'cfg> {
         let mut is_unwind = false;
         match &terminator.kind {
             TerminatorKind::Goto { target } => self.symex_goto(*target),
-            TerminatorKind::SwitchInt { discr, targets }
-                => self.symex_switchint(discr, targets),
-            TerminatorKind::Drop { place, target, .. }
-                => { self.symex_drop(place, target); is_unwind = true; }
-            TerminatorKind::Call { func, args, destination, target, .. }
-                => is_unwind = self.symex_call(func, args, destination, target),
+            TerminatorKind::SwitchInt { discr, targets } => self.symex_switchint(discr, targets),
+            TerminatorKind::Drop { place, target, .. } => {
+                self.symex_drop(place, target);
+                is_unwind = true;
+            }
+            TerminatorKind::Call { func, args, destination, target, .. } => {
+                is_unwind = self.symex_call(func, args, destination, target)
+            }
             TerminatorKind::Return => self.symex_return(),
-            TerminatorKind::Assert { cond, expected, msg, target, .. } => self.symex_assert(cond, expected, msg, target),
+            TerminatorKind::Assert { cond, expected, msg, target, .. } => {
+                self.symex_assert(cond, expected, msg, target)
+            }
             _ => todo!(),
         };
         is_unwind

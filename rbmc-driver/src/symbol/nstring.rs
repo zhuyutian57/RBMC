@@ -185,7 +185,6 @@ impl From<&Ident> for NString {
     }
 }
 
-
 impl ToString for NString {
     fn to_string(&self) -> String {
         string_m().get_string(self.0).clone()

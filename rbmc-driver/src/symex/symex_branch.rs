@@ -37,14 +37,10 @@ impl<'cfg> Symex<'cfg> {
     fn get_unwind(&mut self, pc: Pc) -> bool {
         let (l, count) = self.top().loop_stack.last().unwrap();
         assert!(pc == *l);
-        self.config.cli.unwind != 0 && *count >= self.config.cli.unwind    
+        self.config.cli.unwind != 0 && *count >= self.config.cli.unwind
     }
 
-    pub(super) fn symex_switchint(
-        &mut self,
-        discr: &Operand,
-        targets: &SwitchTargets
-    ) {
+    pub(super) fn symex_switchint(&mut self, discr: &Operand, targets: &SwitchTargets) {
         let discr_expr = self.make_operand(discr).unwrap_predicates();
         let mut otherwise_guard = self.ctx._true();
         let mut branches = Vec::new();
@@ -57,10 +53,11 @@ impl<'cfg> Symex<'cfg> {
         // otherwise
         branches.push((targets.otherwise(), otherwise_guard));
 
-        let mi_branch =
-            branches.iter().min_by_key(|&(x, _)| x).unwrap().clone();
+        let mi_branch = branches.iter().min_by_key(|&(x, _)| x).unwrap().clone();
         for branch in branches {
-            if branch.0 == mi_branch.0 { continue; }
+            if branch.0 == mi_branch.0 {
+                continue;
+            }
             let mut state = self.exec_state.cur_state.clone();
             state.guard.add(branch.1.clone());
             self.cache_unexplored_state(branch.0, state);

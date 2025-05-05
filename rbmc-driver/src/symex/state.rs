@@ -51,9 +51,13 @@ impl State {
                 continue;
             }
             let inner_expr = object.extract_inner_expr();
-            if !inner_expr.is_symbol() { continue; }
+            if !inner_expr.is_symbol() {
+                continue;
+            }
             let symbol = inner_expr.extract_symbol();
-            if symbol.is_stack_symbol() { continue; }
+            if symbol.is_stack_symbol() {
+                continue;
+            }
             let nplace = NPlace(symbol.l1_name());
             let mut new_state = PlaceState::Dead;
             if n > 1 {

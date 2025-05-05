@@ -40,7 +40,7 @@ impl<'cfg> Symex<'cfg> {
         if is_rbmc_nondet || is_rust_builtin {
             self.top_mut().pc += 1;
         }
-        
+
         !is_rbmc_nondet && !is_rust_builtin
     }
 
@@ -140,8 +140,7 @@ impl<'cfg> Symex<'cfg> {
             // Clear name space
             self.exec_state.ns.remove_symbol(ident);
             // Clear renaming
-            if let Some(l1_count) =
-                self.exec_state.renaming.remove_l1_renaming_by_key(ident) {
+            if let Some(l1_count) = self.exec_state.renaming.remove_l1_renaming_by_key(ident) {
                 for l1_num in 1..l1_count + 1 {
                     self.exec_state.renaming.remove_l2_renaming_by_key((ident, l1_num));
                 }
