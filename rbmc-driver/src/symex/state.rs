@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fmt::Debug;
 
@@ -20,7 +19,7 @@ pub struct State {
     pub(super) place_states: PlaceStates,
     pub(super) value_set: ValueSet,
     /// Renaming at some program pointer. Used for doing phi function while merging states.
-    pub(super) renaming: Option<RefCell<Renaming>>,
+    pub(super) renaming: Option<Renaming>,
 }
 
 impl State {
@@ -49,8 +48,8 @@ impl State {
     pub fn remove_stack_places(&mut self, function_id: NString) {
         self.place_states.remove_stack_places(function_id);
         self.value_set.remove_stack_places(function_id);
-        if let Some(renaming) = &self.renaming {
-            renaming.borrow_mut().cleanr_locals(function_id);
+        if let Some(renaming) = &mut self.renaming {
+            renaming.cleanr_locals(function_id);
         }
     }
 

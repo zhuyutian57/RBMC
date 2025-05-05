@@ -144,7 +144,9 @@ impl VCSystem {
     }
 
     pub fn show_vcc(&self) {
-        for i in self.asserts_map.keys() {
+        let mut keys = self.asserts_map.keys().map(|k| *k).collect::<Vec<_>>();
+        keys.sort();
+        for i in keys.iter() {
             let m = *self.asserts_map.get(i).unwrap();
             if self.vcs[m].is_sliced {
                 continue;

@@ -23,7 +23,7 @@ impl<'cfg> Symex<'cfg> {
 
     pub(super) fn assign(&mut self, lhs: Expr, rhs: Expr, guard: Guard) {
         assert!(lhs.ty().is_layout() || lhs.ty() == rhs.ty());
-        self.assign_rec(lhs, rhs.clone(), guard);
+        self.assign_rec(lhs.clone(), rhs.clone(), guard);
     }
 
     fn assign_symbol(&mut self, mut lhs: Expr, mut rhs: Expr, guard: Guard) {

@@ -46,11 +46,11 @@ impl<'cfg> Symex<'cfg> {
 
         let new_guard = nstate.guard.clone() - self.exec_state.cur_state.guard.clone();
 
-        let mut nrenaming = nstate.renaming.as_ref().unwrap().borrow_mut();
+        let mut nrenaming = nstate.renaming.as_mut().unwrap();
         for ident in nrenaming.variables() {
             let symbol = nrenaming.current_l1_symbol(ident);
             let l1_ident = (symbol.ident(), symbol.l1_num());
-            let cur_l2_num = self.exec_state.renaming.borrow().l2_count(l1_ident);
+            let cur_l2_num = self.exec_state.renaming.l2_count(l1_ident);
             let n_l2_num = nrenaming.l2_count(l1_ident);
 
             if cur_l2_num == n_l2_num || n_l2_num == 0 {
@@ -65,7 +65,7 @@ impl<'cfg> Symex<'cfg> {
             nrenaming.l1_rename(&mut new_rhs);
 
             // Current assignment
-            self.exec_state.renaming.borrow_mut().l2_rename(&mut cur_rhs, true);
+            self.exec_state.renaming.l2_rename(&mut cur_rhs, true);
             // Other assignment
             nrenaming.l2_rename(&mut new_rhs, true);
 
@@ -106,8 +106,8 @@ impl<'cfg> Symex<'cfg> {
         }
     }
 
-    pub(super) fn memory_leak_check(&self) {
-        for object in &self.exec_state.objects {
+    pub(super) fn memory_leak_check(&mut self) {
+        for object in self.exec_state.objects.clone() {
             let mut l1_object = object.clone();
             self.exec_state.rename(&mut l1_object, Level::Level1);
             let object_state = self.exec_state.get_place_state(&l1_object);
@@ -267,7 +267,7 @@ impl<'cfg> Symex<'cfg> {
     }
 
     /// Interface for `l2` reaming.
-    pub(super) fn rename(&self, expr: &mut Expr) {
+    pub(super) fn rename(&mut self, expr: &mut Expr) {
         self.exec_state.rename(expr, Level::Level2);
     }
 
@@ -311,7 +311,7 @@ impl<'cfg> Symex<'cfg> {
     }
 
     /// Generating assertion in form: `path /\ error`,
-    pub(super) fn claim(&self, msg: NString, mut error: Expr) {
+    pub(super) fn claim(&mut self, msg: NString, mut error: Expr) {
         self.replace_predicates(&mut error);
         self.rename(&mut error);
         error.simplify();

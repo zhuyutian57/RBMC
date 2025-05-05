@@ -16,7 +16,7 @@ impl<'cfg> Symex<'cfg> {
                 self.top_mut().pc += 1;
             } else {
                 self.cache_unexplored_state(target, self.exec_state.cur_state.clone());
-                self.exec_state.cur_state.guard.make_false();
+                self.exec_state.reset_to_unexplored_state();
             }
         } else {
             // A back-edge, update the loop unwinding number.
@@ -26,7 +26,6 @@ impl<'cfg> Symex<'cfg> {
                 let mut cond = self.exec_state.cur_state.guard.to_expr();
                 cond = self.ctx.not(cond);
                 self.assume(cond);
-                self.exec_state.cur_state.guard.make_false();
                 self.exec_state.reset_to_unexplored_state();
             } else {
                 // Keep unwinding
@@ -66,7 +65,7 @@ impl<'cfg> Symex<'cfg> {
             state.guard.add(branch.1.clone());
             self.cache_unexplored_state(branch.0, state);
         }
-        // Optimization. Stopp caching state if the minimal branch pc is the next pc.
+        // Optimization. Stop caching state if the minimal branch pc is the next pc.
         if mi_branch.0 == self.top().pc + 1 {
             self.top_mut().pc += 1;
             self.exec_state.cur_state.guard.add(mi_branch.1.clone());

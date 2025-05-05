@@ -58,14 +58,12 @@ impl<'cfg> Symex<'cfg> {
     }
 
     pub fn run(&mut self) {
-        while self.exec_state.can_exec() {
-            self.symex();
-        }
-        self.memory_leak_check();
+        self.symex();
     }
 
     fn symex(&mut self) {
-        while let Some(pc) = self.top_mut().cur_pc() {
+        while self.exec_state.can_exec() {
+            let pc = self.top().pc;
             // Merge states
             if self.merge_states(pc) {
 
@@ -77,13 +75,12 @@ impl<'cfg> Symex<'cfg> {
                 {
                     println!("Enter {function_name:?} - bb{pc}\n{:?}", self.exec_state.cur_state);
                 }
-
                 self.symex_basicblock(pc);
             } else {
                 self.exec_state.reset_to_unexplored_state();
             }
         }
-        self.symex_end_function();
+        self.memory_leak_check();
     }
 
     pub(super) fn top(&self) -> &Frame<'cfg> {
@@ -110,8 +107,12 @@ impl<'cfg> Symex<'cfg> {
                 );
             }
         }
-        self.exec_state.update_span(bb.terminator.span);
+        // let now = std::time::Instant::now();
         let is_unwind = self.symex_terminator(&bb.terminator);
+        // let t = now.elapsed().as_secs_f32();
+        // if t > 0.001 {
+        //     println!("{function_name:?} - bb{pc} - {i}");
+        // }
 
         if !is_unwind
             && self.config.enable_display_state_terminator()

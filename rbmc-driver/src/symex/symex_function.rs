@@ -85,21 +85,10 @@ impl<'cfg> Symex<'cfg> {
     }
 
     pub(super) fn symex_return(&mut self) {
-        let n = self.top_mut().function.size();
-        let state = self.exec_state.cur_state.clone();
-        self.cache_unexplored_state(n, state);
-        self.exec_state.reset_to_unexplored_state();
-    }
-
-    pub(super) fn symex_end_function(&mut self) {
-        let pc = self.top().function.size();
-        // Must exist
-        assert!(self.merge_states(pc));
+        let frame = self.exec_state.pop_frame();
         if !self.exec_state.can_exec() {
             return;
         }
-
-        let frame = self.exec_state.pop_frame();
 
         // Assign return value
         if !frame.function.local_type(0).is_unit() {
@@ -125,7 +114,7 @@ impl<'cfg> Symex<'cfg> {
         self.exec_state.ns.clear_symbols_with_prefix(frame.frame_ident());
 
         // Clear renaming.
-        self.exec_state.renaming.borrow_mut().cleanr_locals(frame.frame_ident());
+        self.exec_state.renaming.cleanr_locals(frame.frame_ident());
 
         // Clear place state set and value set.
         self.exec_state.cur_state.remove_stack_places(frame.frame_ident());
@@ -133,6 +122,8 @@ impl<'cfg> Symex<'cfg> {
         // Recover pc.
         if let Some(t) = frame.target {
             self.symex_goto(t);
+        } else {
+            self.exec_state.reset_to_unexplored_state();
         }
 
         // Display state after returning function

@@ -5,8 +5,9 @@ use stable_mir::mir::*;
 use super::place_state::PlaceState;
 use super::state::*;
 use crate::program::function::*;
-use crate::symbol::{nstring::*, symbol};
-use crate::symbol::symbol::{Ident, Symbol};
+use crate::symbol::nstring::*;
+use crate::symbol::symbol;
+use crate::symbol::symbol::*;
 
 /// Each frame representing an execution of a function.
 /// The id is used for naming variable. It is the unique
@@ -42,10 +43,6 @@ impl<'func> Frame<'func> {
             loop_stack: vec![],
             unexplored_states: HashMap::new(),
         }
-    }
-
-    pub fn cur_pc(&self) -> Option<Pc> {
-        if self.pc < self.function.size() { Some(self.pc) } else { None }
     }
 
     pub fn get_local_place_state(&self, symbol: Symbol) -> PlaceState {

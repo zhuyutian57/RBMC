@@ -13,7 +13,7 @@ use crate::symbol::symbol::*;
 pub struct Renaming {
     l1_renaming: HashMap<Ident, usize>,
     l2_renaming: HashMap<(Ident, usize), usize>,
-    constant_map: HashMap<Symbol, Expr>,
+    pub constant_map: HashMap<Symbol, Expr>,
 }
 
 impl Renaming {
@@ -42,7 +42,7 @@ impl Renaming {
     }
 
     pub fn variables(&self) -> Vec<Ident> {
-        self.l1_renaming.keys().map(|x| *x).collect::<Vec<_>>()
+        self.l1_renaming.keys().map(|&x| x).collect::<Vec<_>>()
     }
 
     pub fn l2_count(&self, key: (Ident, usize)) -> usize {

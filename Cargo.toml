@@ -3,6 +3,9 @@ name = "rust-bmc"
 version = "0.1.0"
 edition = "2024"
 
+[profile.release]
+strip = "debuginfo"
+
 [dependencies]
 cargo_metadata = "0.19.2"
 home = "0.5.11"

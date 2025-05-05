@@ -33,7 +33,7 @@ pub struct ExecutionState<'cfg> {
     frames: Vec<Frame<'cfg>>,
     frame_map: HashMap<usize, usize>,
     pub(super) objects: Vec<Expr>,
-    pub(super) renaming: RefCell<Renaming>,
+    pub(super) renaming: Renaming,
 }
 
 impl<'cfg> ExecutionState<'cfg> {
@@ -48,7 +48,7 @@ impl<'cfg> ExecutionState<'cfg> {
             frames: Vec::new(),
             frame_map: HashMap::new(),
             objects: Vec::new(),
-            renaming: RefCell::new(Renaming::default()),
+            renaming: Renaming::default(),
         }
     }
 
@@ -65,7 +65,7 @@ impl<'cfg> ExecutionState<'cfg> {
     }
 
     pub fn can_exec(&self) -> bool {
-        self.frames.len() > 1 || self.frames.len() == 1 && self.top().cur_pc() != None
+        !self.frames.is_empty()
     }
 
     pub fn cur_span(&self) -> Option<Span> {
@@ -92,6 +92,7 @@ impl<'cfg> ExecutionState<'cfg> {
             panic!("We stuck in a loop, please increase the loop bound");
         }
 
+        self.cur_state.guard.make_false();
         self.top_mut().pc = *self.top().unexplored_states.keys().min().unwrap();
     }
 
@@ -150,8 +151,8 @@ impl<'cfg> ExecutionState<'cfg> {
         let ident = sym.ident();
         let l1_num = sym.l1_num();
         let new_sym = match level {
-            Level::Level1 => self.renaming.borrow_mut().new_l1_symbol(ident),
-            Level::Level2 => self.renaming.borrow_mut().new_l2_symbol(ident, l1_num),
+            Level::Level1 => self.renaming.new_l1_symbol(ident),
+            Level::Level2 => self.renaming.new_l2_symbol(ident, l1_num),
             _ => panic!(),
         };
         self.ctx.mk_symbol(new_sym, symbol.ty())
@@ -167,9 +168,9 @@ impl<'cfg> ExecutionState<'cfg> {
         assert!(level != Level::Level0);
         let ident = self.top().local_ident(local);
         let symbol = if level == Level::Level1 {
-            self.renaming.borrow_mut().current_l1_symbol(ident)
+            self.renaming.current_l1_symbol(ident)
         } else {
-            self.renaming.borrow_mut().current_l2_symbol(ident, 0)
+            self.renaming.current_l2_symbol(ident, 0)
         };
         let ty = self.top().function.local_type(local);
         self.ctx.mk_symbol(symbol, ty)
@@ -179,19 +180,19 @@ impl<'cfg> ExecutionState<'cfg> {
         assert!(level != Level::Level0);
         let ident = self.top().local_ident(local);
         let symbol = if level == Level::Level1 {
-            self.renaming.borrow_mut().new_l1_symbol(ident)
+            self.renaming.new_l1_symbol(ident)
         } else {
-            self.renaming.borrow_mut().new_l2_symbol(ident, 0)
+            self.renaming.new_l2_symbol(ident, 0)
         };
         let ty = self.top().function.local_type(local);
         self.ctx.mk_symbol(symbol, ty)
     }
 
-    pub fn rename(&self, expr: &mut Expr, level: Level) {
+    pub fn rename(&mut self, expr: &mut Expr, level: Level) {
         match level {
             Level::Level0 => return,
-            Level::Level1 => self.renaming.borrow_mut().l1_rename(expr),
-            Level::Level2 => self.renaming.borrow_mut().l2_rename(expr, true),
+            Level::Level1 => self.renaming.l1_rename(expr),
+            Level::Level2 => self.renaming.l2_rename(expr, true),
         };
     }
 
@@ -202,12 +203,12 @@ impl<'cfg> ExecutionState<'cfg> {
         }
 
         if !self.is_constant_value(rhs.clone()) {
-            self.renaming.borrow_mut().constant_propagate(lhs, None);
+            self.renaming.constant_propagate(lhs, None);
             return;
         }
 
         assert!(lhs.is_symbol());
-        self.renaming.borrow_mut().constant_propagate(lhs, Some(rhs));
+        self.renaming.constant_propagate(lhs, Some(rhs));
     }
 
     fn is_constant_value(&self, expr: Expr) -> bool {
