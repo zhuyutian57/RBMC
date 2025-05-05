@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::VecDeque;
 
 use stable_mir::mir::mono::Instance;
 use stable_mir::mir::*;
@@ -28,7 +29,11 @@ pub struct Function {
 
 impl Function {
     fn init(&mut self) {
-        // Find locals without StorageLive
+        self.init_locals_without_storagelive();
+        self.reconstruct_body();
+    }
+
+    fn init_locals_without_storagelive(&mut self) {
         for local in 1..self.locals().len() {
             let mut is_alive = true;
             for bb in &self.body.blocks {
@@ -43,43 +48,145 @@ impl Function {
                 self._local_alive.insert(local);
             }
         }
-        // Find all loops
+    }
+
+    fn reconstruct_body(&mut self) {
+        let mut n: usize = self.body.blocks.len();
+        let mut bb_map = HashMap::<usize, usize>::new();
+        let ret_blocks = self.body.blocks
+            .iter()
+            .enumerate()
+            .filter(
+                |&(_, bb)| matches!(bb.terminator.kind, TerminatorKind::Return)
+            )
+            .map(|(i, _)| i)
+            .collect::<Vec<_>>();
+        for (i, &bb) in ret_blocks.iter().enumerate() {
+            bb_map.insert(bb, n - 1 - i);
+        }
+        if ret_blocks.len() > 1 { n += 1; }
+
+        let mut remaining_blocks = self.body.blocks
+            .iter()
+            .enumerate()
+            .filter(
+                |&(_, bb)| !matches!(bb.terminator.kind, TerminatorKind::Return)
+            )
+            .map(|(i, _)| i)
+            .collect::<HashSet<_>>();
+
+        self.reconstruct_blocks(0, 0, remaining_blocks, &mut bb_map);
+
+        let mut new_blocks = Vec::new();
+        let mut bb_map_vec = bb_map.clone().into_iter().collect::<Vec<_>>();
+        bb_map_vec.sort_by(|a, b| a.1.cmp(&b.1));
+        for (bb, new_bb) in bb_map_vec {
+            assert!(new_bb == new_blocks.len());
+            let mut new_block = self.body.blocks[bb].clone();
+            match &mut new_block.terminator.kind {
+                TerminatorKind::Goto { target } |
+                TerminatorKind::Drop { target, .. } |
+                TerminatorKind::Assert { target, .. }
+                    => *target = *bb_map.get(target).unwrap(),
+                TerminatorKind::Call { target, .. }
+                    => if let Some(t) = target { *t = *bb_map.get(t).unwrap(); }
+                TerminatorKind::SwitchInt { targets, .. } => {
+                    let mut new_branches = Vec::new();
+                    for (discr, successor) in targets.branches() {
+                        let new_successor = *bb_map.get(&successor).unwrap();
+                        new_branches.push((discr, new_successor));
+                    }
+                    let new_otherwise = *bb_map.get(&targets.otherwise()).unwrap();
+                    *targets = SwitchTargets::new(new_branches, new_otherwise);
+                }
+                _ => {},
+            }
+            if ret_blocks.len() > 1 &&
+                matches!(new_block.terminator.kind, TerminatorKind::Return) {
+                new_block.terminator.kind = TerminatorKind::Goto { target: n - 1 };
+            }
+            new_blocks.push(new_block);
+        }
+        // New return block
+        if ret_blocks.len() > 1 {
+            let ret_span = self.basicblock(ret_blocks[0]).terminator.span;
+            new_blocks.push(
+                BasicBlock {
+                    statements: vec![],
+                    terminator: Terminator {
+                        kind: TerminatorKind::Return,
+                        span: ret_span
+                    }
+                }
+            );
+        }
+        self.body.blocks = new_blocks;
+    }
+
+    fn reconstruct_blocks(
+        &mut self,
+        entry: BasicBlockIdx,
+        prefix_nodes: usize,
+        remaining_blocks: HashSet<BasicBlockIdx>,
+        bb_map: &mut HashMap<usize, usize>
+    ) {
+        if bb_map.contains_key(&entry) { return; }
+        let mut back_edge_src = None;
         let mut predecessors: HashMap<usize, HashSet<usize>> = HashMap::new();
-        for i in 0..self.body.blocks.len() {
+        for &i in remaining_blocks.iter() {
             for j in self.body.blocks[i].terminator.successors() {
+                if !remaining_blocks.contains(&j) { continue; }
                 predecessors.entry(j).or_default();
                 predecessors.entry(j).and_modify(|x| {
                     x.insert(i);
                 });
+                if j == entry { back_edge_src = Some(i); }
             }
         }
-        for i in 0..self.body.blocks.len() {
-            for j in self.body.blocks[i].terminator.successors() {
-                // Back edge
-                if i > j {
-                    let mut _loop = HashSet::new();
-                    _loop.insert(i);
-                    let mut stack = vec![i];
-                    while !stack.is_empty() {
-                        let n = stack.pop().unwrap();
-                        if n == j {
-                            continue;
-                        }
-                        if let Some(preds) = predecessors.get(&n) {
-                            for pred in preds {
-                                if !_loop.contains(pred) {
-                                    _loop.insert(*pred);
-                                    stack.push(*pred);
-                                }
-                            }
-                        }
-                    }
-                    if !_loop.contains(&j) {
-                        continue;
-                    }
-                    self._loops.insert(j, _loop);
+        // Compute the SCC from entry.
+        let mut suffix_remaining_blocks = remaining_blocks;
+        let mut scc = HashSet::new();
+        scc.insert(entry);
+        suffix_remaining_blocks.remove(&entry);
+        if let Some(src) = back_edge_src {
+            scc.insert(src);
+            let mut work = VecDeque::new();
+            work.push_back(src);;
+            while !work.is_empty() {
+                let j = work.pop_front().unwrap();
+                if !suffix_remaining_blocks.contains(&j) { continue; }
+                scc.insert(j);
+                suffix_remaining_blocks.remove(&j);
+                for &i in predecessors.get(&j).unwrap() {
+                    if !suffix_remaining_blocks.contains(&i) { continue; }
+                    work.push_back(i);
                 }
             }
+        }
+        // Reconstruct the remaining basic blocks.
+        if !suffix_remaining_blocks.is_empty() {
+            let suffix_entry = *suffix_remaining_blocks.iter().min().unwrap();
+            let suffix_prefix_nodes = prefix_nodes + scc.len();
+            self.reconstruct_blocks(
+                suffix_entry, suffix_prefix_nodes, suffix_remaining_blocks, bb_map
+            );
+        }
+        // Reconstruct the current SCC.
+        let mut scc_remaining_blocks = scc.clone();
+        // Fix positions of the bound of SCC.
+        bb_map.insert(entry, prefix_nodes);
+        scc_remaining_blocks.remove(&entry);
+        if let Some(src) = back_edge_src {
+            bb_map.insert(src, prefix_nodes + scc.len() - 1);
+            scc_remaining_blocks.remove(&src);
+        }
+        // Recursively reconstruct the body of SCC.
+        if !scc_remaining_blocks.is_empty() {
+            let scc_entry = *scc_remaining_blocks.iter().min().unwrap();
+            let scc_prefix_nodes = prefix_nodes + 1;
+            self.reconstruct_blocks(
+                scc_entry, scc_prefix_nodes, scc_remaining_blocks, bb_map
+            );
         }
     }
 
