@@ -479,7 +479,8 @@ impl<'cfg> ExecutionState<'cfg> {
     }
 
     pub(super) fn remove_pointers_by(&mut self, prefix: NString) {
-        let pointers = self.top()
+        let pointers = self
+            .top()
             .local_pointers
             .iter()
             .filter(|&pt| pt.starts_with(prefix))
