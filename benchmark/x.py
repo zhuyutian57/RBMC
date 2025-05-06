@@ -71,7 +71,7 @@ def kani(file):
   os.environ["RUSTFLAGS"] = "-Awarnings -Copt-level=1"
 
   cmd = [
-    "../../kani/target/kani/bin/kani",
+    "kani",
     tmp_file,
     "--no-default-checks",
     "--no-unwinding-checks",
