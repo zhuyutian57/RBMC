@@ -72,19 +72,8 @@ impl State {
         self.remove_pointer_by(NString::from(format!("{pt:?}")));
     }
 
-    pub fn remove_pointer_by(&mut self, str: NString) {
-        self.value_set.remove(str);
-    }
-
-    /// Only used for special case. Don't use it frequently. Since
-    /// this function will copy all keys(pointers) in value set and
-    /// iterate them. The preformance is `O(n)`.
-    pub fn remove_pointer_with_prefix(&mut self, prefix: NString) {
-        for pt in self.value_set.pointers() {
-            if pt.starts_with(prefix) {
-                self.value_set.remove(pt);
-            }
-        }
+    pub fn remove_pointer_by(&mut self, pt: NString) {
+        self.value_set.remove(pt);
     }
 
     pub fn assign(&mut self, pt: Expr, values: ObjectSet) {

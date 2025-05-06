@@ -106,13 +106,8 @@ impl<'cfg> Symex<'cfg> {
                 );
             }
         }
-        // let now = std::time::Instant::now();
-        let is_unwind = self.symex_terminator(&bb.terminator);
-        // let t = now.elapsed().as_secs_f32();
-        // if t > 0.001 {
-        //     println!("{function_name:?} - bb{pc} - {i}");
-        // }
 
+        let is_unwind = self.symex_terminator(&bb.terminator);
         if !is_unwind
             && self.config.enable_display_state_terminator()
             && self.config.enable_display_state_in_function(function_name)
@@ -142,12 +137,7 @@ impl<'cfg> Symex<'cfg> {
         let l1_local = self.exec_state.current_local(local, Level::Level1);
         // Remove all pointers prefixed by this local
         let ident = l1_local.extract_symbol().l1_name();
-        for local_pointer in self.top().local_pointers.clone() {
-            if local_pointer.starts_with(ident) {
-                self.exec_state.cur_state.remove_pointer_by(local_pointer);
-                self.top_mut().local_pointers.remove(&local_pointer);
-            }
-        }
+        self.exec_state.remove_pointers_by(ident);
     }
 
     fn symex_terminator(&mut self, terminator: &Terminator) -> bool {

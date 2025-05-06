@@ -403,7 +403,7 @@ impl<'cfg> ExecutionState<'cfg> {
         if lhs.ty().is_enum() {
             // Remove all possible fields firstly.
             let prefix = NString::from(format!("{lhs:?}.0"));
-            self.cur_state.remove_pointer_with_prefix(prefix);
+            self.remove_pointers_by(prefix);
             // Do assignment
             if rhs.is_variant() || rhs.is_constant() {
                 let (data, i) = if rhs.is_variant() {
@@ -475,6 +475,19 @@ impl<'cfg> ExecutionState<'cfg> {
         let pt = l1_lhs.extract_symbol().name();
         if pt.starts_with(self.top().frame_ident()) {
             self.top_mut().local_pointers.insert(pt);
+        }
+    }
+
+    pub(super) fn remove_pointers_by(&mut self, prefix: NString) {
+        let pointers = self.top()
+            .local_pointers
+            .iter()
+            .filter(|&pt| pt.starts_with(prefix))
+            .cloned()
+            .collect::<Vec<_>>();
+        for pt in pointers {
+            self.top_mut().local_pointers.remove(&pt);
+            self.cur_state.remove_pointer_by(pt);
         }
     }
 }
