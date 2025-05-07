@@ -15,12 +15,23 @@ pub(super) struct ValueSet {
 }
 
 impl ValueSet {
-    pub fn contains(&self, pt: NString) -> bool {
-        self._points_to_map.contains_key(&pt)
+    pub fn contains(&self, ident: NString) -> bool {
+        self._points_to_map.contains_key(&ident)
     }
 
-    pub fn insert(&mut self, pt: NString, objects: ObjectSet) {
-        self._points_to_map.insert(pt, objects);
+    pub fn insert(&mut self, ident: NString, values: ObjectSet, is_union: bool) {
+        if is_union {
+            self._points_to_map.entry(ident)
+                .and_modify(
+                    |s|
+                    values.iter().for_each(|object| {
+                        s.insert(object.clone());
+                    })
+                )
+                .or_insert(values);
+        } else {
+            self._points_to_map.insert(ident, values);
+        }
     }
 
     pub fn union(&mut self, rhs: &ValueSet) {
@@ -36,12 +47,12 @@ impl ValueSet {
         }
     }
 
-    pub fn remove(&mut self, pt: NString) {
-        self._points_to_map.remove(&pt);
+    pub fn remove(&mut self, ident: NString) {
+        self._points_to_map.remove(&ident);
     }
 
-    pub fn get(&self, pt: NString, objects: &mut ObjectSet) {
-        if let Some(s) = self._points_to_map.get(&pt) {
+    pub fn get(&self, ident: NString, objects: &mut ObjectSet) {
+        if let Some(s) = self._points_to_map.get(&ident) {
             for object in s {
                 objects.insert(object.clone());
             }

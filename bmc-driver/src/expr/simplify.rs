@@ -381,7 +381,7 @@ impl Expr {
                 let constant = inner_expr.extract_constant();
                 if inner_expr.ty().is_struct() || inner_expr.ty().is_tuple() {
                     let (fields, _) = constant.to_adt();
-                    let ty = inner_expr.ty().field_type_exclude_zst(idx);
+                    let ty = inner_expr.ty().field_type(idx);
                     *self = self.ctx.constant(fields[idx].clone(), ty);
                 } else if inner_expr.ty().is_array() {
                     let (value, ty) = constant.to_array();
@@ -399,6 +399,11 @@ impl Expr {
                 let data = inner_expr.extract_variant_data();
                 *self = self.ctx.index(data, i, self.ty());
                 self.simplify();
+            } else if inner_expr.is_store() && inner_expr.extract_index().is_constant() {
+                let j = inner_expr.extract_index().extract_constant();
+                if i.extract_constant().to_integer() == j.to_integer() {
+                    *self = inner_expr.extract_update_value();
+                }
             }
         } else if inner_expr.is_store() {
             let mut update_index = inner_expr.extract_index();

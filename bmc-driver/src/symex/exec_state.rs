@@ -354,11 +354,26 @@ impl<'cfg> ExecState<'cfg> {
         }
 
         // Update value Set
-        self.assign_value_set(lhs, rhs);
+        let mut l1_rhs = rhs;
+        self.rename(&mut l1_rhs, Level::Level1);
+        self.assign_value_set(lhs, l1_rhs, false);
     }
 
-    fn assign_value_set(&mut self, lhs: Expr, rhs: Expr) {
+    fn assign_value_set(&mut self, lhs: Expr, rhs: Expr, is_union: bool) {
         if !lhs.ty().contains_ptr_field() {
+            return;
+        }
+
+        if rhs.is_ite() {
+            let true_value = rhs.extract_true_value();
+            self.assign_value_set(lhs.clone(), true_value, false);
+            let false_value = rhs.extract_false_value();
+            self.assign_value_set(lhs, false_value, true);
+            return;
+        }
+
+        if rhs.is_object() {
+            self.assign_value_set(lhs, rhs.extract_inner_expr(), is_union);
             return;
         }
 
@@ -374,34 +389,20 @@ impl<'cfg> ExecState<'cfg> {
                 }
                 let idx = self.ctx.constant_usize(i);
                 let lhs_field = self.ctx.index(lhs_object.clone(), idx.clone(), fty);
-                let rhs_field = self.ctx.index(rhs_object.clone(), idx.clone(), fty);
-                self.assign_value_set(lhs_field, rhs_field);
+                let mut rhs_field = self.ctx.index(rhs_object.clone(), idx.clone(), fty);
+                rhs_field.simplify();
+                self.assign_value_set(lhs_field, rhs_field, is_union);
             }
             return;
         }
 
-        if lhs.is_index() {
-            // Identifier form: `<l1_name>.<field_id/field_name>`
-            assert!(lhs.extract_index().is_constant());
-            // Use global as a wrapper.
-            let ident = Ident::Global(NString::from(format!("{lhs:?}")));
-            let name = Symbol::from(ident);
-            let new_lhs = self.ctx.mk_symbol(name, lhs.ty());
-            let mut new_rhs = rhs.clone();
-            new_rhs.simplify();
-            self.assign_value_set(new_lhs, new_rhs);
-            return;
-        }
-
-        assert!(lhs.is_symbol());
-
         // For enum, we flat all fields of all variants in value set.
         // For example, `enum Node { A, B(i32), C(u8, u8) }` has three fields.
-        // A variable `x` of type `Node` has three fields of form `x.0[<variant_idx>-<field>]`,
+        // A variable `x` of type `Node` has three fields of form `x.data(<variant_idx>)`,
         // in value set, e.g. `x.0[1-0]`, `x.0[2-0]` and `x.0[2-1]`, where `0` denote the data field.
         if lhs.ty().is_enum() {
             // Remove all possible fields firstly.
-            let prefix = NString::from(format!("{lhs:?}.0"));
+            let prefix = NString::from(format!("{lhs:?}.data"));
             self.remove_pointers_by(prefix);
             // Do assignment
             if rhs.is_variant() || rhs.is_constant() {
@@ -420,18 +421,18 @@ impl<'cfg> ExecState<'cfg> {
                 if data.ty().is_zero_sized_type() {
                     return;
                 }
-                let rhs_object = self.ctx.object(data.clone());
+                let idx = self.ctx.constant_usize(i);
+                let lhs_enum = self.ctx.as_variant(lhs.clone(), idx);
                 for j in 0..data.ty().fields() {
-                    let ident = Ident::Global(NString::from(format!("{lhs:?}.0[{i}-{j}]")));
                     let fty = data.ty().field_type(j);
                     if fty.is_zero_sized_type() {
                         continue;
                     }
-                    let new_lhs = self.ctx.mk_symbol(ident.into(), fty);
-                    let mut new_rhs =
-                        self.ctx.index(rhs_object.clone(), self.ctx.constant_usize(j), fty);
+                    let field = self.ctx.constant_usize(j);
+                    let new_lhs = self.ctx.index(lhs_enum.clone(), field.clone(), fty);
+                    let mut new_rhs = self.ctx.index(data.clone(), field, fty);
                     new_rhs.simplify();
-                    self.assign_value_set(new_lhs, new_rhs);
+                    self.assign_value_set(new_lhs, new_rhs, is_union);
                 }
             } else {
                 for i in 0..lhs.ty().enum_variants() {
@@ -439,18 +440,18 @@ impl<'cfg> ExecState<'cfg> {
                     if data_ty.is_zero_sized_type() {
                         continue;
                     }
-                    let rhs_object = self.ctx.object(rhs.clone());
+                    let idx = self.ctx.constant_usize(i);
+                    let lhs_enum = self.ctx.as_variant(lhs.clone(), idx.clone());
+                    let rhs_enum = self.ctx.as_variant(rhs.clone(), idx);
                     for j in 0..data_ty.fields() {
-                        let ident = Ident::Global(NString::from(format!("{lhs:?}.0[{i}-{j}]")));
                         let fty = data_ty.field_type(j);
                         if fty.is_zero_sized_type() {
                             continue;
                         }
-                        let new_lhs = self.ctx.mk_symbol(ident.into(), fty);
-                        let mut new_rhs =
-                            self.ctx.index(rhs_object.clone(), self.ctx.constant_usize(j), fty);
-                        new_rhs.simplify();
-                        self.assign_value_set(new_lhs, new_rhs);
+                        let field = self.ctx.constant_usize(j);
+                        let new_lhs = self.ctx.index(lhs_enum.clone(), field.clone(), fty);
+                        let new_rhs = self.ctx.index(rhs_enum.clone(), field, fty);
+                        self.assign_value_set(new_lhs, new_rhs, is_union);
                     }
                 }
             }
@@ -458,23 +459,63 @@ impl<'cfg> ExecState<'cfg> {
         }
 
         assert!(lhs.ty().is_primitive_ptr());
-        self.assignment_value_set(lhs, rhs);
+        let mut rhs_values = ObjectSet::new();
+        self.cur_state.get_value_set(rhs, &mut rhs_values);
+        self.assign_value_set_rec(lhs, rhs_values, NString::EMPTY, is_union);
     }
 
-    fn assignment_value_set(&mut self, lhs: Expr, rhs: Expr) {
-        let l1_lhs = lhs.clone();
-        let mut l1_rhs = rhs.clone();
-        // lhs is already in level1
-        self.rename(&mut l1_rhs, Level::Level1);
-        let mut objects = ObjectSet::new();
-        self.cur_state.get_value_set(l1_rhs.clone(), &mut objects);
-        self.cur_state.assign(l1_lhs.clone(), objects);
+    fn assign_value_set_rec(
+        &mut self,
+        lhs: Expr,
+        rhs_values: ObjectSet,
+        suffix: NString,
+        is_union: bool
+    ) {
+        if lhs.is_symbol() {
+            let ident = lhs.extract_symbol().name() + suffix;
+            self.cur_state.assign(ident, rhs_values, is_union);
 
-        // Cache local pointers
-        let pt = l1_lhs.extract_symbol().name();
-        if pt.starts_with(self.top().frame_ident()) {
-            self.top_mut().local_pointers.insert(pt);
+            // Cache local pointers
+            if ident.starts_with(self.top().frame_ident()) {
+                self.top_mut().local_pointers.insert(ident);
+            }
+            return;
         }
+
+        if lhs.is_object() {
+            self.assign_value_set_rec(lhs.extract_inner_expr(), rhs_values, suffix, is_union);
+            return;
+        }
+
+        if lhs.is_index() {
+            let object = lhs.extract_object();
+            let index = lhs.extract_index();
+            assert!(index.is_constant());
+            let i = bigint_to_usize(&index.extract_integer());
+            let new_suffix = if object.ty().is_array() {
+                NString::from(format!("[{i}]"))
+            } else if object.ty().is_tuple() {
+                NString::from(format!(".{i}"))
+            } else if object.ty().is_struct() {
+                NString::from(format!(".{:?}", object.ty().struct_def().1[i].0))
+            } else {
+                assert!(object.ty().is_enum());
+                // Let AsVariant to solve the suffix
+                NString::EMPTY
+            } + suffix;
+            self.assign_value_set_rec(object, rhs_values, new_suffix, is_union);
+            return;
+        }
+
+        if lhs.is_as_variant() {
+            let _enum = lhs.extract_enum();
+            let i = lhs.extract_variant_idx();
+            let new_suffix = NString::from(format!(".data({i})")) + suffix;
+            self.assign_value_set_rec(_enum, rhs_values, new_suffix, is_union);
+            return;
+        }
+
+        todo!("{lhs:?}");
     }
 
     pub(super) fn remove_pointers_by(&mut self, prefix: NString) {

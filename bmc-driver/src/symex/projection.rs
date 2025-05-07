@@ -226,9 +226,7 @@ impl<'a, 'cfg> Projection<'a, 'cfg> {
     /// Notice that `offset` is in field-level
     fn build_with_const_offset(&mut self, object: Expr, offset: BigInt, ty: Type) -> Expr {
         let i = bigint_to_usize(&offset);
-        let index = self._ctx.constant_usize(i);
-        let new_object = if object.is_object() { object } else { self._ctx.object(object) };
-        self._ctx.index(new_object, index, ty)
+        self._ctx.index(object, self._ctx.constant_usize(i), ty)
     }
 
     fn valid_check(&mut self, object: Expr, state: PlaceState, mode: Mode, guard: Guard) {

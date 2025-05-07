@@ -265,7 +265,7 @@ impl Type {
     }
 
     pub fn contains_ptr_field(&self) -> bool {
-        if self.is_bool() || self.is_integer() {
+        if self.is_bool() || self.is_integer() || self.is_unit() {
             return false;
         }
 
@@ -435,29 +435,6 @@ impl Type {
         };
         assert!(field < fdefs.len());
         fdefs[field]
-    }
-
-    /// Field type of `struct/tuple`, excluding ZST.
-    pub fn field_type_exclude_zst(&self, field: usize) -> Type {
-        let fdefs = if self.is_struct() {
-            self.struct_def().1.iter().map(|(_, ty)| *ty).collect::<Vec<_>>()
-        } else if self.is_tuple() {
-            self.tuple_def()
-        } else {
-            panic!("Not struct and tuple")
-        };
-        let (mut i, mut j) = (0, 0);
-        loop {
-            if !fdefs[i].is_zero_sized_type() {
-                j += 1;
-            }
-            if j == field + 1 {
-                break;
-            }
-            i += 1;
-        }
-        assert!(i < fdefs.len());
-        fdefs[i]
     }
 
     pub fn fn_def(&self) -> FunctionDef {
