@@ -33,7 +33,7 @@ if __name__ == "__main__":
     action="store_true",
     help="Run `cargo uinsntall-rbmc`")
   parser.add_argument(
-    "-r", "--file",
+    "-f", "--file",
     type=str,
     help="Run `cargo run --bin rbmc *.rs -- <RBMC_ARGS>`")
   parser.add_argument(
