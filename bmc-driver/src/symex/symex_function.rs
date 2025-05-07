@@ -2,8 +2,6 @@ use stable_mir::mir::mono::Instance;
 use stable_mir::mir::*;
 
 use super::frame::Frame;
-use super::place_state::NPlace;
-use super::place_state::PlaceState;
 use super::symex::*;
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
@@ -143,6 +141,8 @@ impl<'cfg> Symex<'cfg> {
             if let Some(l1_count) = self.exec_state.renaming.remove_l1_renaming_by_key(ident) {
                 for l1_num in 1..l1_count + 1 {
                     self.exec_state.renaming.remove_l2_renaming_by_key((ident, l1_num));
+                    let symbol = Symbol::new(ident, l1_num, 0, Level::Level1);
+                    self.exec_state.renaming.remove_constant_map_by_key(symbol);
                 }
             }
         }

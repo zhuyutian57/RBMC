@@ -40,10 +40,6 @@ impl ValueSet {
         self._points_to_map.remove(&pt);
     }
 
-    pub fn pointers(&self) -> HashSet<NString> {
-        self._points_to_map.keys().map(|x| *x).collect::<HashSet<NString>>()
-    }
-
     pub fn get(&self, pt: NString, objects: &mut ObjectSet) {
         if let Some(s) = self._points_to_map.get(&pt) {
             for object in s {

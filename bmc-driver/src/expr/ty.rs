@@ -229,10 +229,6 @@ impl Type {
         self.0.kind().is_box()
     }
 
-    pub fn is_vec(&self) -> bool {
-        self.name() == "Vec"
-    }
-
     pub fn is_primitive_ptr(&self) -> bool {
         self.is_ptr() || self.is_ref()
     }
@@ -510,15 +506,6 @@ impl Type {
     /// Size in bytes
     pub fn size(&self) -> usize {
         self.0.layout().expect("No layout?").shape().size.bytes()
-    }
-
-    /// Get the size of a field of a struct/tuple after padding
-    pub fn field_size(&self, field: usize) -> usize {
-        assert!(self.is_struct() || self.is_tuple());
-        let fty = self.field_type(field);
-        let size = fty.size();
-        let align = self.align();
-        (size / align + if size % align != 0 { 1 } else { 0 }) * align
     }
 
     pub fn align(&self) -> usize {

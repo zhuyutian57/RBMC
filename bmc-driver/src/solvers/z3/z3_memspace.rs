@@ -22,22 +22,6 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
             )
             .finish();
         self.datatypes.insert((NString::from("pointer"), vec![]), pointer_tuple_sort);
-
-        // General pointer sort
-        let pointer_sort = self.pointer_sort();
-
-        // A vec pointer is a tuple (pointer, len, cap)
-        let vec_tuple_sort = z3::DatatypeBuilder::new(&self.z3_ctx, "vec")
-            .variant(
-                "vec",
-                vec![
-                    ("vec_ptr", DatatypeAccessor::Sort(pointer_sort.clone())),
-                    ("vec_len", DatatypeAccessor::Sort(self.mk_int_sort())),
-                    ("vec_cap", DatatypeAccessor::Sort(self.mk_int_sort())),
-                ],
-            )
-            .finish();
-        self.datatypes.insert((NString::from("vec"), vec![]), vec_tuple_sort);
     }
 
     fn pointer_sort(&self) -> z3::Sort<'ctx> {

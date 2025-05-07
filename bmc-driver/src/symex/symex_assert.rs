@@ -25,6 +25,11 @@ impl<'cfg> Symex<'cfg> {
         }
         self.vc_system.borrow_mut().assert(msg, cond, self.exec_state.cur_span());
 
-        self.top_mut().pc += 1;
+        if self.top().pc + 1 == *target {
+            self.top_mut().pc += 1;
+        } else {
+            let state = self.exec_state.cur_state.clone();
+            self.cache_unexplored_state(*target, state);
+        }
     }
 }

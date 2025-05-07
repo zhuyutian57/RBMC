@@ -20,10 +20,6 @@ pub enum Constant {
 }
 
 impl Constant {
-    pub fn is_bool(&self) -> bool {
-        matches!(self, Constant::Bool(..))
-    }
-
     pub fn is_integer(&self) -> bool {
         matches!(self, Constant::Integer(..))
     }

@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
 
 use stable_mir::mir::*;
@@ -20,7 +19,7 @@ use crate::symbol::symbol::*;
 use crate::symex::place_state::*;
 
 /// Execution state representing the state of the current program.
-pub struct ExecutionState<'cfg> {
+pub struct ExecState<'cfg> {
     config: &'cfg Config,
     ctx: ExprCtx,
     span: Option<Span>,
@@ -35,9 +34,9 @@ pub struct ExecutionState<'cfg> {
     pub(super) renaming: Renaming,
 }
 
-impl<'cfg> ExecutionState<'cfg> {
+impl<'cfg> ExecState<'cfg> {
     pub fn new(config: &'cfg Config, ctx: ExprCtx) -> Self {
-        ExecutionState {
+        ExecState {
             config: config,
             ctx: ctx.clone(),
             span: None,
@@ -102,7 +101,7 @@ impl<'cfg> ExecutionState<'cfg> {
         target: Option<BasicBlockIdx>,
     ) {
         self.n += 1;
-        let mut frame = Frame::new(self.n, self.config.program.function(i), dest, target);
+        let frame = Frame::new(self.n, self.config.program.function(i), dest, target);
         self.frames.push(frame);
         self.frame_map.insert(self.n, self.frames.len() - 1);
         // init namspace

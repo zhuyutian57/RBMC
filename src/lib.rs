@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-// This `lib` is a wrapper for running `rbmc-driver`.
+// This `lib` is a wrapper for running `bmc-driver`.
 //
-// For running `rbmc-driver`, we must do some works to retrieve correct MIR.
+// For running `bmc-driver`, we must do some works to retrieve correct MIR.
 //
 // Moreover, to retrieve the MIR of `std`, we must link the compiled `std`
 // libraries. That means we should reset the `--sysroot` via `rustc` argument.

@@ -9,10 +9,10 @@ We recommend using `x.py` to build and install the binary tools. Alternatively, 
 ## Binary
 
 We provide two binary tools, `rbmc` and `cargo-rbmc`.
-- `rbmc` is a wrapper of `rbmc-driver`. It aims to fix the environment for running `rbmc-driver`.
+- `rbmc` is a wrapper of `bmc-driver`. It aims to fix the environment for running `bmc-driver`.
 - `cargo-rbmc` is used for a project. `cargo-rbmc` will build the project by using `rbmc` as the compiler. It is still under development.
 
-Moreover, `rbmc-driver` is a wrapper of `rustc`. Our BMC algorithm is implemented as a callback function of `rustc`.
+Moreover, `bmc-driver` is a wrapper of `rustc`. Our BMC algorithm is implemented as a callback function of `rustc`.
 
 ## MIRV
 The older version is [MIRV](https://github.com/zhuyutian57/RBMC/tree/85bb1e0be607d49069a385d9ff52ba51b452668a)

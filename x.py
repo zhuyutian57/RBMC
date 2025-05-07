@@ -57,7 +57,7 @@ if __name__ == "__main__":
   elif args.wc:
     cmd = [
       "find",
-      "library", "rbmc-driver", "src", "utils",
+      "library", "bmc-driver", "src", "utils",
       "-name", "*rs",
       "|",
       "xargs", "wc", "-l"

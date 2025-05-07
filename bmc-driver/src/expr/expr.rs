@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fmt::Error;
 use std::hash::Hash;
@@ -578,25 +577,6 @@ impl Expr {
         }
 
         panic!("Need implementing for {self:?}");
-    }
-
-    pub fn unwrap_and(&self) -> HashSet<Expr> {
-        let mut s = HashSet::new();
-        if self.is_binary() {
-            if self.extract_bin_op() == BinOp::And {
-                for e in self.extract_lhs().unwrap_and() {
-                    s.insert(e);
-                }
-                for e in self.extract_rhs().unwrap_and() {
-                    s.insert(e);
-                }
-            } else {
-                s.insert(self.clone());
-            }
-        } else {
-            s.insert(self.clone());
-        }
-        s
     }
 }
 

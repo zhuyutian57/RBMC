@@ -2,7 +2,6 @@ use std::cmp::min;
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use crate::expr::expr::Expr;
 use crate::symbol::nstring::*;
 
 /// `Place State` is the abstraction of the ownership of
@@ -79,7 +78,14 @@ impl PlaceStates {
     }
 
     pub fn update(&mut self, nplace: NPlace, state: PlaceState) {
-        self._place_states_map.entry(nplace).and_modify(|s| *s = state).or_insert(state);
+        if state.is_dead() {
+            self._place_states_map.remove(&nplace);
+        } else {
+            self._place_states_map
+                .entry(nplace)
+                .and_modify(|s| *s = state)
+                .or_insert(state);
+        }
     }
 
     pub fn remove(&mut self, nplace: NPlace) {

@@ -75,8 +75,6 @@ fn build_bin() {
 
 fn build_libs() {
     let output_dir = build_root().join("lib");
-    // let rustc_args =
-    //     ["-Copt-level=1", "-Zalways-encode-mir", "-Zmir-enable-passes=+ReorderBasicBlocks"];
     let rustc_args = [
         "-C",
         "opt-level=1",
@@ -87,7 +85,7 @@ fn build_libs() {
         "-Z",
         "mir-enable-passes=+ReorderBasicBlocks",
     ];
-    let mut args = vec![
+    let args = vec![
         "-p",
         "rbmc",
         "-Z",

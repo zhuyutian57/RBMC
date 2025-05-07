@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::expr::expr::*;
 use crate::expr::ty::Type;
-use crate::symbol::nstring::NString;
 use crate::symbol::symbol::Ident;
 
 /// Use for record `l0` symbol, `l0` global objects and counting

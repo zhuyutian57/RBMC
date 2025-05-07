@@ -3,7 +3,6 @@ use stable_mir::mir::*;
 
 use super::exec_state::*;
 use super::frame::*;
-use super::place_state::*;
 use crate::config::config::Config;
 use crate::expr::context::*;
 use crate::expr::expr::*;
@@ -17,14 +16,14 @@ pub struct Symex<'cfg> {
     pub(super) config: &'cfg Config,
     pub(super) program: &'cfg Program,
     pub(super) ctx: ExprCtx,
-    pub(super) exec_state: ExecutionState<'cfg>,
+    pub(super) exec_state: ExecState<'cfg>,
     pub(super) vc_system: VCSysPtr,
 }
 
 impl<'cfg> Symex<'cfg> {
     pub fn new(config: &'cfg Config, vc_system: VCSysPtr) -> Self {
         let ctx = config.expr_ctx.clone();
-        let mut exec_state = ExecutionState::new(config, ctx.clone());
+        let mut exec_state = ExecState::new(config, ctx.clone());
         exec_state.setup();
 
         let mut symex =

@@ -14,7 +14,7 @@ use crate::symbol::nstring::NString;
 /// Abstract program state for each program point
 #[derive(Clone)]
 pub struct State {
-    pub ctx: ExprCtx,
+    pub(super) ctx: ExprCtx,
     pub(super) guard: Guard,
     pub(super) place_states: PlaceStates,
     pub(super) value_set: ValueSet,

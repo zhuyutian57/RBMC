@@ -82,7 +82,7 @@ impl Function {
             n += 1;
         }
 
-        let mut remaining_blocks = self
+        let remaining_blocks = self
             .body
             .blocks
             .iter()

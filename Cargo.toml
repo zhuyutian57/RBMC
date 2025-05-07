@@ -13,11 +13,11 @@ home = "0.5.11"
 [workspace]
 members = [
   "library",
-  "rbmc-driver",
+  "bmc-driver",
   "utils/build-rbmc"
 ]
 
 default-members = [
   ".",
-  "rbmc-driver"
+  "bmc-driver"
 ]

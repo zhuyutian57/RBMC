@@ -4,7 +4,6 @@ use stable_mir::abi::FieldsShape;
 use stable_mir::mir::Operand;
 use stable_mir::mir::Place;
 use stable_mir::mir::alloc::GlobalAlloc;
-use stable_mir::target::*;
 use stable_mir::ty::*;
 
 use super::projection::*;
@@ -46,7 +45,7 @@ impl<'cfg> Symex<'cfg> {
 
         let new_guard = nstate.guard.clone() - self.exec_state.cur_state.guard.clone();
 
-        let mut nrenaming = nstate.renaming.as_mut().unwrap();
+        let nrenaming = nstate.renaming.as_mut().unwrap();
         for ident in nrenaming.variables() {
             let symbol = nrenaming.current_l1_symbol(ident);
             let l1_ident = (symbol.ident(), symbol.l1_num());

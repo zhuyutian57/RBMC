@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use crate::expr::expr::*;
-use crate::symbol::nstring::*;
 use crate::symbol::symbol::*;
 
 /// Renaming for symbol
@@ -13,7 +12,7 @@ use crate::symbol::symbol::*;
 pub struct Renaming {
     l1_renaming: HashMap<Ident, usize>,
     l2_renaming: HashMap<(Ident, usize), usize>,
-    pub constant_map: HashMap<Symbol, Expr>,
+    constant_map: HashMap<Symbol, Expr>,
 }
 
 impl Renaming {
@@ -92,13 +91,15 @@ impl Renaming {
     }
 
     pub fn constant_propagate(&mut self, lhs: Expr, constant: Option<Expr>) {
+        let symbol = lhs.extract_symbol();
+        assert!(symbol.is_level1());
         if let Some(c) = constant {
             self.constant_map
-                .entry(lhs.extract_symbol())
+                .entry(symbol)
                 .and_modify(|x| *x = c.clone())
                 .or_insert(c);
         } else {
-            self.constant_map.remove(&lhs.extract_symbol());
+            self.constant_map.remove(&symbol);
         };
     }
 

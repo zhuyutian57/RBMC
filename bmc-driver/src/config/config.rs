@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 
-use stable_mir::target::MachineInfo;
 
 use super::cli::*;
 use crate::expr::context::*;
@@ -10,7 +9,6 @@ use crate::symbol::nstring::NString;
 
 pub struct Config {
     pub(crate) cli: Cli,
-    pub(crate) machine_info: MachineInfo,
     pub(crate) program: Program,
     pub(crate) expr_ctx: ExprCtx,
     pub(crate) solver_config: SolverCtx,
@@ -18,9 +16,6 @@ pub struct Config {
 
 impl Config {
     pub fn new(cli: Cli) -> Self {
-        // Machine info
-        let machine_info = MachineInfo::target();
-
         // Get stable mir
         let program = Program::new(stable_mir::local_crate(), cli.entry_function);
 
@@ -30,7 +25,7 @@ impl Config {
         // Initilized solver
         let solver_config = SolverCtx::new(&cli);
 
-        Config { cli, machine_info, program, expr_ctx, solver_config }
+        Config { cli, program, expr_ctx, solver_config }
     }
 
     pub fn enable_display_state(&self) -> bool {

@@ -94,6 +94,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c8214115b7bf84099f1309324e63141d4c5d7cc26862f97a0a857dbefe165bd"
 
 [[package]]
+name = "bmc-driver"
+version = "0.1.0"
+dependencies = [
+ "cargo_metadata",
+ "clap",
+ "num-bigint",
+ "z3",
+]
+
+[[package]]
 name = "build-rbmc"
 version = "0.1.0"
 dependencies = [
@@ -374,16 +384,6 @@ dependencies = [
 [[package]]
 name = "rbmc"
 version = "0.1.0"
-
-[[package]]
-name = "rbmc-driver"
-version = "0.1.0"
-dependencies = [
- "cargo_metadata",
- "clap",
- "num-bigint",
- "z3",
-]
 
 [[package]]
 name = "regex"
