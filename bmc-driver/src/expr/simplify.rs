@@ -529,8 +529,8 @@ impl Expr {
             }
         } else if _enum.is_constant() {
             let b = _enum.extract_constant().to_adt().0[0].to_integer();
-            let i = bigint_to_usize(&b);
-            assert!(i == j);
+            let idx = bigint_to_usize(&b);
+            assert!(j == idx);
             *self = _enum.clone();
         } else if changed {
             *self = self.ctx.as_variant(_enum, i);

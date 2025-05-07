@@ -241,7 +241,6 @@ impl State {
             || expr.is_slice()
             || expr.is_store()
             || expr.is_variant()
-            || expr.is_as_variant()
         {
             object_set.insert((self.ctx.object(expr), None));
             return;
@@ -287,6 +286,27 @@ impl State {
                 object_set.insert((final_object, Some(i.into())));
             }
             return;
+        }
+
+        if expr.is_as_variant() {
+            let variant_idx = expr.extract_variant_idx();
+            let mut inner_objects = ObjectSet::new();
+            self.get_object_rec(expr.extract_enum(), &mut inner_objects);
+            let inner_object_ty = expr.ty();
+            for (inner_object, offset) in inner_objects {
+                let new_object = if let Some(off) = offset {
+                    let idx = self.ctx.constant_integer(off, Type::usize_type());
+                    self.ctx.index(inner_object, idx, inner_object_ty)
+                } else {
+                    inner_object
+                };
+                let as_variant =
+                    self.ctx.as_variant(new_object, self.ctx.constant_usize(variant_idx));
+                let final_object = self.ctx.object(as_variant);
+                object_set.insert((final_object, None));
+            }
+            return;
+
         }
 
         if expr.is_invalid_object() {
