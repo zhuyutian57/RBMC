@@ -24,12 +24,14 @@ pub type FunctionDef = (FnDef, GenericArgs);
 /// `Layout::*`: All types in our memory models are field-level. We do not handle size
 /// and alignment now.
 ///
-/// `std::alloc::alloc`: The `alloc` function is a wrapper of `__rust_alloc`. In our
-/// memory model, we assume all allocations are successful. No need to unwind its body.
-/// `dealloc` is handled similiarly.
+/// `std::alloc::alloc`: Since `NullOp::UbChecks` and `NullOp::ContractChecks` are closed
+/// during symex, the checks inside `read_volatile` becomes uselesss. Thus, the `alloc` is
+/// just a wrapper of `__rust_alloc`. For simpilicity, `alloc` is handled by executed directly.
+/// `dealloc` is a wrapper of `__rust_dealloc`. It is also executed directly.
 ///
-/// `Box::*`: `Box` is a special struct in rust. In our memory model, `Box<T>` is a
-/// primitive type. Thus, some functions are executed directly instead of unwinding.
+/// `Box::<T>::new`: Box::new uses `exchange_malloc` to alloc memory and assigns the value to
+/// the allocated memory. It just use `Global::allocate` to alloc memory. It is a wrapper of
+/// `std::alloc::alloc` and `std::alloc::alloc_zeroed`.
 const STD_BUILTIN_FUNCTIONS: &[&str] = &[
     "std::alloc::alloc",
     "std::alloc::dealloc",
