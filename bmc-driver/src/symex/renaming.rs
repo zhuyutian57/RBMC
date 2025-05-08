@@ -123,13 +123,14 @@ impl Renaming {
         for sub_expr in sub_exprs.iter_mut() {
             self.l1_rename(sub_expr);
         }
-
         expr.replace_sub_exprs(sub_exprs);
     }
 
     pub fn l2_rename(&mut self, expr: &mut Expr, propagate: bool) {
         if expr.is_address_of() {
-            self.l1_rename(expr);
+            let mut inner = expr.extract_object();
+            self.rename_address(&mut inner, propagate);
+            expr.replace_sub_exprs(vec![inner]);
             return;
         }
 
@@ -154,12 +155,31 @@ impl Renaming {
 
         // Expr is not a leaf. There must be some sub-nodes in AST
         let mut sub_exprs = expr.sub_exprs();
-
         for (i, sub_expr) in sub_exprs.iter_mut().enumerate() {
             let prop = if i == 0 && expr.is_store() { false } else { propagate };
             self.l2_rename(sub_expr, prop);
         }
+        expr.replace_sub_exprs(sub_exprs);
+    }
 
+    fn rename_address(&mut self, expr: &mut Expr, propagate: bool) {
+        if expr.is_symbol() {
+            self.l1_rename(expr);
+            return;
+        } else if expr.is_index() {
+            let mut object = expr.extract_object();
+            let mut index = expr.extract_index();
+            self.rename_address(&mut object, propagate);
+            self.l2_rename(&mut index, propagate);
+            expr.replace_sub_exprs(vec![object, index]);
+            return;
+        }
+        
+        let mut sub_exprs = expr.sub_exprs();
+        for (i, sub_expr) in sub_exprs.iter_mut().enumerate() {
+            let prop = if i == 0 && expr.is_store() { false } else { propagate };
+            self.rename_address(sub_expr, prop);
+        }
         expr.replace_sub_exprs(sub_exprs);
     }
 

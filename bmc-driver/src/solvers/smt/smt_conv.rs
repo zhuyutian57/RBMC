@@ -6,6 +6,7 @@ use crate::expr::constant::Constant;
 use crate::expr::expr::*;
 use crate::expr::op::*;
 use crate::expr::ty::*;
+use crate::program::program::bigint_to_usize;
 use crate::solvers::solver::PResult;
 use crate::symbol::nstring::NString;
 
@@ -273,7 +274,17 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
                         Some(self.convert_struct(&fields, ty))
                     } else {
                         Some(self.convert_tuple(&fields, ty))
-                    }
+                    }  
+                } else if ty.is_enum() {
+                    let variant_idx = bigint_to_usize(&constants[0].to_integer());
+                    let data_ty = ty.enum_variant_data_type(variant_idx);
+                    let data = if data_ty.is_zero_sized_type() {
+                        None
+                    } else {
+                        assert!(constants.len() == 2);
+                        self.convert_constant(&constants[1], data_ty)
+                    };
+                    Some(self.convert_enum(variant_idx, data, ty))
                 } else {
                     todo!("{ty:?}")
                 }
@@ -334,18 +345,40 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
 
     fn convert_address_of(&mut self, object: Expr) -> Ast {
         assert!(object.is_object());
+        let ctx = object.ctx.clone();
         let inner_expr = object.extract_inner_expr();
-        if inner_expr.is_index() {
-            let inner_object = inner_expr.extract_object();
-            let inner_offset = inner_expr.extract_index();
-            let base = self.convert_object_space(&inner_object);
-            let offset = self.convert_ast(inner_offset);
-            return self.convert_pointer(&base, &offset, None);
-        }
-
         if inner_expr.is_symbol() {
             let base = self.convert_object_space(&object);
             let offset = self.mk_smt_int(BigInt::ZERO);
+            return self.convert_pointer(&base, &offset, None);
+        }
+
+        if inner_expr.is_ite() {
+            let args = inner_expr.sub_exprs();
+            let cond = self.convert_ast(args[0].clone());
+            let true_object = if args[1].is_object() {
+                args[1].clone()
+            } else {
+                ctx.object(args[1].clone())
+            };
+            let false_object = if args[2].is_object() {
+                args[2].clone()
+            } else {
+                ctx.object(args[2].clone())
+            };
+            let true_address = self.convert_address_of(true_object);
+            let false_address = self.convert_address_of(false_object);
+            return self.mk_ite(&cond, &true_address, &false_address);
+        }
+
+        if inner_expr.is_index() {
+            let inner_object = inner_expr.extract_object();
+            let inner_offset = inner_expr.extract_index();
+            let address_ty = inner_object.extract_address_type();
+            let address = ctx.address_of(inner_object, address_ty);
+            let address_base = ctx.pointer_base(address);
+            let base = self.convert_ast(address_base);
+            let offset = self.convert_ast(inner_offset);
             return self.convert_pointer(&base, &offset, None);
         }
 

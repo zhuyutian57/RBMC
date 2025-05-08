@@ -328,9 +328,9 @@ impl Expr {
         let cond = args[0].clone();
         let true_value = args[1].clone();
         let false_value = args[2].clone();
-        if cond.is_true() {
+        if cond.is_true() || false_value.is_impossible_downcast() {
             self.id = true_value.id;
-        } else if cond.is_false() {
+        } else if cond.is_false() || true_value.is_impossible_downcast() {
             self.id = false_value.id;
         } else if true_value == false_value {
             self.id = true_value.id;
@@ -404,6 +404,10 @@ impl Expr {
                 if i.extract_constant().to_integer() == j.to_integer() {
                     *self = inner_expr.extract_update_value();
                 }
+            } else if inner_expr.is_impossible_downcast() {
+                *self = self.ctx.impossible_downcast(self.ty());
+            } else if changed {
+                *self = self.ctx.index(object, i, self.ty());
             }
         } else if inner_expr.is_store() {
             let mut update_index = inner_expr.extract_index();
@@ -530,8 +534,11 @@ impl Expr {
         } else if _enum.is_constant() {
             let b = _enum.extract_constant().to_adt().0[0].to_integer();
             let idx = bigint_to_usize(&b);
-            assert!(j == idx);
-            *self = _enum.clone();
+            if j == idx {
+                *self = _enum.clone();
+            } else {
+                *self = self.ctx.impossible_downcast(self.ty());
+            }
         } else if changed {
             *self = self.ctx.as_variant(_enum, i);
         }

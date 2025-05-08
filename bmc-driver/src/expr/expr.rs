@@ -171,6 +171,10 @@ impl Expr {
         self.ctx.borrow().is_unknown(self.id)
     }
 
+    pub fn is_impossible_downcast(&self) -> bool {
+        self.ctx.borrow().is_impossible_downcast(self.id)
+    }
+
     pub fn extract_symbol(&self) -> Symbol {
         self.ctx.borrow().extract_symbol(self.id).expect("Not symbol")
     }
@@ -735,15 +739,19 @@ impl Debug for Expr {
             }
 
             if self.is_null_object() {
-                return write!(f, "NULL_OBJECT");
+                return write!(f, "NULL_OBJECT({:?})", self.ty());
             }
 
             if self.is_invalid_object() {
-                return write!(f, "INVALID_OBJECT");
+                return write!(f, "INVALID_OBJECT({:?})", self.ty());
             }
 
             if self.is_unknown() {
-                return write!(f, "Unknown");
+                return write!(f, "Unknown({:?})", self.ty());
+            }
+
+            if self.is_impossible_downcast() {
+                return write!(f, "Impossible_Downcast({:?})", self.ty())
             }
 
             println!("Incomplete Debug for Expr");
@@ -816,4 +824,5 @@ pub trait ExprBuilder {
     fn null_object(&self) -> Expr;
     fn invalid_object(&self, ty: Type) -> Expr;
     fn unknown(&self, ty: Type) -> Expr;
+    fn impossible_downcast(&self, ty: Type) -> Expr;
 }

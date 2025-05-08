@@ -266,6 +266,11 @@ impl Context {
         self.nodes[i].kind().is_unknown()
     }
 
+    pub fn is_impossible_downcast(&self, i: NodeId) -> bool {
+        assert!(i < self.nodes.len());
+        self.nodes[i].kind().is_impossible_downcast()
+    }
+
     pub(super) fn extract_terminal(&self, i: NodeId) -> Result<Rc<Terminal>, &str> {
         assert!(i < self.nodes.len());
         match self.nodes[i].kind() {
@@ -447,14 +452,25 @@ impl ExprBuilder for ExprCtx {
     }
 
     fn address_of(&self, object: Expr, ty: Type) -> Expr {
-        assert!(
-            object.unwrap_predicates().is_object()
-                || object.is_move() && object.extract_object().is_object()
-        );
-        let kind = NodeKind::AddressOf(object.id);
-        let new_node = Node::new(kind, ty);
-        let id = self.borrow_mut().add_node(new_node);
-        Expr { ctx: self.clone(), id }
+        let new_object = if !object.is_object() {
+            self.object(object)
+        } else {
+            object
+        };
+        let inner_expr = new_object.extract_inner_expr();
+        if inner_expr.is_ite() {
+            let cond = inner_expr.extract_cond();
+            let true_object = inner_expr.extract_true_value();
+            let false_object = inner_expr.extract_false_value();
+            let true_address = self.address_of(true_object, ty);
+            let false_address = self.address_of(false_object, ty);
+            self.ite(cond, true_address, false_address)
+        } else {
+            let kind = NodeKind::AddressOf(new_object.id);
+            let new_node = Node::new(kind, ty);
+            let id = self.borrow_mut().add_node(new_node);
+            Expr { ctx: self.clone(), id }
+        }
     }
 
     fn aggregate(&self, operands: Vec<Expr>, ty: Type) -> Expr {
@@ -679,10 +695,20 @@ impl ExprBuilder for ExprCtx {
                 && i.ty().is_integer()
         );
         let object = if !expr.unwrap_predicates().is_object() { self.object(expr) } else { expr };
-        let kind = NodeKind::Index(object.id, i.id);
-        let new_node = Node::new(kind, ty);
-        let id = self.borrow_mut().add_node(new_node);
-        Expr { ctx: self.clone(), id }
+        let inner_expr = object.extract_inner_expr();
+        if inner_expr.is_ite() {
+            let cond = inner_expr.extract_cond();
+            let true_object = inner_expr.extract_true_value();
+            let false_object = inner_expr.extract_false_value();
+            let true_index = self.index(true_object, i.clone(), ty);
+            let false_index = self.index(false_object, i, ty);
+            self.ite(cond, true_index, false_index)
+        } else {
+            let kind = NodeKind::Index(object.id, i.id);
+            let new_node = Node::new(kind, ty);
+            let id = self.borrow_mut().add_node(new_node);
+            Expr { ctx: self.clone(), id }
+        }
     }
 
     fn store(&self, expr: Expr, key: Expr, value: Expr) -> Expr {
@@ -859,6 +885,13 @@ impl ExprBuilder for ExprCtx {
 
     fn unknown(&self, ty: Type) -> Expr {
         let kind = NodeKind::Unknown(ty);
+        let new_node = Node::new(kind, ty);
+        let id = self.borrow_mut().add_node(new_node);
+        Expr { ctx: self.clone(), id }
+    }
+
+    fn impossible_downcast(&self, ty: Type) -> Expr {
+        let kind = NodeKind::ImpossibleDowncast;
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);
         Expr { ctx: self.clone(), id }

@@ -81,13 +81,13 @@ pub(super) enum NodeKind {
     Terminal(TerminalId),
     /// Get address from a place. Create `Ref` if necessary.
     AddressOf(NodeId),
-    /// Aggregate value such as tuple and struct
+    /// Aggregate value such as tuple and struct.
     Aggregate(Vec<NodeId>),
-    /// Binary expression
+    /// Binary expression.
     Binary(BinOp, NodeId, NodeId),
-    /// Unary expression
+    /// Unary expression.
     Unary(UnOp, NodeId),
-    /// If cond { true_expresion } else { false_expression }
+    /// If cond { true_expresion } else { false_expression }.
     Ite(NodeId, NodeId, NodeId),
     /// Type casting
     Cast(NodeId, NodeId),
@@ -96,7 +96,7 @@ pub(super) enum NodeKind {
     /// struct, tuple, and so on. Moreover, heap objects and
     /// stack objects are included.
     Object(NodeId),
-    /// `Slice(object, start, len)` represent a slice
+    /// `Slice(object, start, len)` represent a slice.
     Slice(NodeId, NodeId, NodeId),
     /// A pointer's value is the address of an object...
     SameObject(NodeId, NodeId),
@@ -119,25 +119,39 @@ pub(super) enum NodeKind {
     // enum
     /// `Variant(i, x)`: variant `i` with data `x`.
     Variant(NodeId, NodeId),
-    /// `AsVariant(x, i)`: enum `x` as variant
+    /// `AsVariant(x, i)`: enum `x` as variant.
     AsVariant(NodeId, NodeId),
-    /// `IsVariant(x, i)`: match `x` with variant `i`
+    /// `IsVariant(x, i)`: match `x` with variant `i`.
     MatchVariant(NodeId, NodeId),
 
     // Predicates for symbolic execution. Before generating VCC,
     // all predicates must be replaced to some expression.
-    /// `Move(expr)`: move a value
+    /// `Move(expr)`: move a value.
     Move(NodeId),
-    /// `Valid(object)`: `object` is alloced
+    /// `Valid(object)`: `object` is alloced.
     Valid(NodeId),
-    /// `Invalid(object)`: `object` is not alloced
+    /// `Invalid(object)`: `object` is not alloced.
     Invalid(NodeId),
-    /// Representing dereference of null
+    /// Representing dereference of null.
     NullObject,
-    /// Representing dereference of invalid address
+    /// Representing dereference of invalid address.
     InvalidObject,
-    /// `Unknown(type)` an unknown object with type
+    /// `Unknown(type)` an unknown object with type.
     Unknown(Type),
+    /// `Impossible` is used for pattern matching of enum. If the pattern matching cannot be
+    /// solved by symex, `AsVariant` may generate incorrect `Dowcast`. For example,
+    /// ```
+    ///     struct Node(i32, Option<Box<Node>>);
+    ///     let mut head = Node(0, None)
+    ///     if rbmc::nondet::<bool>() {
+    ///         head = Node(1, Some(Box::new(head)));
+    ///     }
+    /// ```
+    /// after the `if` branch, `head` has two possible values in value set. In drop glue, we
+    /// `Dowcast` head to variant `Some`. Then, we have `AsVariant(None, Some)`, which is 
+    /// impossible. Since all enum is accessed after `Discriminant` test, we can safetly make
+    /// these situation impossible and simplify the `ite` expression.
+    ImpossibleDowncast,
 }
 
 impl NodeKind {
@@ -239,6 +253,10 @@ impl NodeKind {
 
     pub fn is_unknown(&self) -> bool {
         matches!(self, NodeKind::Unknown(..))
+    }
+
+    pub fn is_impossible_downcast(&self) -> bool {
+        matches!(self, NodeKind::ImpossibleDowncast)
     }
 }
 

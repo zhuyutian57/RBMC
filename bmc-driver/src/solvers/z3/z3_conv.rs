@@ -221,14 +221,14 @@ impl<'ctx> Convert<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
     }
 
     fn convert_index_enum(&mut self, object: Expr, field: Expr) -> z3::ast::Dynamic<'ctx> {
-        let ty = object.ty();
-        let sign = self.create_datatype_sign(ty);
         let as_variant = object.extract_inner_expr();
         assert!(as_variant.is_as_variant());
         let idx = as_variant.extract_variant_idx();
         let i = bigint_to_usize(&field.extract_integer());
-        let args = &[&self.convert_ast(object) as &dyn Ast];
-        self.datatypes.get(&sign).unwrap().variants[idx].accessors[i].apply(args)
+        assert!(i == 0);
+        let tuple = self.convert_ast(as_variant);
+        let ty = object.ty().enum_variant_data_type(idx);
+        self.mk_tuple_select(tuple, 0, ty)
     }
 
     fn convert_tuple_update(
