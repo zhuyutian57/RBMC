@@ -4,48 +4,44 @@ use crate::expr::expr::*;
 
 pub type ObjectSpace<Ast> = (Ast, Ast);
 
-/// The space of an object is identified by `(base, len)`,
-/// where `base > 0`.
+/// The space of an object is identified by `[star, end)`,
 pub struct PointerLogic<Ast: Clone> {
-    _object_spaces: HashMap<Expr, ObjectSpace<Ast>>,
+    objects: HashMap<Expr, usize>,
+    object_spaces: HashMap<usize, ObjectSpace<Ast>>,
 }
 
 impl<Ast: Clone> PointerLogic<Ast> {
     pub fn new() -> Self {
-        PointerLogic { _object_spaces: HashMap::new() }
+        PointerLogic { objects: HashMap::new(), object_spaces: HashMap::new() }
+    }
+
+    pub fn add_object(&mut self, object: Expr) -> usize {
+        let n = self.objects.len();
+        *self.objects.entry(object).or_insert(n)
     }
 
     pub fn contains(&self, object: &Expr) -> bool {
-        self._object_spaces.contains_key(object)
+        self.objects.contains_key(object)
     }
 
     pub fn clear(&mut self) {
-        self._object_spaces.clear();
+        self.objects.clear();
+        self.object_spaces.clear();
     }
 
     pub fn set_object_space(&mut self, object: Expr, space: ObjectSpace<Ast>) {
-        assert!(!self.contains(&object));
-        self._object_spaces.insert(object, space);
+        assert!(self.contains(&object));
+        let i = self.get_object_space_ident(&object);
+        self.object_spaces.insert(i, space);
     }
 
-    pub fn object_spaces(&self) -> &HashMap<Expr, ObjectSpace<Ast>> {
-        &self._object_spaces
+    pub fn object_spaces(&self) -> &HashMap<usize, ObjectSpace<Ast>> {
+        &self.object_spaces
     }
 
-    pub fn get_object_space_base(&self, object: &Expr) -> Ast {
-        self._object_spaces
-            .get(object)
-            .expect(format!("Object space dose not have {object:?}").as_str())
-            .0
-            .clone()
-    }
-
-    pub fn get_object_space_len(&self, object: &Expr) -> Ast {
-        self._object_spaces
-            .get(object)
-            .expect(format!("Object space dose not have {object:?}").as_str())
-            .1
-            .clone()
+    pub fn get_object_space_ident(&self, object: &Expr) -> usize {
+        assert!(self.contains(object));
+        *self.objects.get(object).unwrap()
     }
 }
 

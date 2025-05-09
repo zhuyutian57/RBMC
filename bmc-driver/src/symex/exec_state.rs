@@ -193,6 +193,15 @@ impl<'cfg> ExecState<'cfg> {
         };
     }
 
+    pub fn get_original_name(&mut self, expr: &mut Expr, level: Level) {
+        match level {
+            Level::Level0 => todo!(),
+            Level::Level1 => self.renaming.l1_original_name(expr),
+            Level::Level2 => return,
+        };
+
+    }
+
     fn constant_propagate(&mut self, lhs: Expr, rhs: Expr) {
         if rhs.is_object() {
             self.constant_propagate(lhs, rhs.extract_inner_expr());
@@ -355,7 +364,7 @@ impl<'cfg> ExecState<'cfg> {
 
         // Update value Set
         let mut l1_rhs = rhs;
-        self.rename(&mut l1_rhs, Level::Level1);
+        self.get_original_name(&mut l1_rhs, Level::Level1);
         self.assign_value_set(lhs, l1_rhs, false);
     }
 
@@ -366,7 +375,7 @@ impl<'cfg> ExecState<'cfg> {
 
         if rhs.is_ite() {
             let true_value = rhs.extract_true_value();
-            self.assign_value_set(lhs.clone(), true_value, false);
+            self.assign_value_set(lhs.clone(), true_value, is_union);
             let false_value = rhs.extract_false_value();
             self.assign_value_set(lhs, false_value, true);
             return;
@@ -460,7 +469,7 @@ impl<'cfg> ExecState<'cfg> {
 
         assert!(lhs.ty().is_primitive_ptr());
         let mut rhs_values = ObjectSet::new();
-        self.cur_state.get_value_set(rhs, &mut rhs_values);
+        self.cur_state.get_value_set(rhs.clone(), &mut rhs_values);
         self.assign_value_set_rec(lhs, rhs_values, NString::EMPTY, is_union);
     }
 

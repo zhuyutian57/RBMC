@@ -119,6 +119,10 @@ impl State {
             return;
         }
 
+        if expr.is_constant() {
+            return;
+        }
+
         if expr.is_symbol() {
             let pt = expr.extract_symbol().name();
             let ident = pt + suffix;

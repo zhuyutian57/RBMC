@@ -355,31 +355,38 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
 
         if inner_expr.is_ite() {
             let args = inner_expr.sub_exprs();
+            let ty = inner_expr.ty();
             let cond = self.convert_ast(args[0].clone());
-            let true_object = if args[1].is_object() {
-                args[1].clone()
-            } else {
-                ctx.object(args[1].clone())
-            };
-            let false_object = if args[2].is_object() {
-                args[2].clone()
-            } else {
-                ctx.object(args[2].clone())
-            };
-            let true_address = self.convert_address_of(true_object);
-            let false_address = self.convert_address_of(false_object);
+            let true_address_of = ctx.address_of(args[1].clone(), ty);
+            let false_address_of = ctx.address_of(args[2].clone(), ty);
+            let true_address = self.convert_ast(true_address_of);
+            let false_address = self.convert_ast(false_address_of);
             return self.mk_ite(&cond, &true_address, &false_address);
         }
 
         if inner_expr.is_index() {
             let inner_object = inner_expr.extract_object();
             let inner_offset = inner_expr.extract_index();
+            let inner_object_ty = inner_object.ty();
             let address_ty = inner_object.extract_address_type();
             let address = ctx.address_of(inner_object, address_ty);
             let address_base = ctx.pointer_base(address);
             let base = self.convert_ast(address_base);
-            let offset = self.convert_ast(inner_offset);
+            let offset = if inner_object_ty.is_enum() {
+                // For enum, the discrminant occupy one field.
+                assert!(inner_offset.extract_constant().to_integer() == BigInt::ZERO);
+                self.mk_smt_int(BigInt::from(1))
+            } else {
+                self.convert_ast(inner_offset)
+            };
             return self.convert_pointer(&base, &offset, None);
+        }
+
+        if inner_expr.is_as_variant() {
+            let _enum = inner_expr.extract_enum();
+            let ty = inner_expr.ty();
+            let _enum_address_of = ctx.address_of(_enum, ty);
+            return self.convert_ast(_enum_address_of);
         }
 
         if inner_expr.is_slice() {

@@ -34,58 +34,53 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
 
     fn create_object_space(&mut self, object: &Expr) -> z3::ast::Dynamic<'ctx> {
         assert!(object.is_symbol());
-        if self.pointer_logic.contains(object) {
-            return self.pointer_logic.get_object_space_base(object);
+        if !self.pointer_logic.contains(object) {
+            self.init_pointer_space(object);
         }
-        self.init_pointer_space(object);
-        self.pointer_logic.get_object_space_base(object)
+        let ident = self.pointer_logic.get_object_space_ident(object);
+        self.mk_smt_int(BigInt::from(ident))
     }
 
     fn init_pointer_space(&mut self, object: &Expr) {
-        assert!(!self.pointer_logic.contains(object));
-        assert!(object.is_symbol());
+        let i = self.pointer_logic.add_object(object.clone());
         let ty = object.ty();
+        let symbol = object.extract_symbol();
 
         // Use l0 as identifier. Object size is in byte-level
-        let space_base = NString::from(object.extract_symbol().ident()) + "_base";
-        let base = self.mk_int_symbol(space_base);
-        let size = if ty.is_array() && ty.size() == 0 {
-            let sym = object.extract_symbol().ident().to_nstring() + "_size";
-            self.mk_int_symbol(sym)
-        } else {
-            self.mk_smt_int(BigInt::from(ty.size()))
-        };
-
-        // Base is greater than 0
-        self.assert(self.mk_gt(&base, &self.mk_smt_int(BigInt::ZERO)));
+        let space_start = NString::from(object.extract_symbol().ident()) + "_base";
+        let start = self.mk_int_symbol(space_start);
+        let size = self.mk_smt_int(BigInt::from(ty.size()));
+        let end = self.mk_add(&start, &size);
+        // Start is greater than 0
+        self.assert(self.mk_gt(&start, &self.mk_smt_int(BigInt::ZERO)));
         // Size is greater or eqaul to 0
         self.assert(self.mk_ge(&size, &self.mk_smt_int(BigInt::ZERO)));
         // Disjoint relationship
-        // TODO: remove own object?
-        for (b, l) in self.pointer_logic.object_spaces().values() {
-            if space_base == NString::from(b.to_string()) {
+        for (j, (s, e))
+            in self.pointer_logic.object_spaces().values().enumerate() {
+            if j == i {
                 continue;
             }
+
             // No alloc array is active. That means we know the allocation of current
             // object in symex. No need to encode disjointness.
-            // Be careful for this design.
             if self.cur_alloc_expr == None {
                 continue;
             }
 
             let alloc_array_ast = self.cur_alloc_expr.as_ref().unwrap();
-            let alive = alloc_array_ast.as_array().unwrap().select(b);
+            let ident = self.mk_smt_int(BigInt::from(j));
+            let alive = alloc_array_ast.as_array().unwrap().select(&ident);
 
-            let l1 = base.clone();
-            let r1 = self.mk_add(&l1, &size);
-            let l2 = b.clone();
-            let r2 = self.mk_add(&l2, &l);
-            let no_overlap = self.mk_or(&self.mk_le(&r1, &l2), &self.mk_le(&r2, &l1));
-            let disj = self.mk_implies(&alive, &no_overlap);
-            self.assert(disj);
+            let no_overlap =
+                self.mk_or(
+                    &self.mk_le(&end, &s),
+                    &self.mk_le(&e, &start)
+                );
+            self.assert(self.mk_implies(&alive, &no_overlap));
         }
 
-        self.pointer_logic.set_object_space(object.clone(), (base, size));
+        self.pointer_logic.set_object_space(object.clone(), (start, end));
     }
 
     fn mk_pointer(

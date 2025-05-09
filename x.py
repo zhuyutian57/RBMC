@@ -58,7 +58,7 @@ if __name__ == "__main__":
     cmd = [
       "find",
       "library", "bmc-driver", "src", "utils",
-      "-name", "*rs",
+      "-name", "\'*rs\'",
       "|",
       "xargs", "wc", "-l"
     ]

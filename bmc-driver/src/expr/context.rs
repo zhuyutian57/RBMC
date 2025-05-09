@@ -457,20 +457,10 @@ impl ExprBuilder for ExprCtx {
         } else {
             object
         };
-        let inner_expr = new_object.extract_inner_expr();
-        if inner_expr.is_ite() {
-            let cond = inner_expr.extract_cond();
-            let true_object = inner_expr.extract_true_value();
-            let false_object = inner_expr.extract_false_value();
-            let true_address = self.address_of(true_object, ty);
-            let false_address = self.address_of(false_object, ty);
-            self.ite(cond, true_address, false_address)
-        } else {
-            let kind = NodeKind::AddressOf(new_object.id);
-            let new_node = Node::new(kind, ty);
-            let id = self.borrow_mut().add_node(new_node);
-            Expr { ctx: self.clone(), id }
-        }
+        let kind = NodeKind::AddressOf(new_object.id);
+        let new_node = Node::new(kind, ty);
+        let id = self.borrow_mut().add_node(new_node);
+        Expr { ctx: self.clone(), id }
     }
 
     fn aggregate(&self, operands: Vec<Expr>, ty: Type) -> Expr {
@@ -695,20 +685,10 @@ impl ExprBuilder for ExprCtx {
                 && i.ty().is_integer()
         );
         let object = if !expr.unwrap_predicates().is_object() { self.object(expr) } else { expr };
-        let inner_expr = object.extract_inner_expr();
-        if inner_expr.is_ite() {
-            let cond = inner_expr.extract_cond();
-            let true_object = inner_expr.extract_true_value();
-            let false_object = inner_expr.extract_false_value();
-            let true_index = self.index(true_object, i.clone(), ty);
-            let false_index = self.index(false_object, i, ty);
-            self.ite(cond, true_index, false_index)
-        } else {
-            let kind = NodeKind::Index(object.id, i.id);
-            let new_node = Node::new(kind, ty);
-            let id = self.borrow_mut().add_node(new_node);
-            Expr { ctx: self.clone(), id }
-        }
+        let kind = NodeKind::Index(object.id, i.id);
+        let new_node = Node::new(kind, ty);
+        let id = self.borrow_mut().add_node(new_node);
+        Expr { ctx: self.clone(), id }
     }
 
     fn store(&self, expr: Expr, key: Expr, value: Expr) -> Expr {

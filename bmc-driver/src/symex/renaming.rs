@@ -108,7 +108,7 @@ impl Renaming {
             if expr.is_symbol() {
                 let mut symbol = expr.extract_symbol();
 
-                if symbol.is_level1() {
+                if !symbol.is_level0() {
                     return;
                 }
 
@@ -179,6 +179,30 @@ impl Renaming {
         for (i, sub_expr) in sub_exprs.iter_mut().enumerate() {
             let prop = if i == 0 && expr.is_store() { false } else { propagate };
             self.rename_address(sub_expr, prop);
+        }
+        expr.replace_sub_exprs(sub_exprs);
+    }
+
+    pub(super) fn l1_original_name(&self, expr: &mut Expr) {
+        if expr.is_constant() {
+            return;
+        } else if expr.is_symbol() {
+            let symbol = expr.extract_symbol();
+            if !symbol.is_level2() {
+                return;
+            }
+            
+            let l1_symbol = Symbol::new(
+                symbol.ident(), symbol.l1_num(), 0, Level::Level1
+            );
+            
+            *expr = expr.ctx.mk_symbol(l1_symbol, expr.ty());
+            return;
+        }
+        
+        let mut sub_exprs = expr.sub_exprs();
+        for (i, sub_expr) in sub_exprs.iter_mut().enumerate() {
+            self.l1_original_name(sub_expr);
         }
         expr.replace_sub_exprs(sub_exprs);
     }
