@@ -199,7 +199,6 @@ impl<'cfg> ExecState<'cfg> {
             Level::Level1 => self.renaming.l1_original_name(expr),
             Level::Level2 => return,
         };
-
     }
 
     fn constant_propagate(&mut self, lhs: Expr, rhs: Expr) {
@@ -478,7 +477,7 @@ impl<'cfg> ExecState<'cfg> {
         lhs: Expr,
         rhs_values: ObjectSet,
         suffix: NString,
-        is_union: bool
+        is_union: bool,
     ) {
         if lhs.is_symbol() {
             let ident = lhs.extract_symbol().name() + suffix;

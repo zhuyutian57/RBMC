@@ -94,10 +94,7 @@ impl Renaming {
         let symbol = lhs.extract_symbol();
         assert!(symbol.is_level1());
         if let Some(c) = constant {
-            self.constant_map
-                .entry(symbol)
-                .and_modify(|x| *x = c.clone())
-                .or_insert(c);
+            self.constant_map.entry(symbol).and_modify(|x| *x = c.clone()).or_insert(c);
         } else {
             self.constant_map.remove(&symbol);
         };
@@ -174,7 +171,7 @@ impl Renaming {
             expr.replace_sub_exprs(vec![object, index]);
             return;
         }
-        
+
         let mut sub_exprs = expr.sub_exprs();
         for (i, sub_expr) in sub_exprs.iter_mut().enumerate() {
             let prop = if i == 0 && expr.is_store() { false } else { propagate };
@@ -191,15 +188,13 @@ impl Renaming {
             if !symbol.is_level2() {
                 return;
             }
-            
-            let l1_symbol = Symbol::new(
-                symbol.ident(), symbol.l1_num(), 0, Level::Level1
-            );
-            
+
+            let l1_symbol = Symbol::new(symbol.ident(), symbol.l1_num(), 0, Level::Level1);
+
             *expr = expr.ctx.mk_symbol(l1_symbol, expr.ty());
             return;
         }
-        
+
         let mut sub_exprs = expr.sub_exprs();
         for (i, sub_expr) in sub_exprs.iter_mut().enumerate() {
             self.l1_original_name(sub_expr);

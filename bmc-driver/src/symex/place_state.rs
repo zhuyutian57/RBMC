@@ -81,10 +81,7 @@ impl PlaceStates {
         if state.is_dead() {
             self._place_states_map.remove(&nplace);
         } else {
-            self._place_states_map
-                .entry(nplace)
-                .and_modify(|s| *s = state)
-                .or_insert(state);
+            self._place_states_map.entry(nplace).and_modify(|s| *s = state).or_insert(state);
         }
     }
 

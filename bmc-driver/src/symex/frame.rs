@@ -19,7 +19,7 @@ pub struct Frame<'func> {
     pub(super) target: Option<BasicBlockIdx>,
     /// Current program counter being executed.
     pub(super) pc: Pc,
-    /// Cache loop in a stack. Used for unwinding. 
+    /// Cache loop in a stack. Used for unwinding.
     pub(super) loop_stack: Vec<(Pc, usize)>,
     /// Record l1 number of each local and its liveness.
     pub(super) local_states: Vec<(usize, bool)>,

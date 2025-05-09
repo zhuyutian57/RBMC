@@ -56,8 +56,7 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
         // Size is greater or eqaul to 0
         self.assert(self.mk_ge(&size, &self.mk_smt_int(BigInt::ZERO)));
         // Disjoint relationship
-        for (j, (s, e))
-            in self.pointer_logic.object_spaces().values().enumerate() {
+        for (j, (s, e)) in self.pointer_logic.object_spaces().values().enumerate() {
             if j == i {
                 continue;
             }
@@ -72,11 +71,7 @@ impl<'ctx> MemSpace<z3::Sort<'ctx>, z3::ast::Dynamic<'ctx>> for Z3Conv<'ctx> {
             let ident = self.mk_smt_int(BigInt::from(j));
             let alive = alloc_array_ast.as_array().unwrap().select(&ident);
 
-            let no_overlap =
-                self.mk_or(
-                    &self.mk_le(&end, &s),
-                    &self.mk_le(&e, &start)
-                );
+            let no_overlap = self.mk_or(&self.mk_le(&end, &s), &self.mk_le(&e, &start));
             self.assert(self.mk_implies(&alive, &no_overlap));
         }
 

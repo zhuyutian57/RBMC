@@ -148,7 +148,7 @@ pub(super) enum NodeKind {
     ///     }
     /// ```
     /// after the `if` branch, `head` has two possible values in value set. In drop glue, we
-    /// `Dowcast` head to variant `Some`. Then, we have `AsVariant(None, Some)`, which is 
+    /// `Dowcast` head to variant `Some`. Then, we have `AsVariant(None, Some)`, which is
     /// impossible. Since all enum is accessed after `Discriminant` test, we can safetly make
     /// these situation impossible and simplify the `ite` expression.
     ImpossibleDowncast,

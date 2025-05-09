@@ -452,11 +452,7 @@ impl ExprBuilder for ExprCtx {
     }
 
     fn address_of(&self, object: Expr, ty: Type) -> Expr {
-        let new_object = if !object.is_object() {
-            self.object(object)
-        } else {
-            object
-        };
+        let new_object = if !object.is_object() { self.object(object) } else { object };
         let kind = NodeKind::AddressOf(new_object.id);
         let new_node = Node::new(kind, ty);
         let id = self.borrow_mut().add_node(new_node);

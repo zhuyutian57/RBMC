@@ -274,7 +274,7 @@ pub(crate) trait Convert<Sort, Ast: Clone + Debug> {
                         Some(self.convert_struct(&fields, ty))
                     } else {
                         Some(self.convert_tuple(&fields, ty))
-                    }  
+                    }
                 } else if ty.is_enum() {
                     let variant_idx = bigint_to_usize(&constants[0].to_integer());
                     let data_ty = ty.enum_variant_data_type(variant_idx);

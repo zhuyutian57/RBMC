@@ -21,13 +21,13 @@ impl ValueSet {
 
     pub fn insert(&mut self, ident: NString, values: ObjectSet, is_union: bool) {
         if is_union {
-            self._points_to_map.entry(ident)
-                .and_modify(
-                    |s|
+            self._points_to_map
+                .entry(ident)
+                .and_modify(|s| {
                     values.iter().for_each(|object| {
                         s.insert(object.clone());
                     })
-                )
+                })
                 .or_insert(values);
         } else {
             self._points_to_map.insert(ident, values);

@@ -751,7 +751,7 @@ impl Debug for Expr {
             }
 
             if self.is_impossible_downcast() {
-                return write!(f, "Impossible_Downcast({:?})", self.ty())
+                return write!(f, "Impossible_Downcast({:?})", self.ty());
             }
 
             println!("Incomplete Debug for Expr");

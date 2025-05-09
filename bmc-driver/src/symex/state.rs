@@ -282,11 +282,8 @@ impl State {
                 } else {
                     inner_object
                 };
-                let final_object = if !new_object.is_object() {
-                    self.ctx.object(new_object)
-                } else {
-                    new_object
-                };
+                let final_object =
+                    if !new_object.is_object() { self.ctx.object(new_object) } else { new_object };
                 object_set.insert((final_object, Some(i.into())));
             }
             return;
@@ -310,7 +307,6 @@ impl State {
                 object_set.insert((final_object, None));
             }
             return;
-
         }
 
         if expr.is_invalid_object() {
