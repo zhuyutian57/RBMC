@@ -13,10 +13,10 @@ impl Slicer {
         assert!(n < vc_system.borrow().num_asserts());
         let m = *vc_system.borrow().asserts_map.get(&n).unwrap();
         for i in 0..m {
-            vc_system.borrow_mut().vcs[i].is_sliced = true;
+            vc_system.borrow_mut().ssa_steps[i].is_sliced = true;
         }
         for i in (0..m + 1).rev() {
-            self.slice(&mut vc_system.borrow_mut().vcs[i]);
+            self.slice(&mut vc_system.borrow_mut().ssa_steps[i]);
         }
     }
 
@@ -46,21 +46,21 @@ impl Slicer {
         res
     }
 
-    fn slice(&mut self, vc: &mut Vc) {
+    fn slice(&mut self, vc: &mut SSAStep) {
         match &vc.kind {
-            VcKind::Assign(lhs, rhs) => {
+            StepKind::Assign(lhs, rhs) => {
                 if self.get_symbols(lhs, false) {
                     vc.is_sliced = false;
                     self.get_symbols(rhs, true);
                 }
             }
-            VcKind::Assert(_, cond) => {
+            StepKind::Assert(_, cond) => {
                 if !vc.is_sliced {
                     // If the assertiong is included, caching the symbols
                     self.get_symbols(cond, true);
                 }
             }
-            VcKind::Assume(cond) => {
+            StepKind::Assume(cond) => {
                 vc.is_sliced = false;
                 self.get_symbols(cond, true);
             }

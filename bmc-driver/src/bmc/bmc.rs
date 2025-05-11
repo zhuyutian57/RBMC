@@ -40,7 +40,7 @@ impl<'cfg> Bmc<'cfg> {
         self.vc_system.borrow().show_info();
 
         let res = if self.vc_system.borrow().num_asserts() == 0 {
-            println!("No assertions should be checked");
+            println!("No assertion should be checked");
             PResult::PUnsat
         } else {
             self.check_properties()
@@ -84,7 +84,7 @@ impl<'cfg> Bmc<'cfg> {
                 let slice_time = std::time::Instant::now();
                 slicer.slice_nth(self.vc_system.clone(), i);
                 println!("Runtime slicing asssertion {i}: {}s", slice_time.elapsed().as_secs_f32());
-                println!("After slicing: {} VC(s)", self.vc_system.borrow().num_valid_vc());
+                println!("After slicing: {} steps", self.vc_system.borrow().num_step());
             }
 
             if self.config.cli.show_vcc {
@@ -121,7 +121,7 @@ impl<'cfg> Bmc<'cfg> {
             let slice_time = std::time::Instant::now();
             slicer.slice_whole(self.vc_system.clone());
             println!("Runtime slicing asssertion: {}s", slice_time.elapsed().as_secs_f32());
-            println!("After slicing: {} VC(s)", self.vc_system.borrow().num_valid_vc());
+            println!("After slicing: {} steps", self.vc_system.borrow().num_step());
         }
 
         if self.config.cli.show_vcc {
@@ -162,14 +162,14 @@ impl<'cfg> Bmc<'cfg> {
                 continue;
             }
             match &vc.kind {
-                VcKind::Assign(lhs, rhs) => {
+                StepKind::Assign(lhs, rhs) => {
                     self.runtime_solver.assert_assign(lhs.clone(), rhs.clone());
                 }
-                VcKind::Assert(_, c) => {
+                StepKind::Assert(_, c) => {
                     assertions.push(c.clone());
                     // assertions.push(ctx.implies(assume.clone(), c.clone()));
                 }
-                VcKind::Assume(c) => {
+                StepKind::Assume(c) => {
                     self.runtime_solver.assert_expr(c.clone());
                     // assume = ctx.and(assume, c.clone());
                 }
@@ -200,7 +200,7 @@ impl<'cfg> Bmc<'cfg> {
     }
 
     #[inline]
-    fn bug_info(assertion: &Vc) {
+    fn bug_info(assertion: &SSAStep) {
         let span = assertion.span.expect("Span must exist");
         println!(
             "-> {}:{}:{}: {:?}",

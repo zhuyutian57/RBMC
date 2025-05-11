@@ -83,6 +83,11 @@ def kani(file):
     "--cbmc-args",
     "--memory-leak-check",
     "--no-malloc-may-fail",
+    "--no-div-by-zero-check",
+    "--no-signed-overflow-check",
+    "--no-undefined-shift-check",
+    # An option for kani to enable rust runtime checking
+    "--no-assertions",
   ]
   run_on_single_file(cmd, None)
 
@@ -142,9 +147,9 @@ def analysis_rbmc_result():
       res = [0, 0, set(), 0.0, 0.0]
       with open(os.path.join(RBMC_OUTPUT, logfile)) as log:
         for line in log.readlines():
-          if line.startswith("Generating"):
-            res[0] = int(line.split(' ')[1])
-            res[1] = int(line.split(' ')[4])
+          if line.startswith("Symex completed in"):
+            res[0] = int(line.split(' ')[3])
+            res[1] = int(line.split(' ')[6])
           if line.startswith("Verification time"):
             res[3] = float(line.split(" ")[2].strip("\n").strip('s'))
       once_logfile = logfile.replace("-forward.log", "-once.log")
@@ -172,10 +177,10 @@ def analysis_kani_result():
     res = [0, 0, set(), 0.0]
     with open(os.path.join(KANI_OUTPUT, logfile)) as log:
       for line in log.readlines():
+        if line.startswith("size of program expression:"):
+          res[0] = int(line.split(" ")[4])
         if line.startswith("Generated"):
-          res[0] = int(line.split(" ")[1])
-        if line.startswith("Check"):
-          res[1] += 1
+          res[1] = int(line.split(' ')[3])
         if line.startswith("Failed Checks"):
           if "dereference failure" in line or \
              "index out of bounds" in line or \
