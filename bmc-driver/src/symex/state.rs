@@ -4,7 +4,6 @@ use std::fmt::Debug;
 use super::place_state::*;
 use super::renaming::Renaming;
 use super::value_set::*;
-use crate::expr::constant::Constant;
 use crate::expr::context::*;
 use crate::expr::expr::*;
 use crate::expr::guard::Guard;
